@@ -316,6 +316,7 @@ class TestExifTraitcapture(unittest.TestCase):
     def test_main(self):
         e2t.main({
             '-1': False,
+            '-d': False,
             '-a': None,
             '-c': self.test_config_csv,
             '-l': self.out_dirname,
@@ -327,6 +328,7 @@ class TestExifTraitcapture(unittest.TestCase):
     def test_main_raw(self):
         e2t.main({
             '-1': False,
+            '-d': False,
             '-a': None,
             '-c': self.test_config_raw_csv,
             '-l': self.out_dirname,
@@ -339,6 +341,7 @@ class TestExifTraitcapture(unittest.TestCase):
     def test_main_expt_dates(self):
         e2t.main({
             '-1': False,
+            '-d': False,
             '-a': None,
             '-c': self.test_config_dates_csv,
             '-l': self.out_dirname,
@@ -351,6 +354,7 @@ class TestExifTraitcapture(unittest.TestCase):
         # with a good value for threads
         e2t.main({
             '-1': False,
+            '-d': False,
             '-a': None,
             '-c': self.test_config_csv,
             '-l': self.out_dirname,
@@ -362,6 +366,7 @@ class TestExifTraitcapture(unittest.TestCase):
         # and with a bad one (should default back to n_cpus)
         e2t.main({
             '-1': False,
+            '-d': False,
             '-a': None,
             '-c': self.test_config_csv,
             '-l': self.out_dirname,
@@ -373,6 +378,7 @@ class TestExifTraitcapture(unittest.TestCase):
         # and with -1
         e2t.main({
             '-1': True,
+            '-d': False,
             '-a': None,
             '-c': self.test_config_csv,
             '-l': self.out_dirname,
@@ -388,6 +394,7 @@ class TestExifTraitcapture(unittest.TestCase):
         with self.assertRaises(SystemExit):
             e2t.main({
                 '-1': False,
+                '-d': False,
                 '-a': None,
                 '-c': None,
                 '-l': self.out_dirname,
