@@ -16,3 +16,4 @@ install:
 
 script:
  - ./run_tests
+ - ./run_from_cmdline
