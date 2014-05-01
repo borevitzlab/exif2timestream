@@ -1,3 +1,4 @@
+from __future__ import print_function
 from csv import reader, DictReader
 import exifread as er
 import os
@@ -534,12 +535,12 @@ def main(opts):
     cameras = parse_camera_config_csv(opts["-c"])
     n_images = 0
     for camera in cameras:
-        print "\nProcessing camera {0}".format(camera[FIELDS["name"]])
+        print("Processing camera {0}".format(camera[FIELDS["name"]]))
         LOG.info("Processing camera {0}".format(camera[FIELDS["name"]]))
         for ext, images in find_image_files(camera).iteritems():
             images = sorted(images)
             n_cam_images = len(images)
-            print "{0} {1} images from this camera".format(n_cam_images, ext)
+            print("{0} {1} images from this camera".format(n_cam_images, ext))
             LOG.info("Have {0} {1} images from this camera".format(
                 n_cam_images, ext))
             n_images += n_cam_images
@@ -566,9 +567,10 @@ def main(opts):
                 pool.map(process_image, args)
                 pool.close()
                 pool.join()
+        print("\n")
     secs_taken = time() - start_time
-    print "\nProcessed a total of {0} images in {1:.2f} seconds".format(
-        n_images, secs_taken)
+    print("\nProcessed a total of {0} images in {1:.2f} seconds".format(
+        n_images, secs_taken))
 
 
 if __name__ == "__main__":
