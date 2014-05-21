@@ -568,7 +568,8 @@ def main(opts):
                 for _ in pool.imap(process_image, args):
                     count += 1
                     if count % 50 == 0:
-                        print("Processed {: 5d} Images\r".format(count))
+                        print("Processed {: 5d} Images".format(count),
+                                end='\r')
                 pool.close()
                 pool.join()
         print("\n")
