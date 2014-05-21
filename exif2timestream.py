@@ -4,7 +4,7 @@ import exifread as er
 import os
 from os import path
 import shutil
-from sys import exit, stdout
+from sys import exit
 from time import strptime, strftime, mktime, localtime, struct_time, time
 from voluptuous import Required, Schema, MultipleInvalid
 from itertools import cycle
@@ -362,8 +362,6 @@ def process_image(args):
     move/copy operations.
     """
     (image, camera, ext) = args
-    stdout.write(".")
-    stdout.flush()
 
     image_date = get_file_date(image, camera[FIELDS["interval"]] * 60)
     if image_date < camera[FIELDS["expt_start"]] or \
@@ -529,8 +527,16 @@ def main(opts):
     cameras = parse_camera_config_csv(opts["-c"])
     n_images = 0
     for camera in cameras:
-        print("Processing camera {0}".format(camera[FIELDS["expt"]]))
-        LOG.info("Processing camera {0}".format(camera[FIELDS["expt"]]))
+        msg = "Processing experiment {}, location {}\n".format(
+                camera[FIELDS["expt"]],
+                camera[FIELDS["location"]],
+                )
+        msg += "Images are coming from {}, being put in {}".format(
+                camera[FIELDS["source"]],
+                camera[FIELDS["destination"]],
+                )
+        print(msg)
+        LOG.info(msg)
         for ext, images in find_image_files(camera).iteritems():
             images = sorted(images)
             n_cam_images = len(images)
@@ -558,7 +564,11 @@ def main(opts):
                 # set the function's camera-wide arguments
                 args = zip(images, cycle([camera]), cycle([ext]))
                 pool = Pool(threads)
-                pool.map(process_image, args)
+                count = 0
+                for _ in pool.imap(process_image, args):
+                    count += 1
+                    if count % 50 == 0:
+                        print("Processed {: 5d} Images\r".format(count))
                 pool.close()
                 pool.join()
         print("\n")
