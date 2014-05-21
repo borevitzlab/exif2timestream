@@ -20,7 +20,7 @@ test_requires = [
 setup(
     name="exif2timestream",
     py_modules=['exif2timestream', ],
-    version="0.2.2",
+    version="0.2.3",
     install_requires=install_requires,
     tests_require=test_requires,
     description=desc,
