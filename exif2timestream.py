@@ -564,10 +564,14 @@ def main(opts):
                 # set the function's camera-wide arguments
                 args = zip(images, cycle([camera]), cycle([ext]))
                 pool = Pool(threads)
+                if n_cam_images < 100:
+                    each = 10
+                else:
+                    each = 50
                 count = 0
                 for _ in pool.imap(process_image, args):
                     count += 1
-                    if count % 50 == 0:
+                    if count % each == 0:
                         print("Processed {: 5d} Images".format(count),
                                 end='\r')
                 pool.close()
