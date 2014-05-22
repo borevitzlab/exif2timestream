@@ -5,17 +5,17 @@ exif2timestream: Rename image files into a timestream from exif data.
 """
 
 install_requires = [
-        "ExifRead==1.4.2",
-        "docopt==0.6.1",
-        "voluptuous==0.8.4",
-        ]
+    "ExifRead==1.4.2",
+    "docopt==0.6.1",
+    "voluptuous==0.8.4",
+]
 
 test_requires = [
-        "coverage==3.7.1",
-        "nose==1.3.0",
-        "pep8==1.4.6",
-        "pylint==1.0.0",
-        ]
+    "coverage==3.7.1",
+    "nose==1.3.0",
+    "pep8==1.4.6",
+    "pylint==1.0.0",
+]
 
 setup(
     name="exif2timestream",
@@ -39,6 +39,6 @@ setup(
         "Topic :: Scientific/Engineering :: Bio-Informatics",
         "License :: OSI Approved :: GNU General Public License v3 or later " +
             "(GPLv3+)",
-        ],
+    ],
     test_suite="test",
-    )
+)
