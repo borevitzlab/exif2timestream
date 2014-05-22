@@ -86,6 +86,7 @@ FIELD_ORDER = [
     'mode',
 ]
 
+
 class SkipImage(StopIteration):
 
     """
@@ -183,6 +184,7 @@ def validate_camera(camera):
             if not x in self.valid_values:
                 raise ValueError
             return x
+
     sch = Schema({
         Required(FIELDS["use"]): bool_str,
         Required(FIELDS["destination"]): path_exists,
@@ -193,7 +195,7 @@ def validate_camera(camera):
         Required(FIELDS["interval"], default=1): num_str,
         Required(FIELDS["location"]): str,
         Required(FIELDS["archive_dest"]): path_exists,
-        Required(FIELDS["method"], default="archive"): \
+        Required(FIELDS["method"], default="archive"):
             InList(["copy", "archive", "move"]),
         Required(FIELDS["source"]): path_exists,
         FIELDS["mode"]: InList(["batch", "watch"]),
@@ -406,7 +408,7 @@ def process_image(args):
             # we have changed this so that all images are moved to the archive
             pass
         else:
-            return # don't delete skipped images if we haven't archived them
+            return  # don't delete skipped images if we haven't archived them
     if camera[FIELDS["method"]] in {"move", "archive"}:
         # images have already been archived above, so just delete originals
         try:
@@ -477,7 +479,7 @@ def find_image_files(camera):
                         ext_files[ext] = []
                         ext_files[ext].append(fle_path)
             LOG.info("Found {0} {1} files for camera.".format(
-                    len(files), ext))
+                len(files), ext))
     return ext_files
 
 
@@ -499,7 +501,7 @@ def setup_logs(opts):
         exit()
     # we want logging for the real main loop
     fmt = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     ch = logging.StreamHandler()
     ch.setLevel(logging.ERROR)
     ch.setFormatter(fmt)
@@ -511,7 +513,8 @@ def setup_logs(opts):
     log_fh.setFormatter(fmt)
     LOG.addHandler(log_fh)
     if opts['-d']:
-        debug_fh = logging.FileHandler(path.join(logdir, "e2t_" + NOW + ".debug"))
+        debug_fh = logging.FileHandler(
+            path.join(logdir, "e2t_" + NOW + ".debug"))
         debug_fh.setLevel(logging.DEBUG)
         debug_fh.setFormatter(fmt)
         LOG.addHandler(debug_fh)
@@ -528,13 +531,13 @@ def main(opts):
     n_images = 0
     for camera in cameras:
         msg = "Processing experiment {}, location {}\n".format(
-                camera[FIELDS["expt"]],
-                camera[FIELDS["location"]],
-                )
+            camera[FIELDS["expt"]],
+            camera[FIELDS["location"]],
+        )
         msg += "Images are coming from {}, being put in {}".format(
-                camera[FIELDS["source"]],
-                camera[FIELDS["destination"]],
-                )
+            camera[FIELDS["source"]],
+            camera[FIELDS["destination"]],
+        )
         print(msg)
         LOG.info(msg)
         for ext, images in find_image_files(camera).iteritems():
@@ -573,7 +576,7 @@ def main(opts):
                     count += 1
                     if count % each == 0:
                         print("Processed {: 5d} Images".format(count),
-                                end='\r')
+                              end='\r')
                 pool.close()
                 pool.join()
         print("\n")
