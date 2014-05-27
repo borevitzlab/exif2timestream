@@ -376,6 +376,7 @@ def process_image(args):
         archive_image = path.join(
             camera[FIELDS["archive_dest"]],
             camera[FIELDS["expt"]],
+            ext,
             ts_name,
             path.basename(image)
         )
