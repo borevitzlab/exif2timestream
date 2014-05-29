@@ -11,6 +11,7 @@ from itertools import cycle
 from inspect import isclass
 import logging
 
+__version__ = "0.2.6"
 
 EXIF_DATE_TAG = "Image DateTime"
 EXIF_DATE_FMT = "%Y:%m:%d %H:%M:%S"
@@ -27,6 +28,7 @@ CLI_OPTS = """
 USAGE:
     exif2timestream.py [-t PROCESSES -1 -d -l LOGDIR] -c CAM_CONFIG_CSV
     exif2timestream.py -g CAM_CONFIG_CSV
+    exif2timestream.py -V
 
 OPTIONS:
     -1                  Use one core
@@ -36,6 +38,7 @@ OPTIONS:
     -c CAM_CONFIG_CSV   Path to CSV camera config file for normal operation.
     -g CAM_CONFIG_CSV   Generate a template camera configuration file at given
                         path.
+    -V                  Print version information.
 """
 
 
@@ -589,6 +592,9 @@ def main(opts):
 if __name__ == "__main__":
     from docopt import docopt
     opts = docopt(CLI_OPTS)
+    if opts["-V"]:
+        print("Version {}".format(__version__))
+        exit(0)
     # lets do this shit.
     main(opts)
 else:
