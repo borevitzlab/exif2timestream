@@ -337,7 +337,7 @@ def _dont_clobber(fn, mode="append"):
     if path.exists(fn):
         # Deal with SkipImage or StopIteration exceptions
         if isinstance(mode, StopIteration):
-            LOG.debug("Path '{0}' exists, raising an Exception".format(fn))
+            LOG.debug("Path '{0}' exists, raising StopIteration".format(fn))
             raise mode
         # Ditto, but if we pass them uninstantiated
         elif isclass(mode) and issubclass(mode, StopIteration):
@@ -371,10 +371,13 @@ def process_image(args):
     image_date = get_file_date(image, camera[FIELDS["interval"]] * 60)
     if image_date < camera[FIELDS["expt_start"]] or \
             image_date > camera[FIELDS["expt_end"]]:
+        LOG.debug("Skipping {}. Outside of date range {!s} to {!s}".format(
+            image, camera[FIELDS["expt_start"]], camera[FIELDS["expt_end"]]))
         return  # Don't raise SkipImage as it isn't caught
 
     # archive a backup before we fuck anything up
     if camera[FIELDS["method"]] == "archive":
+        LOG.debug("Will archive {}".format(image))
         ts_name = make_timestream_name(camera, res="fullres")
         archive_image = path.join(
             camera[FIELDS["archive_dest"]],
@@ -390,8 +393,10 @@ def process_image(args):
             except OSError as exc:
                 if not path.exists(archive_dir):
                     raise exc
+            LOG.debug("Made archive dir {}".format(archive_dir))
         archive_image = _dont_clobber(archive_image)
         shutil.copy2(image, archive_image)
+        LOG.debug("Copied {} to {}".format(image, archive_image))
     # TODO: BUG: this won't work if images aren't in chronological order. Which
     # they never will be.
     # if last_date == image_date:
@@ -407,7 +412,9 @@ def process_image(args):
     try:
         # deal with original image (move/copy etc)
         timestreamise_image(image, camera, subsec=subsec, step=step)
+        LOG.debug("Successfully timestreamed {}".format(image))
     except SkipImage:
+        LOG.debug("Failed to timestream {} (got SkipImage)".format(image))
         if camera[FIELDS["method"]] == "archive":
             # we have changed this so that all images are moved to the archive
             pass
@@ -419,6 +426,7 @@ def process_image(args):
             os.unlink(image)
         except OSError as e:
             LOG.error("Could not delete '{0}'".format(image))
+        LOG.debug("Deleted {}".format(image))
 
 
 def get_local_path(this_path):
@@ -505,7 +513,7 @@ def setup_logs(opts):
         exit()
     # we want logging for the real main loop
     fmt = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        '%(asctime)s - %(name)s.%(funcName)s - %(levelname)s - %(message)s')
     ch = logging.StreamHandler()
     ch.setLevel(logging.ERROR)
     ch.setFormatter(fmt)
