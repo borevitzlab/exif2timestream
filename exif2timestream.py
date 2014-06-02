@@ -562,10 +562,18 @@ def main(opts):
             last_date = None
             subsec = 0
             count = 0
+            if n_cam_images < 100:
+                each = 10
+            else:
+                each = 50
             # TODO: sort out the whole subsecond clusterfuck
             if "-1" in opts and opts["-1"]:
                 LOG.info("Using 1 process (What is this? Fucking 1990?)")
                 for image in images:
+                    count += 1
+                    if count % each == 0:
+                        print("Processed {: 5d} Images".format(count),
+                              end='\r')
                     process_image((image, camera, ext))
             else:
                 from multiprocessing import Pool, cpu_count
@@ -580,10 +588,6 @@ def main(opts):
                 # set the function's camera-wide arguments
                 args = zip(images, cycle([camera]), cycle([ext]))
                 pool = Pool(threads)
-                if n_cam_images < 100:
-                    each = 10
-                else:
-                    each = 50
                 for _ in pool.imap(process_image, args):
                     count += 1
                     if count % each == 0:
