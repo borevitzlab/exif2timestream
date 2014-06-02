@@ -561,9 +561,10 @@ def main(opts):
             n_images += n_cam_images
             last_date = None
             subsec = 0
+            count = 0
             # TODO: sort out the whole subsecond clusterfuck
             if "-1" in opts and opts["-1"]:
-                LOG.info("using 1 process (What is this? Fucking 1990?)")
+                LOG.info("Using 1 process (What is this? Fucking 1990?)")
                 for image in images:
                     process_image((image, camera, ext))
             else:
@@ -583,7 +584,6 @@ def main(opts):
                     each = 10
                 else:
                     each = 50
-                count = 0
                 for _ in pool.imap(process_image, args):
                     count += 1
                     if count % each == 0:
@@ -591,7 +591,7 @@ def main(opts):
                               end='\r')
                 pool.close()
                 pool.join()
-        print("\n")
+            print("Processed {: 5d} Images".format(count))
     secs_taken = time() - start_time
     print("\nProcessed a total of {0} images in {1:.2f} seconds".format(
         n_images, secs_taken))
