@@ -45,7 +45,6 @@ OPTIONS:
 
 # Set up logging objects
 NOW = strftime("%Y%m%dT%H%M", localtime())
-LOG = logging.getLogger("exif2timestream")
 
 
 # Map csv fields to camera dict fields. Should be 1 to 1, but is here for
@@ -106,6 +105,7 @@ def validate_camera(camera):
     """Validates and converts to python types the given camera dict (which
     normally has string values).
     """
+    log = logging.getLogger("exif2timestream")
     def date(x):
         if isinstance(x, struct_time):
             return x
@@ -213,7 +213,7 @@ def validate_camera(camera):
     })
     try:
         cam = sch(camera)
-        LOG.debug("Validated camera '{0:s}'".format(cam))
+        log.debug("Validated camera '{0:s}'".format(cam))
         return cam
     except MultipleInvalid as e:
         if camera[FIELDS["use"]] != '0':
@@ -225,6 +225,7 @@ def get_file_date(filename, round_secs=1):
     """
     Gets a time.struct_time from an image's EXIF, or None if not possible.
     """
+    log = logging.getLogger("exif2timestream")
     with open(filename, "rb") as fh:
         exif_tags = er.process_file(fh, details=False, stop_tag=EXIF_DATE_TAG)
     try:
@@ -234,7 +235,7 @@ def get_file_date(filename, round_secs=1):
         return None
     if round_secs > 1:
         date = round_struct_time(date, round_secs)
-    LOG.debug("Date of '{0:s}' is '{1:s}'".format(filename, date))
+    log.debug("Date of '{0:s}' is '{1:s}'".format(filename, date))
     return date
 
 
@@ -243,17 +244,18 @@ def get_new_file_name(date_tuple, ts_name, n=0, fmt=TS_FMT, ext="jpg"):
     Gives the new file name for an image within a timestream, based on
     datestamp, timestream name, sub-second series count and extension.
     """
+    log = logging.getLogger("exif2timestream")
     if date_tuple is None or not date_tuple:
-        LOG.error("Must supply get_new_file_name with a valid date." +
+        log.error("Must supply get_new_file_name with a valid date." +
                   "Date is '{0:s}'".format(date_tuple))
         raise ValueError("Must supply get_new_file_name with a valid date.")
     if not ts_name:
-        LOG.error("Must supply get_new_file_name with timestream name." +
+        log.error("Must supply get_new_file_name with timestream name." +
                   "TimeStream name is '{0:s}'".format(ts_name))
         raise ValueError("Must supply get_new_file_name with timestream name.")
     date_formatted_name = strftime(fmt, date_tuple)
     name = date_formatted_name.format(tsname=ts_name, n=n, ext=ext)
-    LOG.debug("New filename is '{0:s}'".format(name))
+    log.debug("New filename is '{0:s}'".format(name))
     return name
 
 
@@ -261,6 +263,7 @@ def round_struct_time(in_time, round_secs, tz_hrs=0, uselocal=True):
     """
     Round a struct_time object to any time interval in seconds
     """
+    log = logging.getLogger("exif2timestream")
     seconds = mktime(in_time)
     rounded = int(round(seconds / float(round_secs)) * round_secs)
     if not uselocal:
@@ -272,7 +275,7 @@ def round_struct_time(in_time, round_secs, tz_hrs=0, uselocal=True):
     rv_list[8] = in_time.tm_isdst
     rv_list[6] = in_time.tm_wday
     retval = struct_time(tuple(rv_list))
-    LOG.debug("time {0:s} rounded to {1:d} seconds is {2:s}".format(
+    log.debug("time {0:s} rounded to {1:d} seconds is {2:s}".format(
         in_time, round_secs, retval))
     return retval
 
@@ -282,6 +285,7 @@ def make_timestream_name(camera, res="fullres", step="orig"):
     Makes a timestream name given the format (module-level constant), step,
     resolution and a camera object.
     """
+    log = logging.getLogger("exif2timestream")
     if isinstance(res, tuple):
         res = "x".join([str(x) for x in res])
     # raise ValueError(str((camera, res, step)))
@@ -295,9 +299,11 @@ def make_timestream_name(camera, res="fullres", step="orig"):
 
 def timestreamise_image(image, camera, subsec=0, step="orig"):
     """Process a single image, mv/cp-ing it to its new location"""
+    log = logging.getLogger("exif2timestream")
     # make new image path
     image_date = get_file_date(image, camera[FIELDS["interval"]] * 60)
     if not image_date:
+        log.warn("Couldn't get date for image {}".format(image))
         raise SkipImage
     in_ext = path.splitext(image)[-1].lstrip(".")
     ts_name = make_timestream_name(camera, res="fullres", step=step)
@@ -321,35 +327,36 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
         try:
             os.makedirs(out_dir)
         except OSError:
-            LOG.warn("Could not make dir '{0:s}', skipping image '{1:s}'".format(
+            log.warn("Could not make dir '{0:s}', skipping image '{1:s}'".format(
                 out_dir, image))
             raise SkipImage
     # And do the copy
     dest = _dont_clobber(out_image, mode=SkipImage)
     try:
         shutil.copy(image, dest)
-        LOG.info("Copied '{0:s}' to '{1:s}".format(image, dest))
+        log.info("Copied '{0:s}' to '{1:s}".format(image, dest))
     except Exception as e:
-        LOG.warn("Could copy '{0:s}' to '{1:s}', skipping image".format(
+        log.warn("Could copy '{0:s}' to '{1:s}', skipping image".format(
             image, dest))
         raise SkipImage
 
 
 def _dont_clobber(fn, mode="append"):
     """Ensure we don't overwrite things, using a variety of methods"""
+    log = logging.getLogger("exif2timestream")
     if path.exists(fn):
         # Deal with SkipImage or StopIteration exceptions
         if isinstance(mode, StopIteration):
-            LOG.debug("Path '{0}' exists, raising StopIteration".format(fn))
+            log.debug("Path '{0}' exists, raising StopIteration".format(fn))
             raise mode
         # Ditto, but if we pass them uninstantiated
         elif isclass(mode) and issubclass(mode, StopIteration):
-            LOG.debug("Path '{0}' exists, raising an Exception".format(fn))
+            log.debug("Path '{0}' exists, raising an Exception".format(fn))
             raise mode()
         # Otherwise, append something '_1' to the file name to solve our
         # problem
         elif mode == "append":
-            LOG.debug("Path '{0}' exists, adding '_1' to its name".format(fn))
+            log.debug("Path '{0}' exists, adding '_1' to its name".format(fn))
             base, ext = path.splitext(fn)
             # append _1 to filename
             if ext != '':
@@ -360,7 +367,7 @@ def _dont_clobber(fn, mode="append"):
             raise ValueError("Bad _dont_clobber mode: %r", mode)
     else:
         # Doesn't exist, so return good path
-        LOG.debug("Path '{0}' doesn't exist. Returning it.".format(fn))
+        log.debug("Path '{0}' doesn't exist. Returning it.".format(fn))
         return fn
 
 
@@ -369,18 +376,19 @@ def process_image(args):
     Given a camera config and list of images, will do the required
     move/copy operations.
     """
+    log = logging.getLogger("exif2timestream")
     (image, camera, ext) = args
 
     image_date = get_file_date(image, camera[FIELDS["interval"]] * 60)
     if image_date < camera[FIELDS["expt_start"]] or \
             image_date > camera[FIELDS["expt_end"]]:
-        LOG.debug("Skipping {}. Outside of date range {!s} to {!s}".format(
+        log.debug("Skipping {}. Outside of date range {!s} to {!s}".format(
             image, camera[FIELDS["expt_start"]], camera[FIELDS["expt_end"]]))
         return  # Don't raise SkipImage as it isn't caught
 
     # archive a backup before we fuck anything up
     if camera[FIELDS["method"]] == "archive":
-        LOG.debug("Will archive {}".format(image))
+        log.debug("Will archive {}".format(image))
         ts_name = make_timestream_name(camera, res="fullres")
         archive_image = path.join(
             camera[FIELDS["archive_dest"]],
@@ -396,10 +404,10 @@ def process_image(args):
             except OSError as exc:
                 if not path.exists(archive_dir):
                     raise exc
-            LOG.debug("Made archive dir {}".format(archive_dir))
+            log.debug("Made archive dir {}".format(archive_dir))
         archive_image = _dont_clobber(archive_image)
         shutil.copy2(image, archive_image)
-        LOG.debug("Copied {} to {}".format(image, archive_image))
+        log.debug("Copied {} to {}".format(image, archive_image))
     # TODO: BUG: this won't work if images aren't in chronological order. Which
     # they never will be.
     # if last_date == image_date:
@@ -415,9 +423,9 @@ def process_image(args):
     try:
         # deal with original image (move/copy etc)
         timestreamise_image(image, camera, subsec=subsec, step=step)
-        LOG.debug("Successfully timestreamed {}".format(image))
+        log.debug("Successfully timestreamed {}".format(image))
     except SkipImage:
-        LOG.debug("Failed to timestream {} (got SkipImage)".format(image))
+        log.debug("Failed to timestream {} (got SkipImage)".format(image))
         if camera[FIELDS["method"]] == "archive":
             # we have changed this so that all images are moved to the archive
             pass
@@ -428,8 +436,8 @@ def process_image(args):
         try:
             os.unlink(image)
         except OSError as e:
-            LOG.error("Could not delete '{0}'".format(image))
-        LOG.debug("Deleted {}".format(image))
+            log.error("Could not delete '{0}'".format(image))
+        log.debug("Deleted {}".format(image))
 
 
 def get_local_path(this_path):
@@ -468,6 +476,7 @@ def find_image_files(camera):
     Scrape a directory for image files, by extension.
     Possibly, in future, use file magic numbers, but a bad idea on windows.
     """
+    log = logging.getLogger("exif2timestream")
     exts = camera[FIELDS["image_types"]]
     ext_files = {}
     for ext in exts:
@@ -481,7 +490,7 @@ def find_image_files(camera):
             if len(dirs) > 0:
                 for d in dirs:
                     if not d.startswith("_"):
-                        LOG.error("Souce directory has too many subdirs.A")
+                        log.error("Souce directory has too many subdirs.A")
                         # TODO: Is raising here a good idea?
                         #raise ValueError("too many subdirs")
             for fle in files:
@@ -493,7 +502,7 @@ def find_image_files(camera):
                     except KeyError:
                         ext_files[ext] = []
                         ext_files[ext].append(fle_path)
-            LOG.info("Found {0} {1} files for camera.".format(
+            log.info("Found {0} {1} files for camera.".format(
                 len(files), ext))
     return ext_files
 
@@ -506,12 +515,13 @@ def generate_config_csv(filename):
 
 
 def setup_logs(opts):
-    """Sets up logging using the LOG logger object."""
+    """Sets up logging using the log logger object."""
+    log = logging.getLogger("exif2timestream")
     if opts['-g'] is not None:
         # No logging when we're just generating a config file. What could
         # possibly go wrong...
         null = logging.NullHandler()
-        LOG.addHandler(null)
+        log.addHandler(null)
         generate_config_csv(opts["-g"])
         exit()
     # we want logging for the real main loop
@@ -526,19 +536,20 @@ def setup_logs(opts):
     log_fh = logging.FileHandler(path.join(logdir, "e2t_" + NOW + ".log"))
     log_fh.setLevel(logging.INFO)
     log_fh.setFormatter(fmt)
-    LOG.addHandler(log_fh)
+    log.addHandler(log_fh)
     if opts['-d']:
         debug_fh = logging.FileHandler(
             path.join(logdir, "e2t_" + NOW + ".debug"))
         debug_fh.setLevel(logging.DEBUG)
         debug_fh.setFormatter(fmt)
-        LOG.addHandler(debug_fh)
-    LOG.addHandler(ch)
-    LOG.setLevel(logging.DEBUG)
+        log.addHandler(debug_fh)
+    log.addHandler(ch)
+    log.setLevel(logging.DEBUG)
 
 
 def main(opts):
     """The main loop of the module, do the renaming in parallel etc."""
+    log = logging.getLogger("exif2timestream")
     setup_logs(opts)
     # beginneth the actual main loop
     start_time = time()
@@ -554,12 +565,12 @@ def main(opts):
             camera[FIELDS["destination"]],
         )
         print(msg)
-        LOG.info(msg)
+        log.info(msg)
         for ext, images in find_image_files(camera).iteritems():
             images = sorted(images)
             n_cam_images = len(images)
             print("{0} {1} images from this camera".format(n_cam_images, ext))
-            LOG.info("Have {0} {1} images from this camera".format(
+            log.info("Have {0} {1} images from this camera".format(
                 n_cam_images, ext))
             n_images += n_cam_images
             last_date = None
@@ -571,7 +582,7 @@ def main(opts):
                 each = 50
             # TODO: sort out the whole subsecond clusterfuck
             if "-1" in opts and opts["-1"]:
-                LOG.info("Using 1 process (What is this? Fucking 1990?)")
+                log.info("Using 1 process (What is this? Fucking 1990?)")
                 for image in images:
                     count += 1
                     if count % each == 0:
@@ -587,7 +598,7 @@ def main(opts):
                         threads = cpu_count() - 1
                 else:
                     threads = cpu_count() - 1
-                LOG.info("Using {0:d} processes".format(threads))
+                log.info("Using {0:d} processes".format(threads))
                 # set the function's camera-wide arguments
                 args = zip(images, cycle([camera]), cycle([ext]))
                 pool = Pool(threads)
@@ -612,7 +623,3 @@ if __name__ == "__main__":
         exit(0)
     # lets do this shit.
     main(opts)
-else:
-    # No logging for test/when imported
-    null = logging.NullHandler()
-    LOG.addHandler(null)
