@@ -19,7 +19,7 @@ TS_V1_FMT = ("%Y/%Y_%m/%Y_%m_%d/%Y_%m_%d_%H/"
              "{tsname:s}_%Y_%m_%d_%H_%M_%S_{n:02d}.{ext:s}")
 TS_V2_FMT = ("%Y/%Y_%m/%Y_%m_%d/%Y_%m_%d_%H/"
              "{tsname:s}_%Y_%m_%d_%H_%M_%S_{n:02d}.{ext:s}")
-TS_DATE_FMT = = "%Y_%m_%d_%H_%M_%S"
+TS_DATE_FMT = "%Y_%m_%d_%H_%M_%S"
 TS_FMT = TS_V1_FMT
 TS_NAME_FMT = "{expt:s}-{loc:s}~{res:s}-{step:s}"
 FULLRES_CONSTANTS = {"original", "orig", "fullres"}
