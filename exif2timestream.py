@@ -24,6 +24,7 @@ TS_NAME_FMT = "{expt:s}-{loc:s}~{res:s}-{step:s}"
 FULLRES_CONSTANTS = {"original", "orig", "fullres"}
 IMAGE_TYPE_CONSTANTS = {"raw", "jpg"}
 RAW_FORMATS = {"cr2", "nef", "tif", "tiff"}
+DATE_NOW_CONSTANTS = {"now", "current"}
 CLI_OPTS = """
 USAGE:
     exif2timestream.py [-t PROCESSES -1 -d -l LOGDIR] -c CAM_CONFIG_CSV
@@ -109,6 +110,8 @@ def validate_camera(camera):
         if isinstance(x, struct_time):
             return x
         else:
+            if x.lower() in DATE_NOW_CONSTANTS:
+                return NOW
             try:
                 return strptime(x, "%Y_%m_%d")
             except:
