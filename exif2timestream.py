@@ -19,6 +19,7 @@ TS_V1_FMT = ("%Y/%Y_%m/%Y_%m_%d/%Y_%m_%d_%H/"
              "{tsname:s}_%Y_%m_%d_%H_%M_%S_{n:02d}.{ext:s}")
 TS_V2_FMT = ("%Y/%Y_%m/%Y_%m_%d/%Y_%m_%d_%H/"
              "{tsname:s}_%Y_%m_%d_%H_%M_%S_{n:02d}.{ext:s}")
+TS_DATE_FMT = = "%Y_%m_%d_%H_%M_%S"
 TS_FMT = TS_V1_FMT
 TS_NAME_FMT = "{expt:s}-{loc:s}~{res:s}-{step:s}"
 FULLRES_CONSTANTS = {"original", "orig", "fullres"}
@@ -44,7 +45,7 @@ OPTIONS:
 
 
 # Set up logging objects
-NOW = strftime("%Y%m%dT%H%M", localtime())
+NOW = strftime("%Y%m%dT%H%M%s", localtime())
 
 
 # Map csv fields to camera dict fields. Should be 1 to 1, but is here for
@@ -101,6 +102,13 @@ class SkipImage(StopIteration):
     pass
 
 
+def d2s(date):
+    """Format a date for easy printing"""
+    if isinstance(date, struct_time):
+        return strftime(TS_DATE_FMT, date)
+    else:
+        return date
+
 def validate_camera(camera):
     """Validates and converts to python types the given camera dict (which
     normally has string values).
@@ -111,7 +119,7 @@ def validate_camera(camera):
             return x
         else:
             if x.lower() in DATE_NOW_CONSTANTS:
-                return NOW
+                return localtime()
             try:
                 return strptime(x, "%Y_%m_%d")
             except:
@@ -235,7 +243,7 @@ def get_file_date(filename, round_secs=1):
         return None
     if round_secs > 1:
         date = round_struct_time(date, round_secs)
-    log.debug("Date of '{0:s}' is '{1:s}'".format(filename, date))
+    log.debug("Date of '{0:s}' is '{1:s}'".format(filename, d2s(date)))
     return date
 
 
@@ -247,7 +255,7 @@ def get_new_file_name(date_tuple, ts_name, n=0, fmt=TS_FMT, ext="jpg"):
     log = logging.getLogger("exif2timestream")
     if date_tuple is None or not date_tuple:
         log.error("Must supply get_new_file_name with a valid date." +
-                  "Date is '{0:s}'".format(date_tuple))
+                  "Date is '{0:s}'".format(d2s(date_tuple)))
         raise ValueError("Must supply get_new_file_name with a valid date.")
     if not ts_name:
         log.error("Must supply get_new_file_name with timestream name." +
@@ -276,7 +284,7 @@ def round_struct_time(in_time, round_secs, tz_hrs=0, uselocal=True):
     rv_list[6] = in_time.tm_wday
     retval = struct_time(tuple(rv_list))
     log.debug("time {0:s} rounded to {1:d} seconds is {2:s}".format(
-        in_time, round_secs, retval))
+        d2s(in_time), round_secs, d2s(retval)))
     return retval
 
 
@@ -382,8 +390,9 @@ def process_image(args):
     image_date = get_file_date(image, camera[FIELDS["interval"]] * 60)
     if image_date < camera[FIELDS["expt_start"]] or \
             image_date > camera[FIELDS["expt_end"]]:
-        log.debug("Skipping {}. Outside of date range {!s} to {!s}".format(
-            image, camera[FIELDS["expt_start"]], camera[FIELDS["expt_end"]]))
+        log.debug("Skipping {}. Outside of date range {} to {}".format(
+            image, d2s(camera[FIELDS["expt_start"]]),
+            d2s(camera[FIELDS["expt_end"]])))
         return  # Don't raise SkipImage as it isn't caught
 
     # archive a backup before we fuck anything up
