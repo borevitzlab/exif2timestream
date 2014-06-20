@@ -45,7 +45,7 @@ OPTIONS:
 
 
 # Set up logging objects
-NOW = strftime("%Y%m%dT%H%M%s", localtime())
+NOW = strftime("%Y%m%dT%H%M%S", localtime())
 
 
 # Map csv fields to camera dict fields. Should be 1 to 1, but is here for
