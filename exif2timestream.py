@@ -21,7 +21,7 @@ TS_V2_FMT = ("%Y/%Y_%m/%Y_%m_%d/%Y_%m_%d_%H/"
              "{tsname:s}_%Y_%m_%d_%H_%M_%S_{n:02d}.{ext:s}")
 TS_DATE_FMT = "%Y_%m_%d_%H_%M_%S"
 TS_FMT = TS_V1_FMT
-TS_NAME_FMT = "{expt:s}-{loc:s}~{res:s}-{step:s}"
+TS_NAME_FMT = "{expt:s}-{loc:s}-C{cam:02d}~{res:s}-{step:s}"
 FULLRES_CONSTANTS = {"original", "orig", "fullres"}
 IMAGE_TYPE_CONSTANTS = {"raw", "jpg"}
 RAW_FORMATS = {"cr2", "nef", "tif", "tiff"}
@@ -54,6 +54,7 @@ FIELDS = {
     'use': 'USE',
     'location': 'LOCATION',
     'expt': 'CURRENT_EXPT',
+    'cam_num': 'CAM_NUM',
     'source': 'SOURCE',
     'destination': 'DESTINATION',
     'archive_dest': 'ARCHIVE_DEST',
@@ -203,6 +204,7 @@ def validate_camera(camera):
         Required(FIELDS["use"]): bool_str,
         Required(FIELDS["destination"]): path_exists,
         Required(FIELDS["expt"]): str,
+        Required(FIELDS["cam_num"]): num_str,
         Required(FIELDS["expt_end"]): date,
         Required(FIELDS["expt_start"]): date,
         Required(FIELDS["image_types"]): image_type_str,
@@ -300,6 +302,7 @@ def make_timestream_name(camera, res="fullres", step="orig"):
     return TS_NAME_FMT.format(
         expt=camera[FIELDS["expt"]],
         loc=camera[FIELDS["location"]],
+        cam=camera[FIELDS["cam_num"]],
         res=res,
         step=step
     )

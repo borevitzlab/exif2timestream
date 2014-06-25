@@ -28,6 +28,7 @@ class TestExifTraitcapture(unittest.TestCase):
         'ARCHIVE_DEST': '\\'.join([out_dirname, 'archive']),
         'CURRENT_EXPT': 'BVZ00000',
         'DESTINATION': '\\'.join([out_dirname, 'timestreams']),
+        'CAM_NUM': 1,
         'EXPT_END': '2013_12_31',
         'EXPT_START': '2013_11_01',
         'LOCATION': 'EUC-R01C01',
@@ -47,6 +48,7 @@ class TestExifTraitcapture(unittest.TestCase):
         'ARCHIVE_DEST': '/'.join([out_dirname, 'archive']),
         'CURRENT_EXPT': 'BVZ00000',
         'DESTINATION': '/'.join([out_dirname, 'timestreams']),
+        'CAM_NUM': 1,
         'EXPT_END': '2013_12_31',
         'EXPT_START': '2013_11_01',
         'LOCATION': 'EUC-R01C01',
@@ -65,15 +67,15 @@ class TestExifTraitcapture(unittest.TestCase):
 
     r_fullres_path = path.join(
         out_dirname, "timestreams", "BVZ00000",
-        'BVZ00000-EUC-R01C01~fullres-orig', '2013', '2013_11',
+        'BVZ00000-EUC-R01C01-C01~fullres-orig', '2013', '2013_11',
         '2013_11_12', '2013_11_12_20',
-        'BVZ00000-EUC-R01C01~fullres-orig_2013_11_12_20_55_00_00.JPG'
+        'BVZ00000-EUC-R01C01-C01~fullres-orig_2013_11_12_20_55_00_00.JPG'
     )
     r_raw_path = path.join(
         out_dirname, "timestreams", "BVZ00000",
-        'BVZ00000-EUC-R01C01~fullres-raw', '2013', '2013_11',
+        'BVZ00000-EUC-R01C01-C01~fullres-raw', '2013', '2013_11',
         '2013_11_12', '2013_11_12_20',
-        'BVZ00000-EUC-R01C01~fullres-raw_2013_11_12_20_55_00_00.CR2'
+        'BVZ00000-EUC-R01C01-C01~fullres-raw_2013_11_12_20_55_00_00.CR2'
     )
 
     maxDiff = None
@@ -206,7 +208,7 @@ class TestExifTraitcapture(unittest.TestCase):
     # tests for make_timestream_name
     def test_make_timestream_name_empty(self):
         name = e2t.make_timestream_name(self.camera)
-        exp = 'BVZ00000-EUC-R01C01~fullres-orig'
+        exp = 'BVZ00000-EUC-R01C01-C01~fullres-orig'
         self.assertEqual(name, exp)
 
     def test_make_timestream_name_params(self):
@@ -214,7 +216,7 @@ class TestExifTraitcapture(unittest.TestCase):
             self.camera,
             res="1080x720",
             step="clean")
-        exp = 'BVZ00000-EUC-R01C01~1080x720-clean'
+        exp = 'BVZ00000-EUC-R01C01-C01~1080x720-clean'
         self.assertEqual(name, exp)
 
     # tests for find_image_files
@@ -271,6 +273,7 @@ class TestExifTraitcapture(unittest.TestCase):
                 'camera_timezone': (11, 0),
                 'CURRENT_EXPT': 'BVZ00000',
                 'DESTINATION': './test/out/timestreams',
+                'CAM_NUM': 1,
                 'EXPT_END': strptime('2013_12_31', "%Y_%m_%d"),
                 'EXPT_START': strptime('2012_12_01', "%Y_%m_%d"),
                 'INTERVAL': 5,
