@@ -8,4 +8,5 @@ cp -r test/unburnable test/img
 mkdir -p test/out/archive
 mkdir -p test/out/timestreams
 python -m exif2timestream -l log -d -c ./test/config.csv
+if [ -n "$(which tree)" ] ; then tree test/out; fi
 rm -r test/out
