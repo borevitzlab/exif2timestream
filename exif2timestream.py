@@ -75,6 +75,7 @@ FIELD_ORDER = [
     'use',
     'location',
     'expt',
+    'cam_num',
     'source',
     'destination',
     'archive_dest',
