@@ -25,6 +25,7 @@ TS_NAME_FMT = "{expt:s}-{loc:s}-C{cam:02d}~{res:s}-{step:s}"
 FULLRES_CONSTANTS = {"original", "orig", "fullres"}
 IMAGE_TYPE_CONSTANTS = {"raw", "jpg"}
 RAW_FORMATS = {"cr2", "nef", "tif", "tiff"}
+IMAGE_SUBFOLDERS = {"raw", "jpg", "png", "tiff", "nef", "cr2"}
 DATE_NOW_CONSTANTS = {"now", "current"}
 CLI_OPTS = """
 USAGE:
@@ -497,15 +498,21 @@ def find_image_files(camera):
             ext_dir = "raw"
         else:
             ext_dir = ext
-        src = path.join(camera[FIELDS["source"]], ext_dir)
+        src = camera[FIELDS["source"]]
+        lst = os.listdir(src)
+        lst = filter(os.path.isdir, lst)
+        lst = filter(lambda x: len(x) > 1 and x[0] not in "._", lst)
+        for node in lst:
+            if node.lower() in IMAGE_SUBFOLDERS:
+                src = path.join(src, node)
         walk = os.walk(src, topdown=True)
         for cur_dir, dirs, files in walk:
-            if len(dirs) > 0:
-                for d in dirs:
-                    if not d.startswith("_"):
-                        log.error("Souce directory has too many subdirs.A")
-                        # TODO: Is raising here a good idea?
-                        #raise ValueError("too many subdirs")
+            for dir in dirs:
+                if dir.lower() not in IMAGE_SUBFOLDERS and \
+                        not dir.startswith("_"):
+                    log.error("Souce directory has too many subdirs.A")
+                    # TODO: Is raising here a good idea?
+                    #raise ValueError("too many subdirs")
             for fle in files:
                 this_ext = path.splitext(fle)[-1].lower().strip(".")
                 if this_ext == ext or ext == "raw" and this_ext in RAW_FORMATS:
