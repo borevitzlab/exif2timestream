@@ -500,11 +500,15 @@ def find_image_files(camera):
             ext_dir = ext
         src = camera[FIELDS["source"]]
         lst = os.listdir(src)
-        lst = filter(os.path.isdir, lst)
-        lst = filter(lambda x: len(x) > 1 and x[0] not in "._", lst)
+        lst = filter(lambda x: not x.startswith(".") and not x.startswith('_'),
+                     lst)
+        log.debug("List of src valid subdirs is {}".format(lst))
         for node in lst:
-            if node.lower() in IMAGE_SUBFOLDERS:
+            log.debug("Found src subdir {}".format(node))
+            if node.lower() == ext:
                 src = path.join(src, node)
+                break
+        log.info("Walking from {} to find images".format(src))
         walk = os.walk(src, topdown=True)
         for cur_dir, dirs, files in walk:
             for dir in dirs:
