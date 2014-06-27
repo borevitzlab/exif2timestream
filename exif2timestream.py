@@ -11,7 +11,7 @@ from itertools import cycle
 from inspect import isclass
 import logging
 
-__version__ = "0.2.6"
+__version__ = "0.2.12"
 
 EXIF_DATE_TAG = "Image DateTime"
 EXIF_DATE_FMT = "%Y:%m:%d %H:%M:%S"
