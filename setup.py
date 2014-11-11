@@ -1,4 +1,11 @@
 from setuptools import setup
+import versioneer
+
+versioneer.VCS = 'git'
+versioneer.versionfile_source = '_version.py'
+versioneer.versionfile_build = '_version.py'
+versioneer.tag_prefix = ''
+versioneer.parentdir_prefix = 'exif2timestream-'
 
 desc = """
 exif2timestream: Rename image files into a timestream from exif data.
@@ -20,7 +27,8 @@ test_requires = [
 setup(
     name="exif2timestream",
     py_modules=['exif2timestream', ],
-    version="0.2.12",
+    version=versioneer.get_version(),
+    cmdclass=versioneer.get_cmdclass(),
     install_requires=install_requires,
     tests_require=test_requires,
     description=desc,
