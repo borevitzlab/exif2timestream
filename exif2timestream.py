@@ -619,6 +619,8 @@ def main(opts):
                         threads = cpu_count() - 1
                 else:
                     threads = cpu_count() - 1
+                # Ensure that we're using at least one thread
+                threads = max(threads, 1)
                 log.info("Using {0:d} processes".format(threads))
                 # set the function's camera-wide arguments
                 args = zip(images, cycle([camera]), cycle([ext]))
