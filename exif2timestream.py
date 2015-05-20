@@ -5,12 +5,14 @@ import os
 from os import path
 import shutil
 from sys import exit
+import pexif
 from time import strptime, strftime, mktime, localtime, struct_time, time
 from voluptuous import Required, Schema, MultipleInvalid
 from itertools import cycle
 from inspect import isclass
+from PIL import Image
 import logging
-
+import datetime
 # versioneer
 from _version import get_versions
 __version__ = get_versions()['version']
@@ -235,19 +237,55 @@ def validate_camera(camera):
             raise e
         return None
 
+def resize(filename, to_width):
+    # Open the Image
+    img = Image.open(filename)
+    # Calculate new height and width
+    wpercent = to_width/float(img.size[0])
+    vsize = int(float(img.size[1]) * float(wpercent))
+    img = img.resize((to_width, vsize))
+    # read in old exxif data
+    exif_source = pexif.JpegFile.fromFile(filename)
+    # Save image
+    img.save(filename)
+    # Write new exif data from old image
+    exif_dest = pexif.JpegFile.fromFile(filename)
+    exif_dest.exif.primary.ExtendedEXIF.DateTimeOriginal = exif_source.exif.primary.ExtendedEXIF.DateTimeOriginal
+    exif_dest.exif.primary.Orientation = exif_source.exif.primary.Orientation    
+    exif_dest.writeFile(filename)
 
 def get_file_date(filename, round_secs=1):
     """
     Gets a time.struct_time from an image's EXIF, or None if not possible.
     """
     log = logging.getLogger("exif2timestream")
+
+    
+    
     with open(filename, "rb") as fh:
         exif_tags = er.process_file(fh, details=False, stop_tag=EXIF_DATE_TAG)
     try:
         str_date = exif_tags[EXIF_DATE_TAG].values
         date = strptime(str_date, EXIF_DATE_FMT)
     except KeyError:
-        return None
+        # Try and get the DateTime from the Filename
+            # If successful, then output it back into the exif data
+            #Else return none
+        print ("No Exif on " + filename + ", Attempting to read from Filename")
+        # Grab last element
+        try:
+            shortfilename = filename.split("/")[-1]
+            length = len(shortfilename)
+            datetime = shortfilename[(length-26):length-7]
+            datetime = datetime.replace('_', ':')
+            datetime = datetime[:10] + ' ' + datetime[11:]
+            img = pexif.JpegFile.fromFile(filename)
+            img.exif.primary.ExtendedEXIF.DateTimeOriginal = datetime
+            img.writeFile(filename)
+            date = strptime(datetime, EXIF_DATE_FMT)
+        except: 
+            print ("Unable to scrape date from Filename")
+            return None    
     if round_secs > 1:
         date = round_struct_time(date, round_secs)
     log.debug("Date of '{0:s}' is '{1:s}'".format(filename, d2s(date)))
@@ -318,6 +356,8 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
     log = logging.getLogger("exif2timestream")
     # make new image path
     image_date = get_file_date(image, camera[FIELDS["interval"]] * 60)
+    # Resize the Image
+    # resize(image, 1000)
     if not image_date:
         log.warn("Couldn't get date for image {}".format(image))
         raise SkipImage
