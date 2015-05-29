@@ -1,18 +1,18 @@
 from __future__ import print_function
 from csv import reader, DictReader
-import exifread as er
+# import exifread as er
 import os
 from os import path
 import shutil
 from sys import exit
-import pexif
 from time import strptime, strftime, mktime, localtime, struct_time, time
 from voluptuous import Required, Schema, MultipleInvalid
 from itertools import cycle
 from inspect import isclass
 from PIL import Image
 import logging
-import datetime
+import dateutil.parser
+import pexif
 # versioneer
 from _version import get_versions
 __version__ = get_versions()['version']
@@ -254,43 +254,46 @@ def resize(filename, to_width):
     exif_dest.exif.primary.Orientation = exif_source.exif.primary.Orientation    
     exif_dest.writeFile(filename)
 
+def write_exif_date(filename, date_time):
+    try:
+        img = pexif.JpegFile.fromFile(filename)
+        img.exif.primary.ExtendedEXIF.DateTimeOriginal = date_time
+        img.writeFile(filename)
+        return True
+    except:
+        print ("Unable to Write exif data")
+        return False
+
 def get_file_date(filename, round_secs=1):
     """
     Gets a time.struct_time from an image's EXIF, or None if not possible.
     """
     log = logging.getLogger("exif2timestream")
-
-    
-    
     with open(filename, "rb") as fh:
-        exif_tags = er.process_file(fh, details=False, stop_tag=EXIF_DATE_TAG)
+        # Now uses Pexif
+        exif_tags = pexif.JpegFile.fromFile(filename)
+        # exif_tags = er.process_file(fh, details=False, stop_tag=EXIF_DATE_TAG)
     try:
-        str_date = exif_tags[EXIF_DATE_TAG].values
+        str_date = exif_tags.exif.primary.ExtendedEXIF.DateTimeOriginal
+        # str_date = exif_tags[EXIF_DATE_TAG].values
         date = strptime(str_date, EXIF_DATE_FMT)
-    except KeyError:
-        # Try and get the DateTime from the Filename
-            # If successful, then output it back into the exif data
-            #Else return none
-        print ("No Exif on " + filename + ", Attempting to read from Filename")
-        # Grab last element
+    # except KeyError:
+    except AttributeError:
+        # Try and Grab datetime from the filename
         try:
             shortfilename = filename.split("/")[-1]
-            length = len(shortfilename)
-            datetime = shortfilename[(length-26):length-7]
-            datetime = datetime.replace('_', ':')
-            datetime = datetime[:10] + ' ' + datetime[11:]
-            img = pexif.JpegFile.fromFile(filename)
-            img.exif.primary.ExtendedEXIF.DateTimeOriginal = datetime
-            img.writeFile(filename)
-            date = strptime(datetime, EXIF_DATE_FMT)
-        except: 
-            print ("Unable to scrape date from Filename")
-            return None    
+            print ("No Exif data in %s, attempting to read from filename"%shortfilename)
+            datetime = dateutil.parser.parse(shortfilename, fuzzy=True)
+            date = datetime.strftime(EXIF_DATE_FMT);
+            write_exif_date(filename, date)
+            return date
+        except:
+            print ("Unable to scrape date from %s"%shortfilename);
+            return None
     if round_secs > 1:
         date = round_struct_time(date, round_secs)
     log.debug("Date of '{0:s}' is '{1:s}'".format(filename, d2s(date)))
     return date
-
 
 def get_new_file_name(date_tuple, ts_name, n=0, fmt=TS_FMT, ext="jpg"):
     """
