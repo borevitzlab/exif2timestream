@@ -225,7 +225,8 @@ class TestExifTraitcapture(unittest.TestCase):
                         'jpg/IMG_0001.JPG',
                         'jpg/IMG_0002.JPG',
                         'jpg/IMG_0630.JPG',
-                        'jpg/IMG_0633.JPG']
+                        'jpg/IMG_0633.JPG', 
+                        'jpg/whroo20131104_020255M.jpg']
                         },
                 "raw": {path.join(self.camupload_dir, 'raw/IMG_0001.CR2')},
                 }
@@ -311,6 +312,11 @@ class TestExifTraitcapture(unittest.TestCase):
         out_csv = path.join(self.out_dirname, "test_gencnf.csv")
         e2t.generate_config_csv(out_csv)
         self._md5test(out_csv, "bf1ff915a42390a15ab8e4704e5c38e9")
+
+    # Tests for checking parsing of dates from filename
+    def check_date_parse(self):
+        self.assertEqual(get_time("whroo20141101_001212M.jpg", "%Y%m%d_%H%M%S"), strptime("20131101_001212", "%Y%m%d_%H%M%S"))
+        self.assertEqual(get_time("TRN-NC-DSC-01~640_2013_06_01_10_45_00_00.jpg", "%Y_%m_%d_%H_%M_%S"), strptime("2013_06_01_10_45_00", "%Y_%m_%d_%H_%M_%S"))
 
     # tests for main function
     def test_main(self):
