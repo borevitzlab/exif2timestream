@@ -12,6 +12,7 @@ import logging
 import re
 import pexif
 import exifread as er
+import warnings
 skimage = None
 try:
     from skimage.transform import rescale
@@ -257,7 +258,9 @@ def resize_img(filename, to_width):
     # read in old exxif data
     exif_source = pexif.JpegFile.fromFile(filename)
     # Save image
-    io.imsave(filename, img)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        io.imsave(filename, img)
     # Write new exif data from old image
     try:
         exif_dest = pexif.JpegFile.fromFile(filename)
