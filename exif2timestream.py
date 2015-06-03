@@ -42,7 +42,7 @@ IMAGE_SUBFOLDERS = {"raw", "jpg", "png", "tiff", "nef", "cr2"}
 DATE_NOW_CONSTANTS = {"now", "current"}
 CLI_OPTS = """
 USAGE:
-    exif2timestream.py [-t PROCESSES -1 -d -l LOGDIR] -c CAM_CONFIG_CSV -m MASK
+    exif2timestream.py [-t PROCESSES -1 -d -l LOGDIR -m MASK] -c CAM_CONFIG_CSV 
     exif2timestream.py -g CAM_CONFIG_CSV
     exif2timestream.py -V
 
@@ -251,24 +251,27 @@ def validate_camera(camera):
 
 def resize_img(filename, to_width):
     # Open the Image and get its width
-    img = io.imread(filename)
-    w = novice.open(filename).width
-    scale = float(to_width) / w
-    # Rescale the image
-    img = rescale(img, scale)
-    # read in old exxif data
-    exif_source = pexif.JpegFile.fromFile(filename)
-    # Save image
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        io.imsave(filename, img)
-    # Write new exif data from old image
-    try:
-        exif_dest = pexif.JpegFile.fromFile(filename)
-        exif_dest.exif.primary.ExtendedEXIF.DateTimeOriginal = exif_source.exif.primary.ExtendedEXIF.DateTimeOriginal
-        exif_dest.writeFile( filename)
-    except AttributeError:
-        pass
+    if(skimage):
+        img = io.imread(filename)
+        w = novice.open(filename).width
+        scale = float(to_width) / w
+        # Rescale the image
+        img = rescale(img, scale)
+        # read in old exxif data
+        exif_source = pexif.JpegFile.fromFile(filename)
+        # Save image
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            io.imsave(filename, img)
+        # Write new exif data from old image
+        try:
+            exif_dest = pexif.JpegFile.fromFile(filename)
+            exif_dest.exif.primary.ExtendedEXIF.DateTimeOriginal = exif_source.exif.primary.ExtendedEXIF.DateTimeOriginal
+            exif_dest.writeFile( filename)
+        except AttributeError:
+            pass
+    else:
+        raise Warning("Skimage is not installed, Will not resize images")
 
 def get_time_from_filename(filename, mask = EXIF_DATE_MASK):
     # Replace the year with the regex equivalent to parse

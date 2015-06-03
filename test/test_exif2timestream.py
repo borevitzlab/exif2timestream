@@ -341,12 +341,15 @@ class TestExifTraitcapture(unittest.TestCase):
 
     # Tests for checking image resizing
     def test_check_resize_img(self):
-        filename = 'jpg/whroo20131104_020255M.jpg'
-        new_width = 400
-        e2t.resize_img(path.join(self.camupload_dir, filename), new_width)
-        img = io.imread(path.join(self.camupload_dir, filename))
-        w = novice.open(path.join(self.camupload_dir, filename)).width
-        self.assertEqual(w, new_width)
+        if(skimage):
+            filename = 'jpg/whroo20131104_020255M.jpg'
+            new_width = 400
+            e2t.resize_img(path.join(self.camupload_dir, filename), new_width)
+            img = io.imread(path.join(self.camupload_dir, filename))
+            w = novice.open(path.join(self.camupload_dir, filename)).width
+            self.assertEqual(w, new_width)
+        else:
+            raise Warning("Skimage Not Installed, Unable to Test Resize")
 
     # tests for main function
     def test_main(self):
