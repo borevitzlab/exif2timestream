@@ -25,9 +25,9 @@ except ImportError:
 from _version import get_versions
 __version__ = get_versions()['version']
 del get_versions
-
 EXIF_DATE_TAG = "Image DateTime"
 EXIF_DATE_FMT = "%Y:%m:%d %H:%M:%S"
+EXIF_DATE_MASK = EXIF_DATE_FMT
 TS_V1_FMT = ("%Y/%Y_%m/%Y_%m_%d/%Y_%m_%d_%H/"
              "{tsname:s}_%Y_%m_%d_%H_%M_%S_{n:02d}.{ext:s}")
 TS_V2_FMT = ("%Y/%Y_%m/%Y_%m_%d/%Y_%m_%d_%H/"
@@ -42,7 +42,7 @@ IMAGE_SUBFOLDERS = {"raw", "jpg", "png", "tiff", "nef", "cr2"}
 DATE_NOW_CONSTANTS = {"now", "current"}
 CLI_OPTS = """
 USAGE:
-    exif2timestream.py [-t PROCESSES -1 -d -l LOGDIR] -c CAM_CONFIG_CSV
+    exif2timestream.py [-t PROCESSES -1 -d -l LOGDIR] -c CAM_CONFIG_CSV -m MASK
     exif2timestream.py -g CAM_CONFIG_CSV
     exif2timestream.py -V
 
@@ -54,6 +54,7 @@ OPTIONS:
     -c CAM_CONFIG_CSV   Path to CSV camera config file for normal operation.
     -g CAM_CONFIG_CSV   Generate a template camera configuration file at given
                         path.
+    -m MASK             Mask to Use for parsing dates from filenames
     -V                  Print version information.
 """
 
@@ -269,7 +270,7 @@ def resize_img(filename, to_width):
     except AttributeError:
         pass
 
-def get_time_from_filename(filename, mask):
+def get_time_from_filename(filename, mask = EXIF_DATE_MASK):
     # Replace the year with the regex equivalent to parse
     regex_mask = mask.replace("%Y", "\d{4}").replace("%m", "\d{2}").replace("%d", "\d{2}")
     regex_mask = regex_mask.replace("%H", "\d{2}").replace("%M", "\d{2}").replace("%S", "\d{2}")
@@ -313,6 +314,7 @@ def get_file_date(filename, round_secs=1):
     log = logging.getLogger("exif2timestream")
     # with open(filename, "rb") as fh:
         # Now uses Pexif
+
     try:
         exif_tags = pexif.JpegFile.fromFile(filename)
         str_date = exif_tags.exif.primary.ExtendedEXIF.DateTimeOriginal
@@ -325,8 +327,7 @@ def get_file_date(filename, round_secs=1):
         log.debug("No Exif data in '{0:s}', attempting to read from filename".format(shortfilename))
         # Try and grab the date
         # We can put a custom mask in here if we want
-        custom_mask = EXIF_DATE_FMT
-        date = get_time_from_filename(filename, custom_mask)
+        date = get_time_from_filename(filename)
         if date is None:
             log.debug("Unable to scrape date from '{0:s}'".format(shortfilename));
             return None
@@ -677,6 +678,11 @@ def main(opts):
     # beginneth the actual main loop
     start_time = time()
     cameras = parse_camera_config_csv(opts["-c"])
+    try:
+        global EXIF_DATE_MASK
+        EXIF_DATE_MASK = opts["-m"]
+    except KeyError:
+        pass
     n_images = 0
     for camera in cameras:
         msg = "Processing experiment {}, location {}\n".format(
