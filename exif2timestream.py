@@ -13,12 +13,12 @@ import re
 import pexif
 import exifread as er
 import warnings
-skimage = None
+SKIMAGE = False
 try:
     from skimage.transform import rescale
     from skimage import novice
     import skimage.io as io
-    skimage = True
+    SKIMAGE = True
 except ImportError:
     pass
 # versioneer
@@ -251,7 +251,7 @@ def validate_camera(camera):
 
 def resize_img(filename, to_width):
     # Open the Image and get its width
-    if(skimage):
+    if(SKIMAGE):
         img = io.imread(filename)
         w = novice.open(filename).width
         scale = float(to_width) / w
@@ -271,7 +271,7 @@ def resize_img(filename, to_width):
         except AttributeError:
             pass
     else:
-        raise Warning("Skimage is not installed, Will not resize images")
+        warnings.warn("Skimage Not Installed, Unable to Test Resize", ImportWarning)
 
 def get_time_from_filename(filename, mask = EXIF_DATE_MASK):
     # Replace the year with the regex equivalent to parse

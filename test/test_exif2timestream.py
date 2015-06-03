@@ -10,11 +10,13 @@ import unittest
 from voluptuous import MultipleInvalid
 from tempfile import NamedTemporaryFile
 import pexif
+import warnings
+SKIMAGE = False
 try:
     from skimage.transform import resize
     import skimage.io as io
     from skimage import novice
-    skimage = True
+    # SKIMAGE = True
 except ImportError:
     pass
 
@@ -341,7 +343,7 @@ class TestExifTraitcapture(unittest.TestCase):
 
     # Tests for checking image resizing
     def test_check_resize_img(self):
-        if(skimage):
+        if(SKIMAGE):
             filename = 'jpg/whroo20131104_020255M.jpg'
             new_width = 400
             e2t.resize_img(path.join(self.camupload_dir, filename), new_width)
@@ -349,7 +351,7 @@ class TestExifTraitcapture(unittest.TestCase):
             w = novice.open(path.join(self.camupload_dir, filename)).width
             self.assertEqual(w, new_width)
         else:
-            raise Warning("Skimage Not Installed, Unable to Test Resize")
+            warnings.warn("Skimage Not Installed, Unable to Test Resize", ImportWarning)
 
     # tests for main function
     def test_main(self):
