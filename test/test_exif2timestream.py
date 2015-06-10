@@ -9,6 +9,14 @@ from time import strptime
 import unittest
 from voluptuous import MultipleInvalid
 from tempfile import NamedTemporaryFile
+import pexif
+import warnings
+SKIMAGE = False
+try:
+    import skimage
+    # SKIMAGE = True
+except ImportError:
+    pass
 
 
 class TestExifTraitcapture(unittest.TestCase):
@@ -225,7 +233,8 @@ class TestExifTraitcapture(unittest.TestCase):
                         'jpg/IMG_0001.JPG',
                         'jpg/IMG_0002.JPG',
                         'jpg/IMG_0630.JPG',
-                        'jpg/IMG_0633.JPG']
+                        'jpg/IMG_0633.JPG',
+                        'jpg/whroo20131104_020255M.jpg']
                         },
                 "raw": {path.join(self.camupload_dir, 'raw/IMG_0001.CR2')},
                 }
@@ -312,6 +321,47 @@ class TestExifTraitcapture(unittest.TestCase):
         e2t.generate_config_csv(out_csv)
         self._md5test(out_csv, "bf1ff915a42390a15ab8e4704e5c38e9")
 
+    # Tests for checking parsing of dates from filename
+    def test_check_date_parse(self):
+        got = e2t.get_time_from_filename(
+            "whroo20141101_001212M.jpg", "%Y%m%d_%H%M%S")
+        expected = strptime("20141101_001212", "%Y%m%d_%H%M%S")
+        self.assertEqual(got, expected)
+        got = e2t.get_time_from_filename("TRN-NC-DSC-01~640_2013_06_01_10_45_00_00.jpg",
+                                         "%Y_%m_%d_%H_%M_%S")
+        expected = strptime("2013_06_01_10_45_00", "%Y_%m_%d_%H_%M_%S")
+        self.assertEqual(got, expected)
+
+    def test_check_write_exif(self):
+        # Write To Exif
+        filename = 'jpg/whroo20131104_020255M.jpg'
+        date_time = e2t.get_time_from_filename(
+            path.join(self.camupload_dir, filename), "%Y%m%d_%H%M%S")
+        e2t.write_exif_date(path.join(self.camupload_dir, filename), date_time)
+
+        # Read From Exif
+        exif_tags = pexif.JpegFile.fromFile(
+            path.join(self.camupload_dir, filename))
+        str_date = exif_tags.exif.primary.ExtendedEXIF.DateTimeOriginal
+        date = strptime(str_date, "%Y:%m:%d %H:%M:%S")
+
+        # Check Equal
+        self.assertEqual(date_time, date)
+
+    # Tests for checking image resizing
+    def test_check_resize_img(self):
+        if(SKIMAGE):
+            filename = 'jpg/whroo20131104_020255M.jpg'
+            new_width = 400
+            e2t.resize_img(path.join(self.camupload_dir, filename), new_width)
+            img = skimage.io.imread(path.join(self.camupload_dir, filename))
+            w = skimage.novice.open(
+                path.join(self.camupload_dir, filename)).width
+            self.assertEqual(w, new_width)
+        else:
+            warnings.warn(
+                "Skimage Not Installed, Unable to Test Resize", ImportWarning)
+
     # tests for main function
     def test_main(self):
         e2t.main({
@@ -320,6 +370,7 @@ class TestExifTraitcapture(unittest.TestCase):
             '-a': None,
             '-c': self.test_config_csv,
             '-l': self.out_dirname,
+            '-m': None,
             '-g': None,
             '-t': None})
         #os.system("tree %s" % path.dirname(self.out_dirname))
@@ -332,6 +383,7 @@ class TestExifTraitcapture(unittest.TestCase):
             '-a': None,
             '-c': self.test_config_raw_csv,
             '-l': self.out_dirname,
+            '-m': None,
             '-g': None,
             '-t': None})
         #os.system("tree %s" % path.dirname(self.out_dirname))
@@ -345,6 +397,7 @@ class TestExifTraitcapture(unittest.TestCase):
             '-a': None,
             '-c': self.test_config_dates_csv,
             '-l': self.out_dirname,
+            '-m': None,
             '-g': None,
             '-t': None})
         #os.system("tree %s" % path.dirname(self.out_dirname))
@@ -358,6 +411,7 @@ class TestExifTraitcapture(unittest.TestCase):
             '-a': None,
             '-c': self.test_config_csv,
             '-l': self.out_dirname,
+            '-m': None,
             '-g': None,
             '-t': '2'})
         self.assertTrue(path.exists(self.r_fullres_path))
@@ -370,6 +424,7 @@ class TestExifTraitcapture(unittest.TestCase):
             '-a': None,
             '-c': self.test_config_csv,
             '-l': self.out_dirname,
+            '-m': None,
             '-g': None,
             '-t': "several"})
         self.assertTrue(path.exists(self.r_fullres_path))
@@ -382,6 +437,7 @@ class TestExifTraitcapture(unittest.TestCase):
             '-a': None,
             '-c': self.test_config_csv,
             '-l': self.out_dirname,
+            '-m': None,
             '-g': None,
             '-t': None})
         self.assertTrue(path.exists(self.r_fullres_path))
@@ -398,6 +454,7 @@ class TestExifTraitcapture(unittest.TestCase):
                 '-a': None,
                 '-c': None,
                 '-l': self.out_dirname,
+                '-m': None,
                 '-g': conf_out,
                 '-t': None})
         self.assertTrue(path.exists(conf_out))

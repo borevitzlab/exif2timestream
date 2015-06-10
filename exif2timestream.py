@@ -1,6 +1,5 @@
 from __future__ import print_function
 from csv import reader, DictReader
-import exifread as er
 import os
 from os import path
 import shutil
@@ -10,14 +9,23 @@ from voluptuous import Required, Schema, MultipleInvalid
 from itertools import cycle
 from inspect import isclass
 import logging
-
+import re
+import pexif
+import exifread as er
+import warnings
+SKIMAGE = False
+try:
+    import skimage
+    SKIMAGE = True
+except ImportError:
+    pass
 # versioneer
 from _version import get_versions
 __version__ = get_versions()['version']
 del get_versions
-
 EXIF_DATE_TAG = "Image DateTime"
 EXIF_DATE_FMT = "%Y:%m:%d %H:%M:%S"
+EXIF_DATE_MASK = EXIF_DATE_FMT
 TS_V1_FMT = ("%Y/%Y_%m/%Y_%m_%d/%Y_%m_%d_%H/"
              "{tsname:s}_%Y_%m_%d_%H_%M_%S_{n:02d}.{ext:s}")
 TS_V2_FMT = ("%Y/%Y_%m/%Y_%m_%d/%Y_%m_%d_%H/"
@@ -32,7 +40,7 @@ IMAGE_SUBFOLDERS = {"raw", "jpg", "png", "tiff", "nef", "cr2"}
 DATE_NOW_CONSTANTS = {"now", "current"}
 CLI_OPTS = """
 USAGE:
-    exif2timestream.py [-t PROCESSES -1 -d -l LOGDIR] -c CAM_CONFIG_CSV
+    exif2timestream.py [-t PROCESSES -1 -d -l LOGDIR -m MASK] -c CAM_CONFIG_CSV
     exif2timestream.py -g CAM_CONFIG_CSV
     exif2timestream.py -V
 
@@ -44,6 +52,7 @@ OPTIONS:
     -c CAM_CONFIG_CSV   Path to CSV camera config file for normal operation.
     -g CAM_CONFIG_CSV   Generate a template camera configuration file at given
                         path.
+    -m MASK             Mask to Use for parsing dates from filenames
     -V                  Print version information.
 """
 
@@ -115,11 +124,13 @@ def d2s(date):
     else:
         return date
 
+
 def validate_camera(camera):
     """Validates and converts to python types the given camera dict (which
     normally has string values).
     """
     log = logging.getLogger("exif2timestream")
+
     def date(x):
         if isinstance(x, struct_time):
             return x
@@ -189,7 +200,7 @@ def validate_camera(camera):
             raise ValueError
         types = x.lower().strip().split('~')
         for type in types:
-            if not type in IMAGE_TYPE_CONSTANTS:
+            if type not in IMAGE_TYPE_CONSTANTS:
                 raise ValueError
         return types
 
@@ -201,7 +212,7 @@ def validate_camera(camera):
                 self.valid_values = set(valid_values)
 
         def __call__(self, x):
-            if not x in self.valid_values:
+            if x not in self.valid_values:
                 raise ValueError
             return x
 
@@ -236,18 +247,112 @@ def validate_camera(camera):
         return None
 
 
+def resize_img(filename, to_width):
+    # Open the Image and get its width
+    if not(SKIMAGE):
+        warnings.warn(
+            "Skimage Not Installed, Unable to Test Resize", ImportWarning)
+        return None
+    img = skimage.io.imread(filename)
+    w = skimate.novice.open(filename).width
+    scale = float(to_width) / w
+    # Rescale the image
+    img = skimage.transform.rescale(img, scale)
+    # read in old exxif data
+    exif_source = pexif.JpegFile.fromFile(filename)
+    # Save image
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        skimage.io.imsave(filename, img)
+    # Write new exif data from old image
+    try:
+        exif_dest = pexif.JpegFile.fromFile(filename)
+        exif_dest.exif.primary.ExtendedEXIF.DateTimeOriginal = \
+            exif_source.exif.primary.ExtendedEXIF.DateTimeOriginal
+        exif_dest.writeFile(filename)
+    except AttributeError:
+        pass
+
+
+def get_time_from_filename(filename, mask=EXIF_DATE_MASK):
+    # Replace the year with the regex equivalent to parse
+    regex_mask = mask.replace("%Y", "\d{4}").replace(
+        "%m", "\d{2}").replace("%d", "\d{2}")
+    regex_mask = regex_mask.replace("%H", "\d{2}").replace(
+        "%M", "\d{2}").replace("%S", "\d{2}")
+    # Wildcard character before and after the regex
+    regex_mask = "\.*" + regex_mask + "\.*"
+    # compile the regex
+    date_reg_exp = re.compile(regex_mask)
+    # get the list of possible date matches
+    matches_list = date_reg_exp.findall(filename)
+    for match in matches_list:
+        try:
+            # Parse each match into a datetime
+            datetime = strptime(match, mask)
+            # Return the datetime
+            return datetime
+        # If we cant convert it to the date, then go to the next item on the
+        # list
+        except ValueError:
+            continue
+    # If we cant match anything, then return None
+    return None
+
+
+def write_exif_date(filename, date_time):
+    try:
+        # Read in the file
+        img = pexif.JpegFile.fromFile(filename)
+        # Edit the exif data
+        img.exif.primary.ExtendedEXIF.DateTimeOriginal = strftime(
+            EXIF_DATE_FMT, date_time)
+        # Write to the file
+        img.writeFile(filename)
+        return True
+    except IOError:
+        return False
+
+
 def get_file_date(filename, round_secs=1):
     """
     Gets a time.struct_time from an image's EXIF, or None if not possible.
     """
     log = logging.getLogger("exif2timestream")
-    with open(filename, "rb") as fh:
-        exif_tags = er.process_file(fh, details=False, stop_tag=EXIF_DATE_TAG)
+    # Now uses Pexif
+
     try:
-        str_date = exif_tags[EXIF_DATE_TAG].values
+        exif_tags = pexif.JpegFile.fromFile(filename)
+        str_date = exif_tags.exif.primary.ExtendedEXIF.DateTimeOriginal
         date = strptime(str_date, EXIF_DATE_FMT)
-    except KeyError:
-        return None
+        # print (date)
+    except AttributeError:
+        # Try and Grab datetime from the filename
+        # Grab only the filename, not the directory
+        shortfilename = os.path.basename(filename)
+        log.debug("No Exif data in '{0:s}', attempting to read from filename".format(
+            shortfilename))
+        # Try and grab the date
+        # We can put a custom mask in here if we want
+        date = get_time_from_filename(filename)
+        if date is None:
+            log.debug(
+                "Unable to scrape date from '{0:s}'".format(shortfilename))
+            return None
+        else:
+            if not(write_exif_date(filename, date)):
+                log.debug("Unable to write Exif Data")
+                return None
+            return date
+    except pexif.JpegFile.InvalidFile:
+        with open(filename, "rb") as fh:
+            exif_tags = er.process_file(
+                fh, details=False, stop_tag=EXIF_DATE_TAG)
+            try:
+                str_date = exif_tags[EXIF_DATE_TAG].values
+                date = strptime(str_date, EXIF_DATE_FMT)
+            except KeyError:
+                return None
     if round_secs > 1:
         date = round_struct_time(date, round_secs)
     log.debug("Date of '{0:s}' is '{1:s}'".format(filename, d2s(date)))
@@ -318,6 +423,8 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
     log = logging.getLogger("exif2timestream")
     # make new image path
     image_date = get_file_date(image, camera[FIELDS["interval"]] * 60)
+    # Resize the Image
+    # resize(image, 1000)
     if not image_date:
         log.warn("Couldn't get date for image {}".format(image))
         raise SkipImage
@@ -517,9 +624,9 @@ def find_image_files(camera):
             for dir in dirs:
                 if dir.lower() not in IMAGE_SUBFOLDERS and \
                         not dir.startswith("_"):
-                    log.error("Souce directory has too many subdirs.A")
+                    log.error("Source directory has too many subdirs.")
                     # TODO: Is raising here a good idea?
-                    #raise ValueError("too many subdirs")
+                    raise ValueError("too many subdirs")
             for fle in files:
                 this_ext = path.splitext(fle)[-1].lower().strip(".")
                 if this_ext == ext or ext == "raw" and this_ext in RAW_FORMATS:
@@ -581,6 +688,9 @@ def main(opts):
     # beginneth the actual main loop
     start_time = time()
     cameras = parse_camera_config_csv(opts["-c"])
+    global EXIF_DATE_MASK  # Needed below
+    if opts['-m'] is not None:
+        EXIF_DATE_MASK = opts["-m"]
     n_images = 0
     for camera in cameras:
         msg = "Processing experiment {}, location {}\n".format(
