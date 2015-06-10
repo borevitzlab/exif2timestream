@@ -20,6 +20,7 @@ try:
 except ImportError:
     pass
 
+
 class TestExifTraitcapture(unittest.TestCase):
     dirname = path.dirname(__file__)
     test_config_csv = path.join(dirname, "config.csv")
@@ -234,7 +235,7 @@ class TestExifTraitcapture(unittest.TestCase):
                         'jpg/IMG_0001.JPG',
                         'jpg/IMG_0002.JPG',
                         'jpg/IMG_0630.JPG',
-                        'jpg/IMG_0633.JPG', 
+                        'jpg/IMG_0633.JPG',
                         'jpg/whroo20131104_020255M.jpg']
                         },
                 "raw": {path.join(self.camupload_dir, 'raw/IMG_0001.CR2')},
@@ -324,17 +325,21 @@ class TestExifTraitcapture(unittest.TestCase):
 
     # Tests for checking parsing of dates from filename
     def test_check_date_parse(self):
-        self.assertEqual(e2t.get_time_from_filename("whroo20141101_001212M.jpg", "%Y%m%d_%H%M%S"), strptime("20141101_001212", "%Y%m%d_%H%M%S"))
-        self.assertEqual(e2t.get_time_from_filename("TRN-NC-DSC-01~640_2013_06_01_10_45_00_00.jpg", "%Y_%m_%d_%H_%M_%S"), strptime("2013_06_01_10_45_00", "%Y_%m_%d_%H_%M_%S"))
+        self.assertEqual(e2t.get_time_from_filename(
+            "whroo20141101_001212M.jpg", "%Y%m%d_%H%M%S"), strptime("20141101_001212", "%Y%m%d_%H%M%S"))
+        self.assertEqual(e2t.get_time_from_filename("TRN-NC-DSC-01~640_2013_06_01_10_45_00_00.jpg",
+                                                    "%Y_%m_%d_%H_%M_%S"), strptime("2013_06_01_10_45_00", "%Y_%m_%d_%H_%M_%S"))
 
     def test_check_write_exif(self):
         # Write To Exif
         filename = 'jpg/whroo20131104_020255M.jpg'
-        date_time = e2t.get_time_from_filename(path.join(self.camupload_dir, filename), "%Y%m%d_%H%M%S")
+        date_time = e2t.get_time_from_filename(
+            path.join(self.camupload_dir, filename), "%Y%m%d_%H%M%S")
         e2t.write_exif_date(path.join(self.camupload_dir, filename), date_time)
 
         # Read From Exif
-        exif_tags = pexif.JpegFile.fromFile(path.join(self.camupload_dir, filename))
+        exif_tags = pexif.JpegFile.fromFile(
+            path.join(self.camupload_dir, filename))
         str_date = exif_tags.exif.primary.ExtendedEXIF.DateTimeOriginal
         date = strptime(str_date, "%Y:%m:%d %H:%M:%S")
 
@@ -351,7 +356,8 @@ class TestExifTraitcapture(unittest.TestCase):
             w = novice.open(path.join(self.camupload_dir, filename)).width
             self.assertEqual(w, new_width)
         else:
-            warnings.warn("Skimage Not Installed, Unable to Test Resize", ImportWarning)
+            warnings.warn(
+                "Skimage Not Installed, Unable to Test Resize", ImportWarning)
 
     # tests for main function
     def test_main(self):
