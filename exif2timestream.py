@@ -40,7 +40,7 @@ IMAGE_SUBFOLDERS = {"raw", "jpg", "png", "tiff", "nef", "cr2"}
 DATE_NOW_CONSTANTS = {"now", "current"}
 CLI_OPTS = """
 USAGE:
-    exif2timestream.py [-t PROCESSES -1 -d -l LOGDIR -m MASK] -c CAM_CONFIG_CSV 
+    exif2timestream.py [-t PROCESSES -1 -d -l LOGDIR -m MASK] -c CAM_CONFIG_CSV
     exif2timestream.py -g CAM_CONFIG_CSV
     exif2timestream.py -V
 
@@ -200,7 +200,7 @@ def validate_camera(camera):
             raise ValueError
         types = x.lower().strip().split('~')
         for type in types:
-            if not type in IMAGE_TYPE_CONSTANTS:
+            if type not in IMAGE_TYPE_CONSTANTS:
                 raise ValueError
         return types
 
@@ -212,7 +212,7 @@ def validate_camera(camera):
                 self.valid_values = set(valid_values)
 
         def __call__(self, x):
-            if not x in self.valid_values:
+            if x not in self.valid_values:
                 raise ValueError
             return x
 
@@ -267,7 +267,8 @@ def resize_img(filename, to_width):
     # Write new exif data from old image
     try:
         exif_dest = pexif.JpegFile.fromFile(filename)
-        exif_dest.exif.primary.ExtendedEXIF.DateTimeOriginal = exif_source.exif.primary.ExtendedEXIF.DateTimeOriginal
+        exif_dest.exif.primary.ExtendedEXIF.DateTimeOriginal = \
+            exif_source.exif.primary.ExtendedEXIF.DateTimeOriginal
         exif_dest.writeFile(filename)
     except AttributeError:
         pass
@@ -687,6 +688,7 @@ def main(opts):
     # beginneth the actual main loop
     start_time = time()
     cameras = parse_camera_config_csv(opts["-c"])
+    global EXIF_DATE_MASK  # Needed below
     if opts['-m'] is not None:
         EXIF_DATE_MASK = opts["-m"]
     n_images = 0
