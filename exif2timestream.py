@@ -15,9 +15,7 @@ import exifread as er
 import warnings
 SKIMAGE = False
 try:
-    from skimage.transform import rescale
-    from skimage import novice
-    import skimage.io as io
+    import skimage
     SKIMAGE = True
 except ImportError:
     pass
@@ -255,17 +253,17 @@ def resize_img(filename, to_width):
         warnings.warn(
             "Skimage Not Installed, Unable to Test Resize", ImportWarning)
         return None
-    img = io.imread(filename)
-    w = novice.open(filename).width
+    img = skimage.io.imread(filename)
+    w = skimate.novice.open(filename).width
     scale = float(to_width) / w
     # Rescale the image
-    img = rescale(img, scale)
+    img = skimage.transform.rescale(img, scale)
     # read in old exxif data
     exif_source = pexif.JpegFile.fromFile(filename)
     # Save image
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        io.imsave(filename, img)
+        skimage.io.imsave(filename, img)
     # Write new exif data from old image
     try:
         exif_dest = pexif.JpegFile.fromFile(filename)
@@ -297,7 +295,7 @@ def get_time_from_filename(filename, mask=EXIF_DATE_MASK):
         # list
         except ValueError:
             continue
-    # If we cant match anything, then return null
+    # If we cant match anything, then return None
     return None
 
 
@@ -689,11 +687,8 @@ def main(opts):
     # beginneth the actual main loop
     start_time = time()
     cameras = parse_camera_config_csv(opts["-c"])
-    try:
-        global EXIF_DATE_MASK
+    if opts['-m'] is not None:
         EXIF_DATE_MASK = opts["-m"]
-    except KeyError:
-        pass
     n_images = 0
     for camera in cameras:
         msg = "Processing experiment {}, location {}\n".format(

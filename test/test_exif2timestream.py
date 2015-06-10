@@ -13,9 +13,7 @@ import pexif
 import warnings
 SKIMAGE = False
 try:
-    from skimage.transform import resize
-    import skimage.io as io
-    from skimage import novice
+    import skimage
     # SKIMAGE = True
 except ImportError:
     pass
@@ -325,10 +323,14 @@ class TestExifTraitcapture(unittest.TestCase):
 
     # Tests for checking parsing of dates from filename
     def test_check_date_parse(self):
-        self.assertEqual(e2t.get_time_from_filename(
-            "whroo20141101_001212M.jpg", "%Y%m%d_%H%M%S"), strptime("20141101_001212", "%Y%m%d_%H%M%S"))
-        self.assertEqual(e2t.get_time_from_filename("TRN-NC-DSC-01~640_2013_06_01_10_45_00_00.jpg",
-                                                    "%Y_%m_%d_%H_%M_%S"), strptime("2013_06_01_10_45_00", "%Y_%m_%d_%H_%M_%S"))
+        got = e2t.get_time_from_filename(
+            "whroo20141101_001212M.jpg", "%Y%m%d_%H%M%S")
+        expected = strptime("20141101_001212", "%Y%m%d_%H%M%S")
+        self.assertEqual(got, expected)
+        got = e2t.get_time_from_filename("TRN-NC-DSC-01~640_2013_06_01_10_45_00_00.jpg",
+                                         "%Y_%m_%d_%H_%M_%S")
+        expected = strptime("2013_06_01_10_45_00", "%Y_%m_%d_%H_%M_%S")
+        self.assertEqual(got, expected)
 
     def test_check_write_exif(self):
         # Write To Exif
@@ -352,8 +354,9 @@ class TestExifTraitcapture(unittest.TestCase):
             filename = 'jpg/whroo20131104_020255M.jpg'
             new_width = 400
             e2t.resize_img(path.join(self.camupload_dir, filename), new_width)
-            img = io.imread(path.join(self.camupload_dir, filename))
-            w = novice.open(path.join(self.camupload_dir, filename)).width
+            img = skimage.io.imread(path.join(self.camupload_dir, filename))
+            w = skimage.novice.open(
+                path.join(self.camupload_dir, filename)).width
             self.assertEqual(w, new_width)
         else:
             warnings.warn(
@@ -367,6 +370,7 @@ class TestExifTraitcapture(unittest.TestCase):
             '-a': None,
             '-c': self.test_config_csv,
             '-l': self.out_dirname,
+            '-m': None,
             '-g': None,
             '-t': None})
         #os.system("tree %s" % path.dirname(self.out_dirname))
@@ -379,6 +383,7 @@ class TestExifTraitcapture(unittest.TestCase):
             '-a': None,
             '-c': self.test_config_raw_csv,
             '-l': self.out_dirname,
+            '-m': None,
             '-g': None,
             '-t': None})
         #os.system("tree %s" % path.dirname(self.out_dirname))
@@ -392,6 +397,7 @@ class TestExifTraitcapture(unittest.TestCase):
             '-a': None,
             '-c': self.test_config_dates_csv,
             '-l': self.out_dirname,
+            '-m': None,
             '-g': None,
             '-t': None})
         #os.system("tree %s" % path.dirname(self.out_dirname))
@@ -405,6 +411,7 @@ class TestExifTraitcapture(unittest.TestCase):
             '-a': None,
             '-c': self.test_config_csv,
             '-l': self.out_dirname,
+            '-m': None,
             '-g': None,
             '-t': '2'})
         self.assertTrue(path.exists(self.r_fullres_path))
@@ -417,6 +424,7 @@ class TestExifTraitcapture(unittest.TestCase):
             '-a': None,
             '-c': self.test_config_csv,
             '-l': self.out_dirname,
+            '-m': None,
             '-g': None,
             '-t': "several"})
         self.assertTrue(path.exists(self.r_fullres_path))
@@ -429,6 +437,7 @@ class TestExifTraitcapture(unittest.TestCase):
             '-a': None,
             '-c': self.test_config_csv,
             '-l': self.out_dirname,
+            '-m': None,
             '-g': None,
             '-t': None})
         self.assertTrue(path.exists(self.r_fullres_path))
@@ -445,6 +454,7 @@ class TestExifTraitcapture(unittest.TestCase):
                 '-a': None,
                 '-c': None,
                 '-l': self.out_dirname,
+                '-m': None,
                 '-g': conf_out,
                 '-t': None})
         self.assertTrue(path.exists(conf_out))
