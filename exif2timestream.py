@@ -16,6 +16,8 @@ import warnings
 SKIMAGE = False
 try:
     import skimage
+    import skimage.io
+    import skimage.novice
     SKIMAGE = True
 except ImportError:
     pass
@@ -82,6 +84,8 @@ FIELDS = {
     'timezone': 'camera_timezone',
     'user': 'user',
     'mode': 'mode',
+    'project_owner': 'PROJECT_OWNER',
+    'ts_structure': 'TS_STRUCTURE',
 }
 
 FIELD_ORDER = [
@@ -103,6 +107,7 @@ FIELD_ORDER = [
     'timezone',
     'user',
     'mode',
+    'project_owner',
 ]
 
 
@@ -204,6 +209,14 @@ def validate_camera(camera):
                 raise ValueError
         return types
 
+    def parse_ts_structure(x):
+        if None:
+            return None
+        else:
+            for y in FIELDS:
+                x = x.replace(y.upper(), camera[FIELDS[y]])
+        return x
+
     class InList(object):
 
         def __init__(self, valid_values):
@@ -236,6 +249,8 @@ def validate_camera(camera):
         FIELDS["sunrise"]: int_time_hr_min,
         FIELDS["sunset"]: int_time_hr_min,
         FIELDS["timezone"]: int_time_hr_min,
+        FIELDS["project_owner"]: str,
+        FIELDS["ts_structure"]: parse_ts_structure,
     })
     try:
         cam = sch(camera)
@@ -247,29 +262,33 @@ def validate_camera(camera):
         return None
 
 
-def resize_img(filename, to_width):
+def resize_img(filename, destination, to_width, to_height = 0):
     # Open the Image and get its width
     if not(SKIMAGE):
         warnings.warn(
             "Skimage Not Installed, Unable to Test Resize", ImportWarning)
         return None
+
     img = skimage.io.imread(filename)
-    w = skimate.novice.open(filename).width
-    scale = float(to_width) / w
-    # Rescale the image
-    img = skimage.transform.rescale(img, scale)
+    if (to_height==0):
+        w = skimage.novice.open(filename).width
+        scale = float(to_width) / w
+        # Rescale the image
+        img = skimage.transform.rescale(img, scale)
+    else:
+        img = skimage.transform.resize(img, (to_height, to_width))
     # read in old exxif data
     exif_source = pexif.JpegFile.fromFile(filename)
     # Save image
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        skimage.io.imsave(filename, img)
+        skimage.io.imsave(destination, img)
     # Write new exif data from old image
     try:
-        exif_dest = pexif.JpegFile.fromFile(filename)
+        exif_dest = pexif.JpegFile.fromFile(destination)
         exif_dest.exif.primary.ExtendedEXIF.DateTimeOriginal = \
             exif_source.exif.primary.ExtendedEXIF.DateTimeOriginal
-        exif_dest.writeFile(filename)
+        exif_dest.writeFile(destination)
     except AttributeError:
         pass
 
@@ -436,14 +455,39 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
         n=subsec,
         ext=in_ext
     )
-    out_image = path.join(
-        camera[FIELDS["destination"]],
-        camera[FIELDS["expt"]],
-        ts_name,
-        out_image
-    )
+    # Store this value incase we need it for resizing
+    resizing_temp_outname = out_image
+    # If we have set a value for the ts_structure value
+    if (camera[FIELDS["ts_structure"]]):
+        # Then lets set that as the ts_name
+        ts_structure = camera[FIELDS["ts_structure"]]
+        if (ts_structure[0]=='/'):
+            ts_structure = ts_structure[1:]
+        out_image = path.join(
+            camera[FIELDS["destination"]],
+            path.normpath(ts_structure), 
+            "Originals",
+            out_image
+            )
+
+        
+    # Otherwise    # 
+    else:
+        out_image = path.join(
+            camera[FIELDS["destination"]],
+            camera[FIELDS["expt"]],
+            ts_name,
+            out_image
+        )
     # make the target directory
     out_dir = path.dirname(out_image)
+    # Just incase we need to do some image resizing below
+    resized_img = os.path.join(
+        camera[FIELDS["destination"]], 
+        path.normpath(ts_structure), 
+        "Resized",
+        resizing_temp_outname
+        )
     if not path.exists(out_dir):
         # makedirs is like `mkdir -p`, creates parents, but raises
         # OSError if target already exits
@@ -462,6 +506,24 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
         log.warn("Could copy '{0:s}' to '{1:s}', skipping image".format(
             image, dest))
         raise SkipImage
+
+    # If there are 3 arguments to image resizing (original, (originalx, originaly), (newx, newy)) || (original, (originalx), (newx))
+    if len(camera[FIELDS["resolutions"]]) >2:
+        resized_img_path = path.dirname(resized_img)
+        # print (resize_img)
+        if not path.exists(resized_img_path):
+            try:
+                os.makedirs(resized_img_path)
+            except OSError:
+                print ("WTF")
+                log.warn("Could not make dir '{0:s}', skipping image '{1:s}'".format(
+                        resized_img_path, image))
+                raise SkipImage
+        new_res = camera[FIELDS["resolutions"]][2]
+        if (new_res[1]):
+            resize_img(dest, resized_img, new_res[0], new_res[1])
+        else:
+            resize_img(dest, resized_img, new_res[0])
 
 
 def _dont_clobber(fn, mode="append"):
@@ -546,6 +608,7 @@ def process_image(args):
     subsec = 0
     try:
         # deal with original image (move/copy etc)
+
         timestreamise_image(image, camera, subsec=subsec, step=step)
         log.debug("Successfully timestreamed {}".format(image))
     except SkipImage:
@@ -731,9 +794,11 @@ def main(opts):
                     threads = cpu_count() - 1
                 # Ensure that we're using at least one thread
                 threads = max(threads, 1)
+
                 log.info("Using {0:d} processes".format(threads))
                 # set the function's camera-wide arguments
                 args = zip(images, cycle([camera]), cycle([ext]))
+
                 pool = Pool(threads)
                 for _ in pool.imap(process_image, args):
                     count += 1
