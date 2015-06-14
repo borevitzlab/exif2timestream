@@ -210,6 +210,7 @@ def validate_camera(camera):
         return types
 
     def parse_ts_structure(x):
+        print ("None")
         if None:
             return None
         else:
@@ -456,38 +457,26 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
         ext=in_ext
     )
     # Store this value incase we need it for resizing
-    resizing_temp_outname = out_image
+
     # If we have set a value for the ts_structure value
+
     if (camera[FIELDS["ts_structure"]]):
-        # Then lets set that as the ts_name
+        # Then lets set that as the output file name
         ts_structure = camera[FIELDS["ts_structure"]]
         if (ts_structure[0]=='/'):
             ts_structure = ts_structure[1:]
-        out_image = path.join(
-            camera[FIELDS["destination"]],
-            path.normpath(ts_structure), 
-            "Originals",
-            out_image
-            )
-
-        
-    # Otherwise    # 
+        ts_struct_middle = path.join(path.normpath(ts_structure+ "~orig"))
     else:
-        out_image = path.join(
-            camera[FIELDS["destination"]],
-            camera[FIELDS["expt"]],
-            ts_name,
-            out_image
-        )
+        ts_struct_middle = path.join(camera[FIELDS["expt"]], ts_name)
+    out_image = path.join(
+        camera[FIELDS["destination"]],
+        ts_struct_middle,
+        out_image
+    )
     # make the target directory
     out_dir = path.dirname(out_image)
     # Just incase we need to do some image resizing below
-    resized_img = os.path.join(
-        camera[FIELDS["destination"]], 
-        path.normpath(ts_structure), 
-        "Resized",
-        resizing_temp_outname
-        )
+    
     if not path.exists(out_dir):
         # makedirs is like `mkdir -p`, creates parents, but raises
         # OSError if target already exits
@@ -509,13 +498,30 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
 
     # If there are 3 arguments to image resizing (original, (originalx, originaly), (newx, newy)) || (original, (originalx), (newx))
     if len(camera[FIELDS["resolutions"]]) >2:
+        ts_name = make_timestream_name(camera, res=camera[FIELDS["resolutions"]][2], step="resized")
+        resizing_temp_outname = get_new_file_name(image_date, ts_name, n=subsec, ext=in_ext)
+        if ('ts_structure' in locals()):
+            ts_struct_middle = path.join(path.normpath(ts_structure + "~resized"))
+        else:
+            ts_struct_middle = path.join(camera[FIELDS["expt"]], ts_name)
+        out_image = path.join(
+            camera[FIELDS["destination"]],
+            ts_struct_middle,
+            out_image
+        )
+
+
+
+        resized_img = os.path.join(
+            camera[FIELDS["destination"]], 
+            ts_struct_middle,
+            resizing_temp_outname
+        )
         resized_img_path = path.dirname(resized_img)
-        # print (resize_img)
         if not path.exists(resized_img_path):
             try:
                 os.makedirs(resized_img_path)
             except OSError:
-                print ("WTF")
                 log.warn("Could not make dir '{0:s}', skipping image '{1:s}'".format(
                         resized_img_path, image))
                 raise SkipImage
