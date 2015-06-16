@@ -563,7 +563,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
         ts_name = make_timestream_name(camera, res=camera[FIELDS["resolutions"]][2], step="resized")
         resizing_temp_outname = get_new_file_name(image_date, ts_name, n=subsec, ext=in_ext)
         if ('ts_structure' in locals()):
-            ts_struct_middle = path.join(path.normpath(ts_structure + "~" + str(camera[FIELDS["resolutions"]][2][0]) + "x" + str(camera[FIELDS["resolutions"]][2][1]) + "~resized"))        else:
+            ts_struct_middle = path.join(path.normpath(ts_structure + "~" + str(camera[FIELDS["resolutions"]][2][0]) + "x" + str(camera[FIELDS["resolutions"]][2][1]) + "~resized"))
             ts_struct_middle = path.join(camera[FIELDS["expt"]], ts_name)
         out_image = path.join(
             camera[FIELDS["destination"]],
