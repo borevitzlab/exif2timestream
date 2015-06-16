@@ -1,3 +1,3 @@
-USE,LOCATION,CAM_NUM,user,mode,METHOD,SOURCE,DESTINATION,ARCHIVE_DEST,INTERVAL,sunrise,sunset,CURRENT_EXPT,EXPT_START,EXPT_END,camera_timezone,resolutions,IMAGE_TYPES,PROJECT_OWNER,TS_STRUCTURE
-1,fnqr_daintree,1,test_user,batch,copy,/home/jbraiuka/Biology/Test_To_From,/home/jbraiuka/Biology/Test_To_Output,/home/jbraiuka/Biology/Test_To_Archive,60,500,1800,FNQRD001,2013_10_30,2013_11_29,1100,original~2592x1944~640x480,jpg,test_proj_owner,
-0,fnqr_daintree,2,test_user,batch,copy,/home/jbraiuka/Biology/Test_To_From,/home/jbraiuka/Biology/Test_To_Output,/home/jbraiuka/Biology/Test_To_Archive,60,500,1800,FNQRD001,2013_10_30,2013_11_29,1100,original~2592x1944~640x480,jpg,test_proj_owner,
+USE,LOCATION,CAM_NUM,user,mode,METHOD,SOURCE,DESTINATION,ARCHIVE_DEST,INTERVAL,sunrise,sunset,CURRENT_EXPT,EXPT_START,EXPT_END,camera_timezone,resolutions,IMAGE_TYPES,TS_STRUCTURE,PROJECT_OWNER
+1,EUC-R01C01,1,Glasshouses,batch,move,./test/img/camupload,./test/out/timestreams,./test/out/archive,5,500,2200,BVZ00000,2012_12_01,2013_12_31,1100,original~1024x768~640x480,jpg,,
+0,EUC-R01C01,2,Glasshouses,batch,copy,./test/img/camupload,./test/out/timestreams,./test/out/archive,5,500,2200,BVZ00000,2012_12_01,2013_12_31,1100,original~1024x768~640x480,jpg,,

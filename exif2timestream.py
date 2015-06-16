@@ -210,8 +210,7 @@ def validate_camera(camera):
         return types
 
     def parse_ts_structure(x):
-        print ("None")
-        if None:
+        if x is None:
             return None
         else:
             for y in FIELDS:
@@ -262,6 +261,7 @@ def validate_camera(camera):
             raise e
         return None
 
+
 def resize_function(camera, image_date, dest):
     out_image = get_new_file_name(
         image_date,
@@ -276,9 +276,9 @@ def resize_function(camera, image_date, dest):
     if (camera[FIELDS["ts_structure"]]):
         # Then lets set that as the output file name
         ts_structure = camera[FIELDS["ts_structure"]]
-        if (ts_structure[0]=='/'):
+        if (ts_structure[0] == '/'):
             ts_structure = ts_structure[1:]
-        ts_struct_middle = path.join(path.normpath(ts_structure+ "~orig"))
+        ts_struct_middle = path.join(path.normpath(ts_structure + "~orig"))
     else:
         ts_struct_middle = path.join(camera[FIELDS["expt"]], ts_name)
     out_image = path.join(
@@ -287,14 +287,16 @@ def resize_function(camera, image_date, dest):
         out_image
     )
 
-
     if not (camera[FIELDS["ts_structure"]] == None):
         ts_structure = camera[FIELDS["ts_structure"]]
-    if len(camera[FIELDS["resolutions"]]) >2:
-        ts_name = make_timestream_name(camera, res=camera[FIELDS["resolutions"]][2], step="resized")
-        resizing_temp_outname = get_new_file_name(image_date, ts_name, n=subsec, ext=in_ext)
+    if len(camera[FIELDS["resolutions"]]) > 2:
+        ts_name = make_timestream_name(
+            camera, res=camera[FIELDS["resolutions"]][2], step="resized")
+        resizing_temp_outname = get_new_file_name(
+            image_date, ts_name, n=subsec, ext=in_ext)
         if ('ts_structure' in locals()):
-            ts_struct_middle = path.join(path.normpath(ts_structure + "~resized"))
+            ts_struct_middle = path.join(
+                path.normpath(ts_structure + "~resized"))
         else:
             ts_struct_middle = path.join(camera[FIELDS["expt"]], ts_name)
         out_image = path.join(
@@ -303,7 +305,7 @@ def resize_function(camera, image_date, dest):
             out_image
         )
         resized_img = os.path.join(
-            camera[FIELDS["destination"]], 
+            camera[FIELDS["destination"]],
             ts_struct_middle,
             resizing_temp_outname
         )
@@ -313,7 +315,7 @@ def resize_function(camera, image_date, dest):
                 os.makedirs(resized_img_path)
             except OSError:
                 log.warn("Could not make dir '{0:s}', skipping image '{1:s}'".format(
-                        resized_img_path, image))
+                    resized_img_path, image))
                 raise SkipImage
         new_res = camera[FIELDS["resolutions"]][2]
         if (new_res[1]):
@@ -322,7 +324,7 @@ def resize_function(camera, image_date, dest):
             resize_img(dest, resized_img, new_res[0])
 
 
-def resize_img(filename, destination, to_width, to_height = 0):
+def resize_img(filename, destination, to_width, to_height=0):
     # Open the Image and get its width
     if not(SKIMAGE):
         warnings.warn(
@@ -330,7 +332,7 @@ def resize_img(filename, destination, to_width, to_height = 0):
         return None
 
     img = skimage.io.imread(filename)
-    if (to_height==0):
+    if (to_height == 0):
         w = skimage.novice.open(filename).width
         scale = float(to_width) / w
         # Rescale the image
@@ -355,8 +357,7 @@ def resize_img(filename, destination, to_width, to_height = 0):
         pass
 
 
-def get_time_from_filename(filename):
-    mask=EXIF_DATE_MASK
+def get_time_from_filename(filename, mask=EXIF_DATE_MASK):
     # Replace the year with the regex equivalent to parse
     regex_mask = mask.replace("%Y", "\d{4}").replace(
         "%m", "\d{2}").replace("%d", "\d{2}")
@@ -525,9 +526,10 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
     if (camera[FIELDS["ts_structure"]]):
         # Then lets set that as the output file name
         ts_structure = camera[FIELDS["ts_structure"]]
-        if (ts_structure[0]=='/'):
+        if (ts_structure[0] == '/'):
             ts_structure = ts_structure[1:]
-        ts_struct_middle = path.join(path.normpath(ts_structure+ "~fullres~orig"))
+        ts_struct_middle = path.join(
+            path.normpath(ts_structure + "~fullres~orig"))
     else:
         ts_struct_middle = path.join(camera[FIELDS["expt"]], ts_name)
     out_image = path.join(
@@ -538,7 +540,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
     # make the target directory
     out_dir = path.dirname(out_image)
     # Just incase we need to do some image resizing below
-    
+
     if not path.exists(out_dir):
         # makedirs is like `mkdir -p`, creates parents, but raises
         # OSError if target already exits
@@ -558,23 +560,24 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
             image, dest))
         raise SkipImage
 
-    # If there are 3 arguments to image resizing (original, (originalx, originaly), (newx, newy)) || (original, (originalx), (newx))
-    if len(camera[FIELDS["resolutions"]]) >2:
-        ts_name = make_timestream_name(camera, res=camera[FIELDS["resolutions"]][2], step="resized")
-        resizing_temp_outname = get_new_file_name(image_date, ts_name, n=subsec, ext=in_ext)
+    # If there are 3 arguments to image resizing (original, (originalx,
+    # originaly), (newx, newy)) || (original, (originalx), (newx))
+    if ((len(camera[FIELDS["resolutions"]]) > 2) & (step != 'raw')):
+        ts_name = make_timestream_name(
+            camera, res=camera[FIELDS["resolutions"]][2], step="resized")
+        resizing_temp_outname = get_new_file_name(
+            image_date, ts_name, n=subsec, ext=in_ext)
         if ('ts_structure' in locals()):
-            ts_struct_middle = path.join(path.normpath(ts_structure + "~" + str(camera[FIELDS["resolutions"]][2][0]) + "x" + str(camera[FIELDS["resolutions"]][2][1]) + "~resized"))
+            ts_struct_middle = path.join(path.normpath(ts_structure + "~" + str(camera[FIELDS[
+                                         "resolutions"]][2][0]) + "x" + str(camera[FIELDS["resolutions"]][2][1]) + "~resized"))
             ts_struct_middle = path.join(camera[FIELDS["expt"]], ts_name)
         out_image = path.join(
             camera[FIELDS["destination"]],
             ts_struct_middle,
             out_image
         )
-
-
-
         resized_img = os.path.join(
-            camera[FIELDS["destination"]], 
+            camera[FIELDS["destination"]],
             ts_struct_middle,
             resizing_temp_outname
         )
@@ -584,7 +587,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
                 os.makedirs(resized_img_path)
             except OSError:
                 log.warn("Could not make dir '{0:s}', skipping image '{1:s}'".format(
-                        resized_img_path, image))
+                    resized_img_path, image))
                 raise SkipImage
         new_res = camera[FIELDS["resolutions"]][2]
         if (new_res[1]):
@@ -865,7 +868,6 @@ def main(opts):
                 log.info("Using {0:d} processes".format(threads))
                 # set the function's camera-wide arguments
                 args = zip(images, cycle([camera]), cycle([ext]))
-
                 pool = Pool(threads)
                 for _ in pool.imap(process_image, args):
                     count += 1

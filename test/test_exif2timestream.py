@@ -50,7 +50,10 @@ class TestExifTraitcapture(unittest.TestCase):
         'sunset': '2200',
         'camera_timezone': '1100',
         'USE': '1',
-        'user': 'Glasshouses'
+        'user': 'Glasshouses', 
+        'TS_STRUCTURE': '', 
+        'TS_STRUCTURE': None, 
+        'PROJECT_OWNER': ''
     }
     camera_unix = {
         'ARCHIVE_DEST': '/'.join([out_dirname, 'archive']),
@@ -70,7 +73,9 @@ class TestExifTraitcapture(unittest.TestCase):
         'sunset': '2200',
         'camera_timezone': '1100',
         'USE': '1',
-        'user': 'Glasshouses'
+        'user': 'Glasshouses', 
+        'TS_STRUCTURE': None, 
+        'PROJECT_OWNER': ''
     }
 
     r_fullres_path = path.join(
@@ -295,7 +300,9 @@ class TestExifTraitcapture(unittest.TestCase):
                 'sunrise': (5, 0),
                 'sunset': (22, 0),
                 'USE': True,
-                'user': 'Glasshouses'
+                'user': 'Glasshouses', 
+                'TS_STRUCTURE': '', 
+                'PROJECT_OWNER': ''
             }
         ]
         result = e2t.parse_camera_config_csv(self.test_config_csv)
@@ -319,7 +326,7 @@ class TestExifTraitcapture(unittest.TestCase):
     def test_generate_config_csv(self):
         out_csv = path.join(self.out_dirname, "test_gencnf.csv")
         e2t.generate_config_csv(out_csv)
-        self._md5test(out_csv, "bf1ff915a42390a15ab8e4704e5c38e9")
+        self._md5test(out_csv, "02c18b9b900d9da3320645deb3e05b35")
 
     # Tests for checking parsing of dates from filename
     def test_check_date_parse(self):
@@ -458,7 +465,7 @@ class TestExifTraitcapture(unittest.TestCase):
                 '-g': conf_out,
                 '-t': None})
         self.assertTrue(path.exists(conf_out))
-        self._md5test(conf_out, "bf1ff915a42390a15ab8e4704e5c38e9")
+        self._md5test(conf_out, "02c18b9b900d9da3320645deb3e05b35")
 
     def tearDown(self):
         #os.system("tree %s" % path.dirname(self.out_dirname))
