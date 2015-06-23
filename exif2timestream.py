@@ -42,7 +42,7 @@ IMAGE_SUBFOLDERS = {"raw", "jpg", "png", "tiff", "nef", "cr2"}
 DATE_NOW_CONSTANTS = {"now", "current"}
 CLI_OPTS = """
 USAGE:
-    exif2timestream.py [-t PROCESSES -1 -d -l LOGDIR -m MASK] -c CAM_CONFIG_CSV
+    exif2timestream.py [-t PROCESSES -1 -d -l LOGDIR ] -c CAM_CONFIG_CSV
     exif2timestream.py -g CAM_CONFIG_CSV
     exif2timestream.py -V
 
@@ -54,7 +54,6 @@ OPTIONS:
     -c CAM_CONFIG_CSV   Path to CSV camera config file for normal operation.
     -g CAM_CONFIG_CSV   Generate a template camera configuration file at given
                         path.
-    -m MASK             Mask to Use for parsing dates from filenames
     -V                  Print version information.
 """
 
@@ -86,6 +85,7 @@ FIELDS = {
     'mode': 'mode',
     'project_owner': 'PROJECT_OWNER',
     'ts_structure': 'TS_STRUCTURE',
+    'filename_date_mask': 'FILENAME_DATE_MASK',
 }
 
 FIELD_ORDER = [
@@ -108,6 +108,7 @@ FIELD_ORDER = [
     'user',
     'mode',
     'project_owner',
+    'filename_date_mask'
 ]
 
 
@@ -251,6 +252,7 @@ def validate_camera(camera):
         FIELDS["timezone"]: int_time_hr_min,
         FIELDS["project_owner"]: str,
         FIELDS["ts_structure"]: parse_ts_structure,
+        FIELDS["filename_date_mask"]: str,
     })
     try:
         cam = sch(camera)
@@ -262,7 +264,7 @@ def validate_camera(camera):
         return None
 
 
-def resize_function(camera, image_date, dest, ts_struct_middle):
+def resize_function(camera, image_date, dest):
     # Resize a single image, to its new location
     if not (camera[FIELDS["resolutions"]][2][1]):
         new_res = camera[FIELDS["resolutions"]][2][0], ((int(camera[FIELDS["resolutions"]][2][0])*int(camera[FIELDS["resolutions"]][1][1]))/int(camera[FIELDS["resolutions"]][1][0]))
@@ -280,8 +282,6 @@ def resize_function(camera, image_date, dest, ts_struct_middle):
         if (ts_structure[0] == '/'):
             ts_structure = ts_structure[1:]
         direc, fname= path.split(ts_structure)
-        print (direc)
-        print (fname)
         ts_struct_middle = path.join(
             direc, "Edited", (fname + "~" + str(new_res[0]) + 'x' + str(new_res[1]) + "~orig") )
     else:
@@ -298,7 +298,7 @@ def resize_function(camera, image_date, dest, ts_struct_middle):
             os.makedirs(resized_img_path)
         except OSError:
             log.warn("Could not make dir '{0:s}', skipping image '{1:s}'".format(
-                resized_img_path, image))
+                resized_img_path, image))   
             raise SkipImage
     resize_img(dest, resized_img, new_res[0], new_res[1])
 
@@ -484,6 +484,8 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
     """Process a single image, mv/cp-ing it to its new location"""
     log = logging.getLogger("exif2timestream")
     # make new image path
+    global EXIF_DATE_MASK
+    EXIF_DATE_MASK = camera[FIELDS["filename_date_mask"]]
     image_date = get_file_date(image, camera[FIELDS["interval"]] * 60)
     # Resize the Image
     # resize(image, 1000)
@@ -543,7 +545,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
     # If there are 3 arguments to image resizing (original, (originalx,
     # originaly), (newx, newy)) || (original, (originalx), (newx))
     if (len(camera[FIELDS["resolutions"]])>2):
-        resize_function(camera, image_date, dest, ts_struct_middle)
+        resize_function(camera, image_date, dest)
    
 
 
@@ -584,7 +586,7 @@ def process_image(args):
     """
     log = logging.getLogger("exif2timestream")
     (image, camera, ext) = args
-
+    EXIF_DATE_MASK = camera[FIELDS["filename_date_mask"]]
     image_date = get_file_date(image, camera[FIELDS["interval"]] * 60)
     if image_date < camera[FIELDS["expt_start"]] or \
             image_date > camera[FIELDS["expt_end"]]:
@@ -778,9 +780,6 @@ def main(opts):
     # beginneth the actual main loop
     start_time = time()
     cameras = parse_camera_config_csv(opts["-c"])
-    global EXIF_DATE_MASK  # Needed below
-    if opts['-m'] is not None:
-        EXIF_DATE_MASK = opts["-m"]
     n_images = 0
     for camera in cameras:
         msg = "Processing experiment {}, location {}\n".format(
