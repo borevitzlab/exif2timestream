@@ -279,8 +279,11 @@ def resize_function(camera, image_date, dest, ts_struct_middle):
         ts_structure = camera[FIELDS["ts_structure"]]
         if (ts_structure[0] == '/'):
             ts_structure = ts_structure[1:]
+        direc, fname= path.split(ts_structure)
+        print (direc)
+        print (fname)
         ts_struct_middle = path.join(
-            path.normpath(ts_structure + "~" + new_res + "~orig"))
+            direc, "Edited", (fname + "~" + str(new_res[0]) + 'x' + str(new_res[1]) + "~orig") )
     else:
         ts_struct_middle = path.join(camera[FIELDS["expt"]],"Edited", ts_name)
    
