@@ -13,6 +13,7 @@ import re
 import pexif
 import exifread as er
 import warnings
+import json
 SKIMAGE = False
 try:
     import skimage
@@ -783,7 +784,32 @@ def main(opts):
     start_time = time()
     cameras = parse_camera_config_csv(opts["-c"])
     n_images = 0
+    json_dump = []    
     for camera in cameras:
+        if len(camera[FIELDS["resolutions"]])>2:
+            new_res = camera[FIELDS["resolutions"]][2]
+        else:
+            new_res = camera[FIELDS["resolutions"]][1]
+        json_dump.append(json.dumps(dict(
+            Name=camera[FIELDS["expt"]],
+            Utc = False,
+            width_hires = camera[FIELDS["resolutions"]][1][0],
+            ts_version = 1.0,
+            ts_end = strftime(
+            TS_DATE_FMT, camera[FIELDS["expt_end"]]),
+            image_type = camera[FIELDS["image_types"]][0],
+            height_hires = camera[FIELDS["resolutions"]][1][1],
+            expt = camera[FIELDS["expt"]],
+            width = new_res[0],
+            webroot = "HELP?",
+            period_in_minutes = camera[FIELDS["interval"]],
+            timezone= camera[FIELDS["timezone"]][0],
+            ts_start = strftime(
+            TS_DATE_FMT, camera[FIELDS["expt_start"]]),
+            height = new_res[1],
+            access = 0,
+            thumbnail_link = "Help?"
+            )))
         msg = "Processing experiment {}, location {}\n".format(
             camera[FIELDS["expt"]],
             camera[FIELDS["location"]],
@@ -836,6 +862,9 @@ def main(opts):
     secs_taken = time() - start_time
     print("\nProcessed a total of {0} images in {1:.2f} seconds".format(
           n_images, secs_taken))
+    obj = open('camera.json', 'wb')
+    obj.write(json.dump(json_dump))
+    obj.close
 
 
 if __name__ == "__main__":
