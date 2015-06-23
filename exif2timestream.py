@@ -618,7 +618,8 @@ def process_image(args):
         shutil.copy2(image, archive_image)
         log.debug("Copied {} to {}".format(image, archive_image))
     if camera[FIELDS["method"]] =="resize":
-        pass
+
+        resize_function(camera, image_date, image)
         # We have a method to resize everything. Lets do that then. 
 
     # TODO: BUG: this won't work if images aren't in chronological order. Which
@@ -716,9 +717,10 @@ def find_image_files(camera):
             for dir in dirs:
                 if dir.lower() not in IMAGE_SUBFOLDERS and \
                         not dir.startswith("_"):
-                    log.error("Source directory has too many subdirs.")
+                    if (camera[FIELDS["method"]]!="resize"):
+                        log.error("Source directory has too many subdirs.")
                     # TODO: Is raising here a good idea?
-                    raise ValueError("too many subdirs")
+                    # raise ValueError("too many subdirs")
             for fle in files:
                 this_ext = path.splitext(fle)[-1].lower().strip(".")
                 if this_ext == ext or ext == "raw" and this_ext in RAW_FORMATS:
