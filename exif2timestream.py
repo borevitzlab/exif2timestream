@@ -291,9 +291,9 @@ def resize_function(camera, image_date, dest):
             ts_structure = ts_structure[1:]
         direc, fname= path.split(ts_structure)
         ts_struct_middle = path.join(
-            direc, "Edited", (fname + "~" + str(new_res[0]) + 'x' + str(new_res[1]) + "-orig") )
+            direc, "Outputs", (fname + "~" + str(new_res[0]) + 'x' + str(new_res[1]) + "-orig") )
     else:
-        ts_struct_middle = path.join(camera[FIELDS["expt"]],"Edited", ts_name)
+        ts_struct_middle = path.join(camera[FIELDS["expt"]],"Outputs", ts_name)
    
     resized_img = os.path.join(
         camera[FIELDS["destination"]], 
@@ -522,6 +522,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
         ts_struct_middle = path.join(camera[FIELDS["expt"]], ts_name)
     out_image = path.join(
         camera[FIELDS["destination"]],
+        "original",
         ts_struct_middle,
         out_image
     )
