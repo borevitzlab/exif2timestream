@@ -34,7 +34,7 @@ TS_V2_FMT = ("%Y/%Y_%m/%Y_%m_%d/%Y_%m_%d_%H/"
              "{tsname:s}_%Y_%m_%d_%H_%M_%S_{n:02d}.{ext:s}")
 TS_DATE_FMT = "%Y_%m_%d_%H_%M_%S"
 TS_FMT = TS_V1_FMT
-TS_NAME_FMT = "{expt:s}-{loc:s}-C{cam:02d}~{res:s}-{step:s}"
+TS_NAME_FMT = "{expt:s}-{loc:s}-{cam:02d}~{res:s}-{step:s}"
 FULLRES_CONSTANTS = {"original", "orig", "fullres"}
 IMAGE_TYPE_CONSTANTS = {"raw", "jpg"}
 RAW_FORMATS = {"cr2", "nef", "tif", "tiff"}
