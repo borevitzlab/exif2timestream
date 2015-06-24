@@ -219,6 +219,10 @@ def validate_camera(camera):
                 x = x.replace(y.upper(), camera[FIELDS[y]])
         return x
 
+    def remove_underscores(x):
+        x = x.replace("_", "-")
+        return x
+
     class InList(object):
 
         def __init__(self, valid_values):
@@ -234,24 +238,24 @@ def validate_camera(camera):
     sch = Schema({
         Required(FIELDS["use"]): bool_str,
         Required(FIELDS["destination"]): path_exists,
-        Required(FIELDS["expt"]): str,
+        Required(FIELDS["expt"]): remove_underscores,
         Required(FIELDS["cam_num"]): num_str,
         Required(FIELDS["expt_end"]): date,
         Required(FIELDS["expt_start"]): date,
         Required(FIELDS["image_types"]): image_type_str,
         Required(FIELDS["interval"], default=1): num_str,
-        Required(FIELDS["location"]): str,
+        Required(FIELDS["location"]): remove_underscores,
         Required(FIELDS["archive_dest"]): path_exists,
         Required(FIELDS["method"], default="archive"):
             InList(["copy", "archive", "move", "resize"]),
         Required(FIELDS["source"]): path_exists,
         FIELDS["mode"]: InList(["batch", "watch"]),
         FIELDS["resolutions"]: resolution_str,
-        FIELDS["user"]: str,
+        FIELDS["user"]: remove_underscores,
         FIELDS["sunrise"]: int_time_hr_min,
         FIELDS["sunset"]: int_time_hr_min,
         FIELDS["timezone"]: int_time_hr_min,
-        FIELDS["project_owner"]: str,
+        FIELDS["project_owner"]: remove_underscores,
         FIELDS["ts_structure"]: parse_ts_structure,
         FIELDS["filename_date_mask"]: str,
     })
@@ -267,10 +271,12 @@ def validate_camera(camera):
 
 def resize_function(camera, image_date, dest):
     # Resize a single image, to its new location
-    if not (camera[FIELDS["resolutions"]][2][1]):
-        new_res = camera[FIELDS["resolutions"]][2][0], ((int(camera[FIELDS["resolutions"]][2][0])*int(camera[FIELDS["resolutions"]][1][1]))/int(camera[FIELDS["resolutions"]][1][0]))
+    if not (camera[FIELDS["resolutions"]][1][1]):
+        img = skimage.io.imread(dest).size
+        new_res = camera[FIELDS["resolutions"]][1][0], (img[1]*camera[Fields["resolutions"]][1][0])/img[0]
+        #camera[FIELDS["resolutions"]][2][0], ((int(camera[FIELDS["resolutions"]][2][0])*int(camera[FIELDS["resolutions"]][1][1]))/int(camera[FIELDS["resolutions"]][1][0]))
     else:
-        new_res = camera[FIELDS["resolutions"]][2]
+        new_res = camera[FIELDS["resolutions"]][1]
     ts_name = make_timestream_name(camera, res=new_res, step="orig")
     # We now have the timestream name correct
 
@@ -284,7 +290,7 @@ def resize_function(camera, image_date, dest):
             ts_structure = ts_structure[1:]
         direc, fname= path.split(ts_structure)
         ts_struct_middle = path.join(
-            direc, "Edited", (fname + "~" + str(new_res[0]) + 'x' + str(new_res[1]) + "~orig") )
+            direc, "Edited", (fname + "~" + str(new_res[0]) + 'x' + str(new_res[1]) + "-orig") )
     else:
         ts_struct_middle = path.join(camera[FIELDS["expt"]],"Edited", ts_name)
    
@@ -512,7 +518,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
         if (ts_structure[0] == '/'):
             ts_structure = ts_structure[1:]
         ts_struct_middle = path.join(
-            path.normpath(ts_structure + "~fullres~orig"))
+            path.normpath(ts_structure + "~fullres-orig"))
     else:
         ts_struct_middle = path.join(camera[FIELDS["expt"]], ts_name)
     out_image = path.join(
@@ -545,7 +551,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
 
     # If there are 3 arguments to image resizing (original, (originalx,
     # originaly), (newx, newy)) || (original, (originalx), (newx))
-    if (len(camera[FIELDS["resolutions"]])>2):
+    if (len(camera[FIELDS["resolutions"]])>1):
         resize_function(camera, image_date, dest)
    
 
@@ -863,7 +869,7 @@ def main(opts):
     print("\nProcessed a total of {0} images in {1:.2f} seconds".format(
           n_images, secs_taken))
     obj = open('camera.json', 'wb')
-    obj.write(json.dump(json_dump))
+    json.dump(json_dump, obj)
     obj.close
 
 
