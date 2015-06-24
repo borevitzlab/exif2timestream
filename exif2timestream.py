@@ -538,7 +538,6 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
         try:
             os.makedirs(out_dir)
         except OSError:
-            print ("Skipping the image here")
             log.warn("Could not make dir '{0:s}', skipping image '{1:s}'".format(
                 out_dir, image))
             raise SkipImage
@@ -597,6 +596,7 @@ def process_image(args):
     move/copy operations.
     """
     log = logging.getLogger("exif2timestream")
+    log.debuf("Starting to process image")
     (image, camera, ext) = args
     EXIF_DATE_MASK = camera[FIELDS["filename_date_mask"]]
     image_date = get_file_date(image, camera[FIELDS["interval"]] * 60)
@@ -887,7 +887,7 @@ def main(opts):
                 TS_DATE_FMT, camera[FIELDS["expt_start"]])),
                 height = str(new_res[1]),
                 access = str(0),
-                thumbnails = None
+                thumbnails = str(None)
                 )))
             print("Processed {: 5d} Images. Finished this cam!".format(count))
     secs_taken = time() - start_time
