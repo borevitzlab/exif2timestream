@@ -523,7 +523,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
 
     direc, fname= path.split(ts_structure_middle)
     ts_struct_middle = path.join(
-        direc, "original", (fname) )
+        direc, "original", (fname + "~fullres-orig") )
     out_image = path.join(
         camera[FIELDS["destination"]],
         ts_struct_middle,
