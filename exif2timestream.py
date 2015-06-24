@@ -1,10 +1,8 @@
 
 from __future__ import print_function
-from csv import reader, DictReader
-import os
+`import os
 from os import path
-import shutil
-from sys import exit
+`from sys import exit
 from time import strptime, strftime, mktime, localtime, struct_time, time
 from voluptuous import Required, Schema, MultipleInvalid
 from itertools import cycle
@@ -291,7 +289,7 @@ def resize_function(camera, image_date, dest):
             ts_structure = ts_structure[1:]
         direc, fname= path.split(ts_structure)
         ts_struct_middle = path.join(
-            direc, "outputs", (fname + "~" + str(new_res[0]) + 'x' + str(new_res[1]) + "-orig") )
+            direc, "outputs", (fname + "~" + str(new_res[0]) "-orig") )
     else:
         ts_struct_middle = path.join(camera[FIELDS["expt"]],"outputs", ts_name)
    
