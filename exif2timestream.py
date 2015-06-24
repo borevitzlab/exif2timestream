@@ -274,7 +274,7 @@ def resize_function(camera, image_date, dest):
 # Resize a single image, to its new location
     if (camera[FIELDS["resolutions"]][1][1] is None):
         img = skimage.io.imread(dest).shape
-	new_res = camera[FIELDS["resolutions"]][1][0], (img[1]*camera[FIELDS["resolutions"]][1][0])/img[0]
+	    new_res = (img[1]*camera[FIELDS["resolutions"]][1][0])/img[0], camera[FIELDS["resolutions"]][1][0]
         #camera[FIELDS["resolutions"]][2][0], ((int(camera[FIELDS["resolutions"]][2][0])*int(camera[FIELDS["resolutions"]][1][1]))/int(camera[FIELDS["resolutions"]][1][0]))
     else:
 	print (len(camera[FIELDS["resolutions"]][1]))
