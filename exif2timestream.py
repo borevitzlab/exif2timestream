@@ -870,7 +870,7 @@ def main(opts):
             else:
                 webrootaddr = None
             json_dump.append((dict(
-                name= (str(camera[FIELDS["expt"]] + (camera[FIELDS["location"]]))),
+                name= str(camera[FIELDS["expt"]] + (camera[FIELDS["location"]])),
                 utc = "false",
                 width_hires = str(image_resolution[0]),
                 ts_version = str(1.0),
