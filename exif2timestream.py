@@ -1,8 +1,8 @@
 
 from __future__ import print_function
-`import os
+import os
 from os import path
-`from sys import exit
+from sys import exit
 from time import strptime, strftime, mktime, localtime, struct_time, time
 from voluptuous import Required, Schema, MultipleInvalid
 from itertools import cycle
