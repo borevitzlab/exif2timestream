@@ -849,7 +849,7 @@ def main(opts):
 
                 # JSON STUFF FOR GARETH
             if len(camera[FIELDS["resolutions"]])>1:
-                if (len(camera[FIELDS["resolutions"]][1]>1)):
+                if (len(camera[FIELDS["resolutions"]][1])>1):
                     new_res = camera[FIELDS["resolutions"]][1]
                 else:
                     new_res = camera[FIELDS["resolutions"]][1][0], (image_resolution[1]*camera[Fields["resolutions"]][1][0])/image_resolution[0]
