@@ -1,3 +1,4 @@
+
 from __future__ import print_function
 from csv import reader, DictReader
 import os
@@ -269,14 +270,16 @@ def validate_camera(camera):
         return None
 
 
-def resize_function(camera, image_date, dest):
-    # Resize a single image, to its new location
-    if not (camera[FIELDS["resolutions"]][1][1]):
-        img = skimage.io.imread(dest).size
-        new_res = camera[FIELDS["resolutions"]][1][0], (img[1]*camera[Fields["resolutions"]][1][0])/img[0]
+def resize_function(camera, image_date, dest):    
+# Resize a single image, to its new location
+    if (camera[FIELDS["resolutions"]][1][1] is None):
+        img = skimage.io.imread(dest).shape
+	new_res = camera[FIELDS["resolutions"]][1][0], (img[1]*camera[FIELDS["resolutions"]][1][0])/img[0]
         #camera[FIELDS["resolutions"]][2][0], ((int(camera[FIELDS["resolutions"]][2][0])*int(camera[FIELDS["resolutions"]][1][1]))/int(camera[FIELDS["resolutions"]][1][0]))
     else:
+	print (len(camera[FIELDS["resolutions"]][1]))
         new_res = camera[FIELDS["resolutions"]][1]
+	print (new_res)
     ts_name = make_timestream_name(camera, res=new_res, step="orig")
     # We now have the timestream name correct
 
@@ -494,8 +497,6 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
     global EXIF_DATE_MASK
     EXIF_DATE_MASK = camera[FIELDS["filename_date_mask"]]
     image_date = get_file_date(image, camera[FIELDS["interval"]] * 60)
-    # Resize the Image
-    # resize(image, 1000)
     if not image_date:
         log.warn("Couldn't get date for image {}".format(image))
         raise SkipImage
@@ -529,23 +530,25 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
     # make the target directory
     out_dir = path.dirname(out_image)
     # Just incase we need to do some image resizing below
-
     if not path.exists(out_dir):
         # makedirs is like `mkdir -p`, creates parents, but raises
         # OSError if target already exits
         try:
             os.makedirs(out_dir)
         except OSError:
+            print ("Skipping the image here")
             log.warn("Could not make dir '{0:s}', skipping image '{1:s}'".format(
                 out_dir, image))
             raise SkipImage
     # And do the copy
     dest = _dont_clobber(out_image, mode=SkipImage)
     try:
-        shutil.copy(image, dest)
+    	shutil.copy(image, dest)
         log.info("Copied '{0:s}' to '{1:s}".format(image, dest))
+    except OSError as o:
+	pass
     except Exception as e:
-        log.warn("Could copy '{0:s}' to '{1:s}', skipping image".format(
+        log.warn("Couldnt copy '{0:s}' to '{1:s}', skipping image".format(
             image, dest))
         raise SkipImage
 
