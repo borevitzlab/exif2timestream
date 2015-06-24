@@ -247,7 +247,7 @@ def validate_camera(camera):
         Required(FIELDS["location"]): remove_underscores,
         Required(FIELDS["archive_dest"]): path_exists,
         Required(FIELDS["method"], default="archive"):
-            InList(["copy", "archive", "move", "resize"]),
+            InList(["copy", "archive", "move", "resize", "json"]),
         Required(FIELDS["source"]): path_exists,
         FIELDS["mode"]: InList(["batch", "watch"]),
         FIELDS["resolutions"]: resolution_str,
@@ -627,6 +627,8 @@ def process_image(args):
     if camera[FIELDS["method"]] =="resize":
 
         resize_function(camera, image_date, image)
+    if camera[FIELDS["method"]] == "json":
+        return
         # We have a method to resize everything. Lets do that then. 
 
     # TODO: BUG: this won't work if images aren't in chronological order. Which
@@ -724,7 +726,7 @@ def find_image_files(camera):
             for dir in dirs:
                 if dir.lower() not in IMAGE_SUBFOLDERS and \
                         not dir.startswith("_"):
-                    if (camera[FIELDS["method"]]!="resize"):
+                    if ((camera[FIELDS["method"]]!="resize")and(camera[FIELDS["method"]]!="json")):
                         log.error("Source directory has too many subdirs.")
                     # TODO: Is raising here a good idea?
                     # raise ValueError("too many subdirs")
@@ -792,30 +794,7 @@ def main(opts):
     n_images = 0
     json_dump = []    
     for camera in cameras:
-        if len(camera[FIELDS["resolutions"]])>2:
-            new_res = camera[FIELDS["resolutions"]][2]
-        else:
-            new_res = camera[FIELDS["resolutions"]][1]
-        json_dump.append(json.dumps(dict(
-            Name=camera[FIELDS["expt"]],
-            Utc = False,
-            width_hires = camera[FIELDS["resolutions"]][1][0],
-            ts_version = 1.0,
-            ts_end = strftime(
-            TS_DATE_FMT, camera[FIELDS["expt_end"]]),
-            image_type = camera[FIELDS["image_types"]][0],
-            height_hires = camera[FIELDS["resolutions"]][1][1],
-            expt = camera[FIELDS["expt"]],
-            width = new_res[0],
-            webroot = "HELP?",
-            period_in_minutes = camera[FIELDS["interval"]],
-            timezone= camera[FIELDS["timezone"]][0],
-            ts_start = strftime(
-            TS_DATE_FMT, camera[FIELDS["expt_start"]]),
-            height = new_res[1],
-            access = 0,
-            thumbnail_link = "Help?"
-            )))
+        
         msg = "Processing experiment {}, location {}\n".format(
             camera[FIELDS["expt"]],
             camera[FIELDS["location"]],
@@ -826,8 +805,11 @@ def main(opts):
         )
         print(msg)
         log.info(msg)
+        image_resolution = (0,0)
         for ext, images in find_image_files(camera).iteritems():
             images = sorted(images)
+            if(image_resolution[0] == 0):
+                image_resolution = skimage.novice.open(images[0]).size
             n_cam_images = len(images)
             print("{0} {1} images from this camera".format(n_cam_images, ext))
             log.info("Have {0} {1} images from this camera".format(
@@ -864,6 +846,36 @@ def main(opts):
                     print("Processed {: 5d} Images".format(count), end='\r')
                 pool.close()
                 pool.join()
+
+                # JSON STUFF FOR GARETH
+            if len(camera[FIELDS["resolutions"]])>1:
+                new_res = camera[FIELDS["resolutions"]][1]
+            else:
+                new_res = image_resolution
+            if "a_data" in camera[FIELDS["destination"]]:
+                webrootaddr = "http://phenocam.anu.edu.au/cloud/a_data" + camera[FIELDS["destination"]].split("a_data")[1]
+            else:
+                webrootaddr = None
+            json_dump.append(json.dumps(dict(
+                Name=camera[FIELDS["expt"]],
+                Utc = False,
+                width_hires = image_resolution[0],
+                ts_version = 1.0,
+                ts_end = strftime(
+                TS_DATE_FMT, camera[FIELDS["expt_end"]]),
+                image_type = camera[FIELDS["image_types"]][0],
+                height_hires = image_resolution[1],
+                expt = camera[FIELDS["expt"]],
+                width = new_res[0],
+                webroot = webrootaddr,
+                period_in_minutes = camera[FIELDS["interval"]],
+                timezone= camera[FIELDS["timezone"]][0],
+                ts_start = strftime(
+                TS_DATE_FMT, camera[FIELDS["expt_start"]]),
+                height = new_res[1],
+                access = 0,
+                thumbnail_link = "Help?"
+                )))
             print("Processed {: 5d} Images. Finished this cam!".format(count))
     secs_taken = time() - start_time
     print("\nProcessed a total of {0} images in {1:.2f} seconds".format(
