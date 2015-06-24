@@ -860,30 +860,30 @@ def main(opts):
                 new_res = image_resolution
             if "a_data" in camera[FIELDS["destination"]]:
                 if (camera[FIELDS["ts_structure"]]):
-                    webrootaddr = "http://phenocam.anu.edu.au/cloud/data" +  '/' + camera[FIELDS["destination"]].split("a_data")[1] + camera[FIELDS["ts_structure"]] + '/'
+                    webrootaddr = "http://phenocam.anu.edu.au/cloud/data"  + camera[FIELDS["destination"]].split("a_data")[1] + camera[FIELDS["ts_structure"]] + '/'
                 else: 
-                    webrootaddr = "http://phenocam.anu.edu.au/cloud/data" +  '/' + camera[FIELDS["destination"]].split("a_data")[1] +camera[FIELDS["location"]] + '/'
+                    webrootaddr = "http://phenocam.anu.edu.au/cloud/data"  + camera[FIELDS["destination"]].split("a_data")[1] +camera[FIELDS["location"]] + '/'
             else:
                 webrootaddr = None
             json_dump.append((dict(
-                name=camera[FIELDS["expt"]],
-                utc = False,
-                width_hires = image_resolution[0],
-                ts_version = 1.0,
-                ts_end = strftime(
-                TS_DATE_FMT, camera[FIELDS["expt_end"]]),
-                image_type = camera[FIELDS["image_types"]][0],
-                height_hires = image_resolution[1],
-                expt = camera[FIELDS["expt"]],
-                width = new_res[0],
-                webroot = webrootaddr,
-                period_in_minutes = camera[FIELDS["interval"]],
-                timezone= camera[FIELDS["timezone"]][0],
-                ts_start = strftime(
-                TS_DATE_FMT, camera[FIELDS["expt_start"]]),
-                height = new_res[1],
-                access = 0,
-                thumbnail_link = "Help?"
+                name= str(camera[FIELDS["expt"]]),
+                utc = "false",
+                width_hires = str(image_resolution[0]),
+                ts_version = str(1.0),
+                ts_end = str(strftime(
+                TS_DATE_FMT, camera[FIELDS["expt_end"]])),
+                image_type = str([FIELDS["image_types"]][0]),
+                height_hires = str(image_resolution[1]),
+                expt = str(camera[FIELDS["expt"]]),
+                width = str(new_res[0]),
+                webroot = str(webrootaddr),
+                period_in_minutes = str(camera[FIELDS["interval"]]),
+                timezone= str(camera[FIELDS["timezone"]][0]),
+                ts_start = str(strftime(
+                TS_DATE_FMT, camera[FIELDS["expt_start"]])),
+                height = str(new_res[1]),
+                access = str(0),
+                thumbnails = None
                 )))
             print("Processed {: 5d} Images. Finished this cam!".format(count))
     secs_taken = time() - start_time
