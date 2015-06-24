@@ -289,7 +289,7 @@ def resize_function(camera, image_date, dest):
             ts_structure = ts_structure[1:]
         direc, fname= path.split(ts_structure)
         ts_struct_middle = path.join(
-            direc, "outputs", (fname + "~" + str(new_res[0]) "-orig") )
+            direc, "outputs", (fname + "~" + str(new_res[0]) + "-orig") )
     else:
         ts_struct_middle = path.join(camera[FIELDS["expt"]],"outputs", ts_name)
    
