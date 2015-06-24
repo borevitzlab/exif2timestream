@@ -278,7 +278,7 @@ def resize_function(camera, image_date, dest):
         #camera[FIELDS["resolutions"]][2][0], ((int(camera[FIELDS["resolutions"]][2][0])*int(camera[FIELDS["resolutions"]][1][1]))/int(camera[FIELDS["resolutions"]][1][0]))
     else:
         new_res = camera[FIELDS["resolutions"]][1]
-    ts_name = make_timestream_name(camera, res=new_res, step="orig")
+    ts_name = make_timestream_name(camera, res=new_res[0], step="orig")
     # We now have the timestream name correct
 
     resizing_temp_outname = get_new_file_name(
