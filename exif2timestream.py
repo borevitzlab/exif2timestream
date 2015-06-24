@@ -547,7 +547,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
     	shutil.copy(image, dest)
         log.info("Copied '{0:s}' to '{1:s}".format(image, dest))
     except OSError as o:
-	    raise SkipImage
+	    raise SkipImage 
     except Exception as e:
         log.warn("Couldnt copy '{0:s}' to '{1:s}', skipping image".format(
             image, dest))
