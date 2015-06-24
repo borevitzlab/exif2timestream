@@ -859,12 +859,15 @@ def main(opts):
             else:
                 new_res = image_resolution
             if "a_data" in camera[FIELDS["destination"]]:
-                webrootaddr = "http://phenocam.anu.edu.au/cloud/a_data" + camera[FIELDS["destination"]].split("a_data")[1]
+                if (camera[FIELDS["ts_structure"]]):
+                    webrootaddr = "http://phenocam.anu.edu.au/cloud/data" +  '/' + camera[FIELDS["destination"]].split("a_data")[1] + camera[FIELDS["ts_structure"]] + '/'
+                else: 
+                    webrootaddr = "http://phenocam.anu.edu.au/cloud/data" +  '/' + camera[FIELDS["destination"]].split("a_data")[1] +camera[FIELDS["location"]] + '/'
             else:
                 webrootaddr = None
-            json_dump.append(json.dumps(dict(
-                Name=camera[FIELDS["expt"]],
-                Utc = False,
+            json_dump.append((dict(
+                name=camera[FIELDS["expt"]],
+                utc = False,
                 width_hires = image_resolution[0],
                 ts_version = 1.0,
                 ts_end = strftime(
