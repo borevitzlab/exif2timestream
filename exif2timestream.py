@@ -521,7 +521,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
     else:
         ts_struct_middle = path.join(camera[FIELDS["expt"]], ts_name)
 
-    direc, fname= path.split(ts_structure)
+    direc, fname= path.split(ts_structure_middle)
     ts_struct_middle = path.join(
         direc, "original", (fname) )
     out_image = path.join(
