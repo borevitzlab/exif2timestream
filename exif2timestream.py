@@ -547,7 +547,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
     	shutil.copy(image, dest)
         log.info("Copied '{0:s}' to '{1:s}".format(image, dest))
     except OSError as o:
-	pass
+	    raise SkipImage
     except Exception as e:
         log.warn("Couldnt copy '{0:s}' to '{1:s}', skipping image".format(
             image, dest))
@@ -596,7 +596,7 @@ def process_image(args):
     move/copy operations.
     """
     log = logging.getLogger("exif2timestream")
-    log.debuf("Starting to process image")
+    log.debug("Starting to process image")
     (image, camera, ext) = args
     EXIF_DATE_MASK = camera[FIELDS["filename_date_mask"]]
     image_date = get_file_date(image, camera[FIELDS["interval"]] * 60)
