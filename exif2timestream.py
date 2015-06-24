@@ -2,6 +2,8 @@
 from __future__ import print_function
 import os
 from os import path
+from csv import reader, DictReader
+import shutil
 from sys import exit
 from time import strptime, strftime, mktime, localtime, struct_time, time
 from voluptuous import Required, Schema, MultipleInvalid
@@ -688,7 +690,7 @@ def localise_cam_config(camera):
 
 def parse_camera_config_csv(filename):
     """
-    Parse a camera configuration CSV.
+    Parse a camera configuration 
     It yields localised, validated camera dicts
     """
     fh = open(filename)
