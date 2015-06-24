@@ -516,13 +516,12 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
         ts_structure = camera[FIELDS["ts_structure"]]
         if (ts_structure[0] == '/'):
             ts_structure = ts_structure[1:]
-        ts_struct_middle = path.join(
+        ts_struct_middle = path.join("original", 
             path.normpath(ts_structure + "~fullres-orig"))
     else:
         ts_struct_middle = path.join(camera[FIELDS["expt"]], ts_name)
     out_image = path.join(
         camera[FIELDS["destination"]],
-        "original",
         ts_struct_middle,
         out_image
     )
