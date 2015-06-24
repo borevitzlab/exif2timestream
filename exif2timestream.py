@@ -274,13 +274,11 @@ def resize_function(camera, image_date, dest):
 # Resize a single image, to its new location
     if (camera[FIELDS["resolutions"]][1][1] is None):
         img = skimage.io.imread(dest).shape
-	    new_res = camera[FIELDS["resolutions"]][1][0], (img[1]*camera[FIELDS["resolutions"]][1][0])/img[0]
-        print (new_res)
+	    new_res = camera[FIELDS["resolutions"]][1][0], (img[0]*camera[FIELDS["resolutions"]][1][0])/img[1]
         #camera[FIELDS["resolutions"]][2][0], ((int(camera[FIELDS["resolutions"]][2][0])*int(camera[FIELDS["resolutions"]][1][1]))/int(camera[FIELDS["resolutions"]][1][0]))
     else:
 	print (len(camera[FIELDS["resolutions"]][1]))
         new_res = camera[FIELDS["resolutions"]][1]
-	print (new_res)
     ts_name = make_timestream_name(camera, res=new_res, step="orig")
     # We now have the timestream name correct
 
@@ -852,11 +850,13 @@ def main(opts):
                 pool.join()
 
                 # JSON STUFF FOR GARETH
+
             if len(camera[FIELDS["resolutions"]])>1:
-                if (len(camera[FIELDS["resolutions"]][1])>1):
-                    new_res = camera[FIELDS["resolutions"]][1]
+                if (camera[FIELDS["resolutions"]][1][1] is None):
+                    new_res = camera[FIELDS["resolutions"]][1][0], (image_resolution[0]*camera[FIELDS["resolutions"]][1][0])/image_resolution[1]
+                    #camera[FIELDS["resolutions"]][2][0], ((int(camera[FIELDS["resolutions"]][2][0])*int(camera[FIELDS["resolutions"]][1][1]))/int(camera[FIELDS["resolutions"]][1][0]))
                 else:
-                    new_res = camera[FIELDS["resolutions"]][1][0], (image_resolution[1]*camera[Fields["resolutions"]][1][0])/image_resolution[0]
+                    new_res = camera[FIELDS["resolutions"]][1]
             else:
                 new_res = image_resolution
             if "a_data" in camera[FIELDS["destination"]]:
