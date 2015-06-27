@@ -214,9 +214,8 @@ def validate_camera(camera):
 
     def parse_ts_structure(x):
         if len(x) is 0:
-            return None
+            return (path.join(camera[FIELDS["expt"]], camera[FIELDS["location"]]))
         else:
-            print ("Aparently its not none")
             for y in FIELDS:
                 x = x.replace(y.upper(), camera[FIELDS[y]])
             if (x[0] == '/'):
@@ -313,7 +312,7 @@ def resize_function(camera, image_date, dest):
         resizing_temp_outname)
 
     if path.isfile(resized_img):
-        raise SkipImage
+        return
     log.debug("Full resized filename which we will output to is '{0:s}'".format(resized_img))
     resized_img_path = path.dirname(resized_img)
     log.debug("Now checking if image path already exists, if it does, skipping")
@@ -524,17 +523,11 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
     # If we have set a value for the ts_structure value
 
     if (camera[FIELDS["ts_structure"]]):
-        # Then lets set that as the output file name
         ts_structure = camera[FIELDS["ts_structure"]]
-        if (ts_structure[0] == '/'):
-            ts_structure = ts_structure[1:]
-        ts_struct_middle = path.join("original",
-                                     path.normpath(ts_structure + "~fullres-orig"))
-    else:
-        ts_struct_middle = path.join(camera[FIELDS["expt"]], ts_name)
-    direc, fname = path.split(ts_struct_middle)
-    ts_struct_middle = path.join(
-        direc, "original", (fname + "~fullres-orig"))
+        direc, fname = path.split(ts_structure)
+        # Split up the file path, and its last Directory name (So we can put in the dimensions and orig)
+        ts_struct_middle = path.join(
+            direc, "original", (fname + "~fullres-orig"))
     out_image = path.join(
         camera[FIELDS["destination"]],
         ts_struct_middle,
@@ -558,8 +551,6 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
     if (len(camera[FIELDS["resolutions"]]) > 1):
         log.info("Going to resize image '{0:s}'".format(image))
         resize_function(camera, image_date, image)
-
-    print("failed to resize")
     try:
         shutil.copy(image, dest)
         log.info("Copied '{0:s}' to '{1:s}".format(image, dest))
