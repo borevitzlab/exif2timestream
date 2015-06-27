@@ -36,7 +36,7 @@ TS_V2_FMT = ("%Y/%Y_%m/%Y_%m_%d/%Y_%m_%d_%H/"
              "{tsname:s}_%Y_%m_%d_%H_%M_%S_{n:02d}.{ext:s}")
 TS_DATE_FMT = "%Y_%m_%d_%H_%M_%S"
 TS_FMT = TS_V1_FMT
-TS_NAME_FMT = "{expt:s}-{loc:s}-C{cam:02d}~{res:s}-{step:s}"
+TS_NAME_FMT = "{expt:s}-{loc:s}-{cam:02d}~{res:s}-{step:s}"
 FULLRES_CONSTANTS = {"original", "orig", "fullres"}
 IMAGE_TYPE_CONSTANTS = {"raw", "jpg"}
 RAW_FORMATS = {"cr2", "nef", "tif", "tiff"}
@@ -272,18 +272,21 @@ def validate_camera(camera):
 
 def resize_function(camera, image_date, dest):    
 # Resize a single image, to its new location
+    print ("Checking one dimension or two")
     if (camera[FIELDS["resolutions"]][1][1] is None):
         img = skimage.io.imread(dest).shape
         new_res = camera[FIELDS["resolutions"]][1][0], (img[0]*camera[FIELDS["resolutions"]][1][0])/img[1]
         #camera[FIELDS["resolutions"]][2][0], ((int(camera[FIELDS["resolutions"]][2][0])*int(camera[FIELDS["resolutions"]][1][1]))/int(camera[FIELDS["resolutions"]][1][0]))
     else:
         new_res = camera[FIELDS["resolutions"]][1]
+    print ("Getting ts name?")
     ts_name = make_timestream_name(camera, res=new_res[0], step="orig")
+    print ("Really?")
     # We now have the timestream name correct
 
     resizing_temp_outname = get_new_file_name(
         image_date, ts_name)
-
+    print ("this ts_struct stuff man...")
     if (camera[FIELDS["ts_structure"]]):
         # Then lets set that as the output file name
         ts_structure = camera[FIELDS["ts_structure"]]
@@ -301,6 +304,7 @@ def resize_function(camera, image_date, dest):
         resizing_temp_outname)
 
     resized_img_path = path.dirname(resized_img)
+    print ("Checking if image already exists")
     if not path.exists(resized_img_path):
         try:
             os.makedirs(resized_img_path)
@@ -308,6 +312,7 @@ def resize_function(camera, image_date, dest):
             log.warn("Could not make dir '{0:s}', skipping image '{1:s}'".format(
                 resized_img_path, image))   
             raise SkipImage
+    print ("Now resizing image")
     resize_img(dest, resized_img, new_res[0], new_res[1])
 
 
@@ -483,7 +488,7 @@ def make_timestream_name(camera, res="fullres", step="orig"):
         expt=camera[FIELDS["expt"]],
         loc=camera[FIELDS["location"]],
         cam=camera[FIELDS["cam_num"]],
-        res=res,
+        res=str(res),
         step=step
     )
 
@@ -510,6 +515,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
     # Store this value incase we need it for resizing
 
     # If we have set a value for the ts_structure value
+    print ("Timestreaming that")
 
     if (camera[FIELDS["ts_structure"]]):
         # Then lets set that as the output file name
@@ -520,8 +526,8 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
             path.normpath(ts_structure + "~fullres-orig"))
     else:
         ts_struct_middle = path.join(camera[FIELDS["expt"]], ts_name)
-
-    direc, fname= path.split(ts_structure)
+    print ("But getting here?")
+    direc, fname= path.split(ts_struct_middle)
     ts_struct_middle = path.join(
         direc, "original", (fname + "~fullres-orig") )
     out_image = path.join(
@@ -529,6 +535,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
         ts_struct_middle,
         out_image
     )
+    print ("Failing that")
     # make the target directory
     out_dir = path.dirname(out_image)
     # Just incase we need to do some image resizing below
@@ -543,11 +550,15 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
             raise SkipImage
     # And do the copy
     dest = _dont_clobber(out_image, mode=SkipImage)
+    print ("About to resize")
+    if (len(camera[FIELDS["resolutions"]])>1):
+        log.info("Going to resize image '{0:s}'".format(image))
+        resize_function(camera, image_date, image)
+
+    print ("failed to resize")
     try:
-    	shutil.copy(image, dest)
+        shutil.copy(image, dest)
         log.info("Copied '{0:s}' to '{1:s}".format(image, dest))
-    except OSError as o:
-	    raise SkipImage 
     except Exception as e:
         log.warn("Couldnt copy '{0:s}' to '{1:s}', skipping image".format(
             image, dest))
@@ -555,8 +566,6 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
 
     # If there are 3 arguments to image resizing (original, (originalx,
     # originaly), (newx, newy)) || (original, (originalx), (newx))
-    if (len(camera[FIELDS["resolutions"]])>1):
-        resize_function(camera, image_date, dest)
    
 
 
