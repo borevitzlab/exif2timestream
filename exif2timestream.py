@@ -213,12 +213,15 @@ def validate_camera(camera):
         return types
 
     def parse_ts_structure(x):
-        if x is None:
+        if len(x) is 0:
             return None
         else:
+            print ("Aparently its not none")
             for y in FIELDS:
                 x = x.replace(y.upper(), camera[FIELDS[y]])
-        return x
+            if (x[0] == '/'):
+                x = x[1:]
+            return x
 
     def remove_underscores(x):
         x = x.replace("_", "-")
@@ -270,70 +273,72 @@ def validate_camera(camera):
         return None
 
 
-def resize_function(camera, image_date, dest):    
-# Resize a single image, to its new location
-    print ("Checking one dimension or two")
+# Function for performing a resize on an image. 
+def resize_function(camera, image_date, dest):
+    log = logging.getLogger("exif2timestream")
+    # Resize a single image, to its new location
+    log.debug(
+        "Now checking if we have 1 or two resolution arguments on image '{0:s}'".format(dest))
     if (camera[FIELDS["resolutions"]][1][1] is None):
+        # Read in image dimensions
         img = skimage.io.imread(dest).shape
-        new_res = camera[FIELDS["resolutions"]][1][0], (img[0]*camera[FIELDS["resolutions"]][1][0])/img[1]
-        #camera[FIELDS["resolutions"]][2][0], ((int(camera[FIELDS["resolutions"]][2][0])*int(camera[FIELDS["resolutions"]][1][1]))/int(camera[FIELDS["resolutions"]][1][0]))
+        # Calculate the new image dimensions from the old one
+        new_res = camera[FIELDS["resolutions"]][1][
+            0], (img[0] * camera[FIELDS["resolutions"]][1][0]) / img[1]
+        log.debug("One resolution arguments, '{0:d}'".format(new_res[0]))
     else:
         new_res = camera[FIELDS["resolutions"]][1]
-    print ("Getting ts name?")
+        log.debug(
+            "Two resolution arguments, '{0:d}' x '{0:d}'".format(new_res[0], new_res[1]))
+    log.debug("Now getting Timestream name")
+    # Get the timestream name to save the image as
     ts_name = make_timestream_name(camera, res=new_res[0], step="orig")
-    print ("Really?")
-    # We now have the timestream name correct
-
+    # Get the full output file name from the ts_name and the image date
     resizing_temp_outname = get_new_file_name(
         image_date, ts_name)
-    print ("this ts_struct stuff man...")
+    # Based on the value of ts_structure, combine to form a full image path
     if (camera[FIELDS["ts_structure"]]):
-        # Then lets set that as the output file name
         ts_structure = camera[FIELDS["ts_structure"]]
-        if (ts_structure[0] == '/'):
-            ts_structure = ts_structure[1:]
-        direc, fname= path.split(ts_structure)
+        direc, fname = path.split(ts_structure)
+        # Split up the file path, and its last Directory name (So we can put in the dimensions and orig)
         ts_struct_middle = path.join(
-            direc, "outputs", (fname + "~" + str(new_res[0]) +"-orig") )
+            direc, "outputs", (fname + "~" + str(new_res[0]) + "-orig"))
     else:
-        ts_struct_middle = path.join(camera[FIELDS["expt"]],"outputs", ts_name)
-   
+        # If we dont have a value of ts_structure, lets do our default thing
+        ts_struct_middle = path.join(
+            camera[FIELDS["expt"]], "outputs", ts_name)
     resized_img = os.path.join(
-        camera[FIELDS["destination"]], 
-        ts_struct_middle, 
+        camera[FIELDS["destination"]],
+        ts_struct_middle,
         resizing_temp_outname)
 
+    if path.isfile(resized_img):
+        raise SkipImage
+    log.debug("Full resized filename which we will output to is '{0:s}'".format(resized_img))
     resized_img_path = path.dirname(resized_img)
-    print ("Checking if image already exists")
+    log.debug("Now checking if image path already exists, if it does, skipping")
     if not path.exists(resized_img_path):
         try:
             os.makedirs(resized_img_path)
         except OSError:
             log.warn("Could not make dir '{0:s}', skipping image '{1:s}'".format(
-                resized_img_path, image))   
+                resized_img_path, image))
             raise SkipImage
-    print ("Now resizing image")
+    log.debug("Now actually resizing image to '{0:s}'".format(dest))
     resize_img(dest, resized_img, new_res[0], new_res[1])
 
-
-def resize_img(filename, destination, to_width, to_height=0):
+# Function which only performs the actual resize. 
+def resize_img(filename, destination, to_width, to_height):
+    log = logging.getLogger("exif2timestream")
     # Open the Image and get its width
-    if not(SKIMAGE):
-        warnings.warn(
-            "Skimage Not Installed, Unable to Test Resize", ImportWarning)
-        return None
-
     img = skimage.io.imread(filename)
-    if (to_height == 0):
-        w = skimage.novice.open(filename).width
-        scale = float(to_width) / w
-        # Rescale the image
-        img = skimage.transform.rescale(img, scale)
-    else:
-        img = skimage.transform.resize(img, (to_height, to_width))
+    # Resize the image
+    log.debug("Now resizing the image")
+    img = skimage.transform.resize(img, (to_height, to_width))
     # read in old exxif data
     exif_source = pexif.JpegFile.fromFile(filename)
     # Save image
+    log.debug("Saving Image")
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         skimage.io.imsave(destination, img)
@@ -345,7 +350,9 @@ def resize_img(filename, destination, to_width, to_height=0):
         exif_dest.exif.primary.Orientation = \
             exif_source.exif.primary.Orientation
         exif_dest.writeFile(destination)
+        log.debug("Successfully copied exif data also")
     except AttributeError:
+        log.debug("Unable to copy over some exif data")
         pass
 
 
@@ -515,27 +522,24 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
     # Store this value incase we need it for resizing
 
     # If we have set a value for the ts_structure value
-    print ("Timestreaming that")
 
     if (camera[FIELDS["ts_structure"]]):
         # Then lets set that as the output file name
         ts_structure = camera[FIELDS["ts_structure"]]
         if (ts_structure[0] == '/'):
             ts_structure = ts_structure[1:]
-        ts_struct_middle = path.join("original", 
-            path.normpath(ts_structure + "~fullres-orig"))
+        ts_struct_middle = path.join("original",
+                                     path.normpath(ts_structure + "~fullres-orig"))
     else:
         ts_struct_middle = path.join(camera[FIELDS["expt"]], ts_name)
-    print ("But getting here?")
-    direc, fname= path.split(ts_struct_middle)
+    direc, fname = path.split(ts_struct_middle)
     ts_struct_middle = path.join(
-        direc, "original", (fname + "~fullres-orig") )
+        direc, "original", (fname + "~fullres-orig"))
     out_image = path.join(
         camera[FIELDS["destination"]],
         ts_struct_middle,
         out_image
     )
-    print ("Failing that")
     # make the target directory
     out_dir = path.dirname(out_image)
     # Just incase we need to do some image resizing below
@@ -550,12 +554,12 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
             raise SkipImage
     # And do the copy
     dest = _dont_clobber(out_image, mode=SkipImage)
-    print ("About to resize")
-    if (len(camera[FIELDS["resolutions"]])>1):
+
+    if (len(camera[FIELDS["resolutions"]]) > 1):
         log.info("Going to resize image '{0:s}'".format(image))
         resize_function(camera, image_date, image)
 
-    print ("failed to resize")
+    print("failed to resize")
     try:
         shutil.copy(image, dest)
         log.info("Copied '{0:s}' to '{1:s}".format(image, dest))
@@ -563,11 +567,6 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
         log.warn("Couldnt copy '{0:s}' to '{1:s}', skipping image".format(
             image, dest))
         raise SkipImage
-
-    # If there are 3 arguments to image resizing (original, (originalx,
-    # originaly), (newx, newy)) || (original, (originalx), (newx))
-   
-
 
 def _dont_clobber(fn, mode="append"):
     """Ensure we don't overwrite things, using a variety of methods"""
@@ -637,13 +636,13 @@ def process_image(args):
             log.debug("Made archive dir {}".format(archive_dir))
         archive_image = _dont_clobber(archive_image)
         shutil.copy2(image, archive_image)
-        log.debug("Copied {} to {}".format(image, archive_image))
-    if camera[FIELDS["method"]] =="resize":
-
+        log.debug("Copied {} to {}".format(image, archive_image))    
+    if camera[FIELDS["method"]] == "resize":
         resize_function(camera, image_date, image)
+        log.debug("Rezied Image {}".format(image))
     if camera[FIELDS["method"]] == "json":
         return
-        # We have a method to resize everything. Lets do that then. 
+        # We have a method to resize everything. Lets do that then.
 
     # TODO: BUG: this won't work if images aren't in chronological order. Which
     # they never will be.
@@ -740,7 +739,7 @@ def find_image_files(camera):
             for dir in dirs:
                 if dir.lower() not in IMAGE_SUBFOLDERS and \
                         not dir.startswith("_"):
-                    if ((camera[FIELDS["method"]]!="resize")and(camera[FIELDS["method"]]!="json")):
+                    if ((camera[FIELDS["method"]] != "resize")and(camera[FIELDS["method"]] != "json")):
                         log.error("Source directory has too many subdirs.")
                     # TODO: Is raising here a good idea?
                     # raise ValueError("too many subdirs")
@@ -806,9 +805,9 @@ def main(opts):
     start_time = time()
     cameras = parse_camera_config_csv(opts["-c"])
     n_images = 0
-    json_dump = []    
+    json_dump = []
     for camera in cameras:
-        
+
         msg = "Processing experiment {}, location {}\n".format(
             camera[FIELDS["expt"]],
             camera[FIELDS["location"]],
@@ -819,7 +818,7 @@ def main(opts):
         )
         print(msg)
         log.info(msg)
-        image_resolution = (0,0)
+        image_resolution = (0, 0)
         for ext, images in find_image_files(camera).iteritems():
             images = sorted(images)
             if(image_resolution[0] == 0):
@@ -861,50 +860,55 @@ def main(opts):
                 pool.close()
                 pool.join()
 
-                # JSON STUFF FOR GARETH
 
-            if len(camera[FIELDS["resolutions"]])>1:
+            if len(camera[FIELDS["resolutions"]]) > 1:
                 if (camera[FIELDS["resolutions"]][1][1] is None):
-                    new_res = camera[FIELDS["resolutions"]][1][0], (image_resolution[0]*camera[FIELDS["resolutions"]][1][0])/image_resolution[1]
-                    #camera[FIELDS["resolutions"]][2][0], ((int(camera[FIELDS["resolutions"]][2][0])*int(camera[FIELDS["resolutions"]][1][1]))/int(camera[FIELDS["resolutions"]][1][0]))
+                    new_res = camera[FIELDS["resolutions"]][1][
+                        0], (image_resolution[0] * camera[FIELDS["resolutions"]][1][0]) / image_resolution[1]
                 else:
                     new_res = camera[FIELDS["resolutions"]][1]
             else:
                 new_res = image_resolution
             if "a_data" in camera[FIELDS["destination"]]:
                 if (camera[FIELDS["ts_structure"]]):
-                    webrootaddr = "http://phenocam.anu.edu.au/cloud/data"  + camera[FIELDS["destination"]].split("a_data")[1] + camera[FIELDS["ts_structure"]] + '/'
-                else: 
-                    webrootaddr = "http://phenocam.anu.edu.au/cloud/data"  + camera[FIELDS["destination"]].split("a_data")[1] +camera[FIELDS["location"]] + '/'
+                    webrootaddr = "http://phenocam.anu.edu.au/cloud/data" + \
+                        camera[FIELDS["destination"]].split(
+                            "a_data")[1] + camera[FIELDS["ts_structure"]] + '/'
+                else:
+                    webrootaddr = "http://phenocam.anu.edu.au/cloud/data" + \
+                        camera[FIELDS["destination"]].split(
+                            "a_data")[1] + camera[FIELDS["location"]] + '/'
             else:
                 webrootaddr = None
             json_dump.append((dict(
-                name= str(camera[FIELDS["expt"]] +'-' + (camera[FIELDS["location"]])),
-                utc = "false",
-                width_hires = str(image_resolution[0]),
-                ts_version = str(1.0),
-                ts_end = str(strftime(
-                TS_DATE_FMT, camera[FIELDS["expt_end"]])),
-                image_type = str([FIELDS["image_types"]][0]),
-                height_hires = str(image_resolution[1]),
-                expt = str(camera[FIELDS["expt"]]),
-                width = str(new_res[0]),
-                webroot = str(webrootaddr),
-                period_in_minutes = str(camera[FIELDS["interval"]]),
-                timezone= str(camera[FIELDS["timezone"]][0]),
-                ts_start = str(strftime(
-                TS_DATE_FMT, camera[FIELDS["expt_start"]])),
-                height = str(new_res[1]),
-                access = str(0),
-                thumbnails = str(None)
-                )))
+                name=str(
+                    camera[FIELDS["expt"]] + '-' + (camera[FIELDS["location"]])),
+                utc="false",
+                width_hires=str(image_resolution[0]),
+                ts_version=str(1.0),
+                ts_end=str(strftime(
+                    TS_DATE_FMT, camera[FIELDS["expt_end"]])),
+                image_type=str([FIELDS["image_types"]][0]),
+                height_hires=str(image_resolution[1]),
+                expt=str(camera[FIELDS["expt"]]),
+                width=str(new_res[0]),
+                webroot=str(webrootaddr),
+                period_in_minutes=str(camera[FIELDS["interval"]]),
+                timezone=str(camera[FIELDS["timezone"]][0]),
+                ts_start=str(strftime(
+                    TS_DATE_FMT, camera[FIELDS["expt_start"]])),
+                height=str(new_res[1]),
+                access=str(0),
+                thumbnails=str(None)
+            )))
             print("Processed {: 5d} Images. Finished this cam!".format(count))
+            obj = open(path.join(camera[FIELDS["destination"]], 'camera.json'), 'wb')
+            json.dump(json_dump, obj)
+            obj.close
     secs_taken = time() - start_time
     print("\nProcessed a total of {0} images in {1:.2f} seconds".format(
           n_images, secs_taken))
-    obj = open('camera.json', 'wb')
-    json.dump(json_dump, obj)
-    obj.close
+    
 
 
 if __name__ == "__main__":
