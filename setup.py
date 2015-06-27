@@ -15,7 +15,10 @@ install_requires = [
     "ExifRead==1.4.2",
     "docopt==0.6.1",
     "voluptuous==0.8.4",
-    "pexif==0.15",    
+    "pexif==0.15",
+    "numpy==1.9.2", 
+    "scipy==0.15.1", 
+    "scikit-image==0.11.3",  
 ]
 
 test_requires = [

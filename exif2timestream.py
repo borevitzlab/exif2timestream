@@ -214,7 +214,7 @@ def validate_camera(camera):
 
     def parse_ts_structure(x):
         if len(x) is 0:
-            return (path.join(camera[FIELDS["expt"]], camera[FIELDS["location"]]))
+            return (path.join(camera[FIELDS["expt"]].replace("_", "-"), camera[FIELDS["location"]].replace("_", "-")))
         else:
             for y in FIELDS:
                 x = x.replace(y.upper(), camera[FIELDS[y]])
@@ -893,7 +893,7 @@ def main(opts):
                 thumbnails=str(None)
             )))
             print("Processed {: 5d} Images. Finished this cam!".format(count))
-            obj = open(path.join(camera[FIELDS["destination"]], 'camera.json'), 'wb')
+            obj = open(path.join(camera[FIELDS["destination"]], path.dirname(camera[FIELDS["ts_structure"]]), 'camera.json'), 'wb')
             json.dump(json_dump, obj)
             obj.close
     secs_taken = time() - start_time
