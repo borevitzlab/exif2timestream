@@ -6,6 +6,7 @@ from csv import reader, DictReader
 import shutil
 from sys import exit
 from time import strptime, strftime, mktime, localtime, struct_time, time
+import calendar
 from voluptuous import Required, Schema, MultipleInvalid
 from itertools import cycle
 from inspect import isclass
@@ -15,14 +16,9 @@ import pexif
 import exifread as er
 import warnings
 import json
-SKIMAGE = False
-try:
-    import skimage
-    import skimage.io
-    import skimage.novice
-    SKIMAGE = True
-except ImportError:
-    pass
+import skimage
+import skimage.io
+import skimage.novice
 # versioneer
 from _version import get_versions
 __version__ = get_versions()['version']
@@ -36,7 +32,8 @@ TS_V2_FMT = ("%Y/%Y_%m/%Y_%m_%d/%Y_%m_%d_%H/"
              "{tsname:s}_%Y_%m_%d_%H_%M_%S_{n:02d}.{ext:s}")
 TS_DATE_FMT = "%Y_%m_%d_%H_%M_%S"
 TS_FMT = TS_V1_FMT
-TS_NAME_FMT = "{expt:s}-{loc:s}-{cam:02d}~{res:s}-{step:s}"
+TS_NAME_FMT = "{expt:s}-{loc:s}-{cam:s}~{res:s}-{step:s}"
+TS_NAME_STRUCT = "EXPT-LOCATION-CAM_NUM"
 FULLRES_CONSTANTS = {"original", "orig", "fullres"}
 IMAGE_TYPE_CONSTANTS = {"raw", "jpg"}
 RAW_FORMATS = {"cr2", "nef", "tif", "tiff"}
@@ -88,7 +85,7 @@ FIELDS = {
     'project_owner': 'PROJECT_OWNER',
     'ts_structure': 'TS_STRUCTURE',
     'filename_date_mask': 'FILENAME_DATE_MASK',
-    'rotation': 'ROTATION'
+    'orientation': 'ORIENTATION'
 }
 
 FIELD_ORDER = [
@@ -204,6 +201,10 @@ def validate_camera(camera):
                 res_list.append((int(res), None))
         return res_list
 
+    def cam_pad_str(x):
+        if len(x) is 1:
+            return '0' + x
+
     def image_type_str(x):
         if isinstance(x, list):
             return x
@@ -215,9 +216,17 @@ def validate_camera(camera):
                 raise ValueError
         return types
 
+    def remove_underscores(x):
+        x = x.replace("_", "-")
+        return x
+
+
     def parse_ts_structure(x):
         if ((x is None)or(len(x) is 0)):
-            return (path.join(camera[FIELDS["expt"]].replace("_", "-"), (camera[FIELDS["expt"]] + '-' + camera[FIELDS["location"]].replace("_", "-") + '-C' + str(camera[FIELDS["cam_num"]]))))
+            print (camera[FIELDS["cam_num"]])
+            x = path.join(camera[FIELDS["expt"]].replace("_", "-"), (camera[FIELDS["expt"]] + '-' + camera[FIELDS["location"]].replace("_", "-") + '-' + camera[FIELDS["cam_num"]]))
+            print (x)
+            return (x)
         else:
             for y in FIELDS:
                 x = x.replace(y.upper(), camera[FIELDS[y]])
@@ -225,9 +234,7 @@ def validate_camera(camera):
                 x = x[1:]
             return x
 
-    def remove_underscores(x):
-        x = x.replace("_", "-")
-        return x
+    
 
     class InList(object):
 
@@ -245,7 +252,7 @@ def validate_camera(camera):
         Required(FIELDS["use"]): bool_str,
         Required(FIELDS["destination"]): path_exists,
         Required(FIELDS["expt"]): remove_underscores,
-        Required(FIELDS["cam_num"]): num_str,
+        Required(FIELDS["cam_num"]): cam_pad_str,
         Required(FIELDS["expt_end"]): date,
         Required(FIELDS["expt_start"]): date,
         Required(FIELDS["image_types"]): image_type_str,
@@ -264,7 +271,7 @@ def validate_camera(camera):
         FIELDS["project_owner"]: remove_underscores,
         FIELDS["ts_structure"]: parse_ts_structure,
         FIELDS["filename_date_mask"]: str,
-        FIELDS["rotation"]: str,
+        FIELDS["orientation"]: str,
     })
     try:
         cam = sch(camera)
@@ -880,9 +887,8 @@ def main(opts):
                     camera[FIELDS["expt"]] + '-' + (camera[FIELDS["location"]])),
                 utc="false",
                 width_hires=str(image_resolution[0]),
-                ts_version=str(1.0),
-                ts_end=str(strftime(
-                    TS_DATE_FMT, camera[FIELDS["expt_end"]])),
+                ts_version=str(1),
+                ts_end=str(calendar.timegm(camera[FIELDS["expt_end"]])),
                 image_type=str([FIELDS["image_types"]][0]),
                 height_hires=str(image_resolution[1]),
                 expt=str(camera[FIELDS["expt"]]),
@@ -890,8 +896,7 @@ def main(opts):
                 webroot=str(webrootaddr),
                 period_in_minutes=str(camera[FIELDS["interval"]]),
                 timezone=str(camera[FIELDS["timezone"]][0]),
-                ts_start=str(strftime(
-                    TS_DATE_FMT, camera[FIELDS["expt_start"]])),
+                ts_start=str(calendar.timegm(camera[FIELDS["expt_start"]])),
                 height=str(new_res[1]),
                 access=str(0),
                 thumbnails=str(None)
