@@ -69,7 +69,7 @@ NOW = strftime("%Y%m%dT%H%M%S", localtime())
 FIELDS = {
     'use': 'USE',
     'location': 'LOCATION',
-    'expt': 'CURRENT_EXPT',
+    'expt': 'EXPT',
     'cam_num': 'CAM_NUM',
     'source': 'SOURCE',
     'destination': 'DESTINATION',
@@ -110,6 +110,7 @@ FIELD_ORDER = [
     'user',
     'mode',
     'project_owner',
+    'ts_structure',
     'filename_date_mask'
 ]
 
@@ -213,8 +214,8 @@ def validate_camera(camera):
         return types
 
     def parse_ts_structure(x):
-        if len(x) is 0:
-            return (path.join(camera[FIELDS["expt"]].replace("_", "-"), camera[FIELDS["location"]].replace("_", "-")))
+        if ((x is None)or(len(x) is 0)):
+            return (path.join(camera[FIELDS["expt"]].replace("_", "-"), (camera[FIELDS["expt"]] + '-' + camera[FIELDS["location"]].replace("_", "-") + '-C' + str(camera[FIELDS["cam_num"]]))))
         else:
             for y in FIELDS:
                 x = x.replace(y.upper(), camera[FIELDS[y]])
@@ -893,7 +894,7 @@ def main(opts):
                 thumbnails=str(None)
             )))
             print("Processed {: 5d} Images. Finished this cam!".format(count))
-            obj = open(path.join(camera[FIELDS["destination"]], path.dirname(camera[FIELDS["ts_structure"]]), 'camera.json'), 'wb')
+            obj = open(path.join(camera[FIELDS["destination"]], path.dirname(camera[FIELDS["ts_structure"]]), 'camera.json'), 'w+')
             json.dump(json_dump, obj)
             obj.close
     secs_taken = time() - start_time
