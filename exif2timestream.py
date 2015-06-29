@@ -88,6 +88,7 @@ FIELDS = {
     'project_owner': 'PROJECT_OWNER',
     'ts_structure': 'TS_STRUCTURE',
     'filename_date_mask': 'FILENAME_DATE_MASK',
+    'rotation': 'ROTATION'
 }
 
 FIELD_ORDER = [
@@ -110,8 +111,9 @@ FIELD_ORDER = [
     'user',
     'mode',
     'project_owner',
+    'filename_date_mask',
+    'rotation',
     'ts_structure',
-    'filename_date_mask'
 ]
 
 
@@ -262,6 +264,7 @@ def validate_camera(camera):
         FIELDS["project_owner"]: remove_underscores,
         FIELDS["ts_structure"]: parse_ts_structure,
         FIELDS["filename_date_mask"]: str,
+        FIELDS["rotation"]: str,
     })
     try:
         cam = sch(camera)
@@ -894,7 +897,7 @@ def main(opts):
                 thumbnails=str(None)
             )))
             print("Processed {: 5d} Images. Finished this cam!".format(count))
-            obj = open(path.join(camera[FIELDS["destination"]], path.dirname(camera[FIELDS["ts_structure"]]), 'camera.json'), 'w+')
+            obj = open(path.join(camera[FIELDS["destination"]], path.dirname(camera[FIELDS["ts_structure"]]), 'camera.json'), 'a+')
             json.dump(json_dump, obj)
             obj.close
     secs_taken = time() - start_time
