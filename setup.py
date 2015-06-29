@@ -17,8 +17,8 @@ install_requires = [
     "voluptuous==0.8.4",
     "pexif==0.15",
     "scikit-image==0.11.3",  
-    "numpy==1.9.2", 
     "scipy==0.15.1", 
+    "numpy==1.9.2", 
 ]
 
 test_requires = [
