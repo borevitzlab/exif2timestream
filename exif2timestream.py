@@ -220,12 +220,10 @@ def validate_camera(camera):
         x = x.replace("_", "-")
         return x
 
-
     def parse_ts_structure(x):
         if ((x is None)or(len(x) is 0)):
-            print (camera[FIELDS["cam_num"]])
-            x = path.join(camera[FIELDS["expt"]].replace("_", "-"), (camera[FIELDS["expt"]] + '-' + camera[FIELDS["location"]].replace("_", "-") + '-' + camera[FIELDS["cam_num"]]))
-            print (x)
+            x = path.join(camera[FIELDS["expt"]].replace("_", "-"), (camera[FIELDS["expt"]] +
+                                                                     '-' + camera[FIELDS["location"]].replace("_", "-") + '-' + camera[FIELDS["cam_num"]]))
             return (x)
         else:
             for y in FIELDS:
@@ -233,8 +231,6 @@ def validate_camera(camera):
             if (x[0] == '/'):
                 x = x[1:]
             return x
-
-    
 
     class InList(object):
 
@@ -283,7 +279,7 @@ def validate_camera(camera):
         return None
 
 
-# Function for performing a resize on an image. 
+# Function for performing a resize on an image.
 def resize_function(camera, image_date, dest):
     log = logging.getLogger("exif2timestream")
     # Resize a single image, to its new location
@@ -310,7 +306,8 @@ def resize_function(camera, image_date, dest):
     if (camera[FIELDS["ts_structure"]]):
         ts_structure = camera[FIELDS["ts_structure"]]
         direc, fname = path.split(ts_structure)
-        # Split up the file path, and its last Directory name (So we can put in the dimensions and orig)
+        # Split up the file path, and its last Directory name (So we can put in
+        # the dimensions and orig)
         ts_struct_middle = path.join(
             direc, "outputs", (fname + "~" + str(new_res[0]) + "-orig"))
     else:
@@ -324,9 +321,11 @@ def resize_function(camera, image_date, dest):
 
     if path.isfile(resized_img):
         return
-    log.debug("Full resized filename which we will output to is '{0:s}'".format(resized_img))
+    log.debug(
+        "Full resized filename which we will output to is '{0:s}'".format(resized_img))
     resized_img_path = path.dirname(resized_img)
-    log.debug("Now checking if image path already exists, if it does, skipping")
+    log.debug(
+        "Now checking if image path already exists, if it does, skipping")
     if not path.exists(resized_img_path):
         try:
             os.makedirs(resized_img_path)
@@ -337,7 +336,9 @@ def resize_function(camera, image_date, dest):
     log.debug("Now actually resizing image to '{0:s}'".format(dest))
     resize_img(dest, resized_img, new_res[0], new_res[1])
 
-# Function which only performs the actual resize. 
+# Function which only performs the actual resize.
+
+
 def resize_img(filename, destination, to_width, to_height):
     log = logging.getLogger("exif2timestream")
     # Open the Image and get its width
@@ -536,7 +537,8 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
     if (camera[FIELDS["ts_structure"]]):
         ts_structure = camera[FIELDS["ts_structure"]]
         direc, fname = path.split(ts_structure)
-        # Split up the file path, and its last Directory name (So we can put in the dimensions and orig)
+        # Split up the file path, and its last Directory name (So we can put in
+        # the dimensions and orig)
         ts_struct_middle = path.join(
             direc, "original", (fname + "~fullres-orig"))
     out_image = path.join(
@@ -569,6 +571,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
         log.warn("Couldnt copy '{0:s}' to '{1:s}', skipping image".format(
             image, dest))
         raise SkipImage
+
 
 def _dont_clobber(fn, mode="append"):
     """Ensure we don't overwrite things, using a variety of methods"""
@@ -638,7 +641,7 @@ def process_image(args):
             log.debug("Made archive dir {}".format(archive_dir))
         archive_image = _dont_clobber(archive_image)
         shutil.copy2(image, archive_image)
-        log.debug("Copied {} to {}".format(image, archive_image))    
+        log.debug("Copied {} to {}".format(image, archive_image))
     if camera[FIELDS["method"]] == "resize":
         resize_function(camera, image_date, image)
         log.debug("Rezied Image {}".format(image))
@@ -862,14 +865,17 @@ def main(opts):
                 pool.close()
                 pool.join()
 
-
             if len(camera[FIELDS["resolutions"]]) > 1:
+                folder = "outputs"
                 if (camera[FIELDS["resolutions"]][1][1] is None):
                     new_res = camera[FIELDS["resolutions"]][1][
                         0], (image_resolution[0] * camera[FIELDS["resolutions"]][1][0]) / image_resolution[1]
                 else:
                     new_res = camera[FIELDS["resolutions"]][1]
+                res = new_res[0]
             else:
+                folder = "original"
+                res = 'fullres'
                 new_res = image_resolution
             if "a_data" in camera[FIELDS["destination"]]:
                 if (camera[FIELDS["ts_structure"]]):
@@ -882,6 +888,26 @@ def main(opts):
                             "a_data")[1] + camera[FIELDS["location"]] + '/'
             else:
                 webrootaddr = None
+            thumb_image = []
+            if (n_cam_images > 3):
+                quick_div = (n_cam_images / 2)
+                thumb_image = [int(quick_div) - 1, quick_div, int(quick_div) + 1]
+                i=0
+                while (i < 3):
+                    image_date = get_file_date(
+                        images[thumb_image[i]], camera[FIELDS["interval"]] * 60)
+                    thumb_image[i] = make_timestream_name(
+                        camera, new_res[0], 'orig')
+                    ts_image = get_new_file_name(image_date, thumb_image[i])
+                    ts_path, ts_fname = path.split(camera[FIELDS["ts_structure"]])
+                    thumb_image[i] = (path.join(camera[FIELDS["destination"]] ,ts_path, folder, ts_fname + '~' + str(res) + '-orig' , ts_image))
+                    if "a_data" in (thumb_image[i]):
+                        thumb_image[i] = webrootaddr + thumb_image[i].split("a_data")[1]
+                    else:
+                        thumb_image[i] = ''
+                    i+=1
+
+
             json_dump.append((dict(
                 name=str(
                     camera[FIELDS["expt"]] + '-' + (camera[FIELDS["location"]])),
@@ -899,16 +925,16 @@ def main(opts):
                 ts_start=str(calendar.timegm(camera[FIELDS["expt_start"]])),
                 height=str(new_res[1]),
                 access=str(0),
-                thumbnails=str(None)
+                thumbnails=str(thumb_image)
             )))
             print("Processed {: 5d} Images. Finished this cam!".format(count))
-            obj = open(path.join(camera[FIELDS["destination"]], path.dirname(camera[FIELDS["ts_structure"]]), 'camera.json'), 'a+')
+            obj = open(path.join(camera[FIELDS["destination"]], path.dirname(
+                camera[FIELDS["ts_structure"]]), 'camera.json'), 'a+')
             json.dump(json_dump, obj)
             obj.close
     secs_taken = time() - start_time
     print("\nProcessed a total of {0} images in {1:.2f} seconds".format(
           n_images, secs_taken))
-    
 
 
 if __name__ == "__main__":
