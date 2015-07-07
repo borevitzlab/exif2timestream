@@ -85,7 +85,8 @@ FIELDS = {
     'project_owner': 'PROJECT_OWNER',
     'ts_structure': 'TS_STRUCTURE',
     'filename_date_mask': 'FILENAME_DATE_MASK',
-    'orientation': 'ORIENTATION'
+    'orientation': 'ORIENTATION',
+    'fn_parse': 'FN_PARSE',
 }
 
 FIELD_ORDER = [
@@ -111,6 +112,7 @@ FIELD_ORDER = [
     'filename_date_mask',
     'rotation',
     'ts_structure',
+    'fn_parse',
 ]
 
 
@@ -268,6 +270,7 @@ def validate_camera(camera):
         FIELDS["ts_structure"]: parse_ts_structure,
         FIELDS["filename_date_mask"]: str,
         FIELDS["orientation"]: str,
+        FIELDS["fn_parse"]: str,
     })
     try:
         cam = sch(camera)
@@ -752,11 +755,12 @@ def find_image_files(camera):
                 this_ext = path.splitext(fle)[-1].lower().strip(".")
                 if this_ext == ext or ext == "raw" and this_ext in RAW_FORMATS:
                     fle_path = path.join(cur_dir, fle)
-                    try:
-                        ext_files[ext].append(fle_path)
-                    except KeyError:
-                        ext_files[ext] = []
-                        ext_files[ext].append(fle_path)
+                    if (camera[FIELDS["fn_parse"]] in fle_path):
+                        try:
+                            ext_files[ext].append(fle_path)
+                        except KeyError:
+                            ext_files[ext] = []
+                            ext_files[ext].append(fle_path)
             log.info("Found {0} {1} files for camera.".format(
                 len(files), ext))
     return ext_files
