@@ -87,6 +87,7 @@ FIELDS = {
     'filename_date_mask': 'FILENAME_DATE_MASK',
     'orientation': 'ORIENTATION',
     'fn_parse': 'FN_PARSE',
+    'fn_structure': 'FN_STRUCTURE'
 }
 
 FIELD_ORDER = [
@@ -113,6 +114,7 @@ FIELD_ORDER = [
     'rotation',
     'ts_structure',
     'fn_parse',
+    'fn_structure'
 ]
 
 
@@ -221,18 +223,7 @@ def validate_camera(camera):
     def remove_underscores(x):
         x = x.replace("_", "-")
         return x
-
-    def parse_ts_structure(x):
-        if ((x is None)or(len(x) is 0)):
-            x = path.join(camera[FIELDS["expt"]].replace("_", "-"), (camera[FIELDS["expt"]] +
-                                                                     '-' + camera[FIELDS["location"]].replace("_", "-") + '-' + camera[FIELDS["cam_num"]]))
-            return (x)
-        else:
-            for y in FIELDS:
-                x = x.replace(y.upper(), camera[FIELDS[y]])
-            if (x[0] == '/'):
-                x = x[1:]
-            return x
+        
 
     class InList(object):
 
@@ -267,10 +258,11 @@ def validate_camera(camera):
         FIELDS["sunset"]: int_time_hr_min,
         FIELDS["timezone"]: int_time_hr_min,
         FIELDS["project_owner"]: remove_underscores,
-        FIELDS["ts_structure"]: parse_ts_structure,
+        FIELDS["ts_structure"]: str,
         FIELDS["filename_date_mask"]: str,
         FIELDS["orientation"]: str,
         FIELDS["fn_parse"]: str,
+        FIELDS["fn_structure"]: str,
     })
     try:
         cam = sch(camera)
@@ -281,6 +273,31 @@ def validate_camera(camera):
             raise e
         return None
 
+def parse_structures(camera):
+    if ((camera[FIELDS["ts_structure"]] is None)or(len(camera[FIELDS["ts_structure"]]) is 0)):
+        # If we dont have a ts_structure, then lets do the default one
+        camera[FIELDS["ts_structure"]] = path.join(
+            camera[FIELDS["expt"]].replace("_","-"),
+            "{folder:s}",
+            camera[FIELDS["expt"]].replace("_","-") + '-' + camera[FIELDS["location"]].replace("_","-") + \
+            "~" + "{res:s}" + "-orig"
+            )
+    else:
+        # Replace the ts_structure with all the other stuff
+        for y in camera[FIELDS]:
+            camera[FIELDS["ts_structure"]] = camera[FIELDS["ts_structure"]].replace(y.upper(),camera[FIELDS[y]])
+        # If it starts with a /, then we need to get rid of that
+        if (camera[FIELDS["ts_structure"]][0] == '/'):
+            camera[FIELDS["ts_structure"]] = camera[FIELDS["ts_structure"]][1:]
+        # Split it up so we can add the "~orig~res" part
+        camera[FIELDS["ts_structure"]] = camera[FIELDS["ts_structure"]].replace("_","-")
+        direc, fname = path.split(camera[FIELDS["ts_structure"]])
+        camera[FIELDS["ts_structure"]] = path.join(
+            direc, 
+            "{folder:s}", 
+            (fname + "~" + "{res:s}" + "-orig")
+            )
+        
 
 # Function for performing a resize on an image.
 def resize_function(camera, image_date, dest):
@@ -306,22 +323,11 @@ def resize_function(camera, image_date, dest):
     resizing_temp_outname = get_new_file_name(
         image_date, ts_name)
     # Based on the value of ts_structure, combine to form a full image path
-    if (camera[FIELDS["ts_structure"]]):
-        ts_structure = camera[FIELDS["ts_structure"]]
-        direc, fname = path.split(ts_structure)
-        # Split up the file path, and its last Directory name (So we can put in
-        # the dimensions and orig)
-        ts_struct_middle = path.join(
-            direc, "outputs", (fname + "~" + str(new_res[0]) + "-orig"))
-    else:
-        # If we dont have a value of ts_structure, lets do our default thing
-        ts_struct_middle = path.join(
-            camera[FIELDS["expt"]], "outputs", ts_name)
     resized_img = os.path.join(
         camera[FIELDS["destination"]],
-        ts_struct_middle,
+        camera[FIELDS["ts_structure"]].format(folder='ouputs', res=str(new_res[0])),
         resizing_temp_outname)
-
+    # If the resized image already exists, then just return
     if path.isfile(resized_img):
         return
     log.debug(
@@ -440,6 +446,7 @@ def get_file_date(filename, round_secs=1):
                 log.debug("Unable to write Exif Data")
                 return None
             return date
+    # If its not a jpeg, we have to open with exif reader
     except pexif.JpegFile.InvalidFile:
         with open(filename, "rb") as fh:
             exif_tags = er.process_file(
@@ -517,7 +524,7 @@ def make_timestream_name(camera, res="fullres", step="orig"):
 def timestreamise_image(image, camera, subsec=0, step="orig"):
     """Process a single image, mv/cp-ing it to its new location"""
     log = logging.getLogger("exif2timestream")
-    # make new image path
+    # Edit the global variable for the date mask
     global EXIF_DATE_MASK
     EXIF_DATE_MASK = camera[FIELDS["filename_date_mask"]]
     image_date = get_file_date(image, camera[FIELDS["interval"]] * 60)
@@ -532,21 +539,9 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
         n=subsec,
         ext=in_ext
     )
-
-    # Store this value incase we need it for resizing
-
-    # If we have set a value for the ts_structure value
-
-    if (camera[FIELDS["ts_structure"]]):
-        ts_structure = camera[FIELDS["ts_structure"]]
-        direc, fname = path.split(ts_structure)
-        # Split up the file path, and its last Directory name (So we can put in
-        # the dimensions and orig)
-        ts_struct_middle = path.join(
-            direc, "original", (fname + "~fullres-orig"))
     out_image = path.join(
         camera[FIELDS["destination"]],
-        ts_struct_middle,
+        camera[FIELDS["ts_structure"]].format(folder='original', res='fullres'),
         out_image
     )
     # make the target directory
@@ -816,7 +811,6 @@ def main(opts):
     n_images = 0
     json_dump = []
     for camera in cameras:
-
         msg = "Processing experiment {}, location {}\n".format(
             camera[FIELDS["expt"]],
             camera[FIELDS["location"]],

@@ -1,3 +1,4 @@
 #!/bin/bash
-
+#Install the packages needed for Scimage
+sudo apt-get install -y gfortran libopenblas-dev liblapack-dev
 python setup.py install
