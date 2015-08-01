@@ -111,7 +111,7 @@ FIELD_ORDER = [
     'mode',
     'project_owner',
     'filename_date_mask',
-    'rotation',
+    'orientation',
     'ts_structure',
     'fn_parse',
     'fn_structure'
@@ -206,8 +206,8 @@ def validate_camera(camera):
         return res_list
 
     def cam_pad_str(x):
-        if len(x) is 1:
-            return '0' + x
+        if len(str(x)) is 1:
+            return '0' + str(x)
 
     def image_type_str(x):
         if isinstance(x, list):
@@ -280,8 +280,7 @@ def parse_structures(camera):
             camera[FIELDS["expt"]].replace("_","-"),
             "{folder:s}",
             camera[FIELDS["expt"]].replace("_","-") + '-' + camera[FIELDS["location"]].replace("_","-") + \
-            "~" + "{res:s}" + "-orig"
-            )
+            "-C{cam:s}~{res:s}-orig")
     else:
         # Replace the ts_structure with all the other stuff
         
@@ -336,7 +335,7 @@ def resize_function(camera, image_date, dest):
     # Based on the value of ts_structure, combine to form a full image path
     resized_img = os.path.join(
         camera[FIELDS["destination"]],
-        camera[FIELDS["ts_structure"]].format(folder='outputs', res=str(new_res[0])),
+        camera[FIELDS["ts_structure"]].format(folder='outputs', res=str(new_res[0]), cam=camera[FIELDS["cam_num"]], step='outputs'),
         resizing_temp_outname)
     # If the resized image already exists, then just return
     if path.isfile(resized_img):
@@ -514,7 +513,7 @@ def round_struct_time(in_time, round_secs, tz_hrs=0, uselocal=True):
     return retval
 
 
-def make_timestream_name(camera, res="fullres", step="orig"):
+def make_timestream_name(camera, res="fullres", step="orig", folder='original'):
     """
     Makes a timestream name given the format (module-level constant), step,
     resolution and a camera object.
@@ -523,13 +522,15 @@ def make_timestream_name(camera, res="fullres", step="orig"):
     if isinstance(res, tuple):
         res = "x".join([str(x) for x in res])
     # raise ValueError(str((camera, res, step)))
-    return camera[FIELDS["fn_structure"]].format(
+    ts_name = camera[FIELDS["fn_structure"]].format(
         expt=camera[FIELDS["expt"]],
         loc=camera[FIELDS["location"]],
         cam=camera[FIELDS["cam_num"]],
         res=str(res),
-        step=step
+        step=step, 
+        folder = folder
     )
+    return ts_name
 
 
 def timestreamise_image(image, camera, subsec=0, step="orig"):
@@ -552,7 +553,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
     )
     out_image = path.join(
         camera[FIELDS["destination"]],
-        camera[FIELDS["ts_structure"]].format(folder='original', res='fullres'),
+        camera[FIELDS["ts_structure"]].format(folder='original', res='fullres', cam=camera[FIELDS["cam_num"]], step='orig'),
         out_image
     )
     # make the target directory
@@ -960,8 +961,15 @@ def main(opts):
                 thumbnails=str(thumb_image)
             )))
             print("Processed {: 5d} Images. Finished this cam!".format(count))
-            obj = open(path.join(camera[FIELDS["destination"]], path.dirname(
-                camera[FIELDS["ts_structure"]].format(folder="", res="")), 'camera.json'), 'a+')
+            jpath = path.dirname(
+                camera[FIELDS["ts_structure"]].format(folder="", res="", cam=''))
+            if not path.exists(path.join(camera[FIELDS["destination"]], jpath)):
+                try:
+                    os.makedirs(path.join(camera[FIELDS["destination"]], jpath))
+                except OSError:
+                    log.warn("Could not make dir '{0:s}', skipping image '{1:s}'".format(
+                        jpath, image))
+            obj = open(path.join(camera[FIELDS["destination"]], jpath, 'camera.json'), 'a+')
             json.dump(json_dump, obj)
             obj.close
     secs_taken = time() - start_time
