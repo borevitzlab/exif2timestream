@@ -284,8 +284,9 @@ def parse_structures(camera):
             )
     else:
         # Replace the ts_structure with all the other stuff
-        for y in camera[FIELDS]:
-            camera[FIELDS["ts_structure"]] = camera[FIELDS["ts_structure"]].replace(y.upper(),camera[FIELDS[y]])
+        
+        for key, value in camera.items():
+            camera[FIELDS["ts_structure"]] = camera[FIELDS["ts_structure"]].replace(key.upper() ,str(value))
         # If it starts with a /, then we need to get rid of that
         if (camera[FIELDS["ts_structure"]][0] == '/'):
             camera[FIELDS["ts_structure"]] = camera[FIELDS["ts_structure"]][1:]
@@ -297,6 +298,16 @@ def parse_structures(camera):
             "{folder:s}", 
             (fname + "~" + "{res:s}" + "-orig")
             )
+    if ((camera[FIELDS['fn_structure']] is None)or (len(camera[FIELDS["fn_structure"]]) is 0)):
+        camera[FIELDS["fn_structure"]] =  camera[FIELDS["expt"]].replace("_","-") + \
+            '-' +  camera[FIELDS["location"]].replace("_","-") + \
+            '-c' +  camera[FIELDS["cam_num"]].replace("_","-") +\
+            '~{res:s}-orig'
+    else:
+        for key, value in camera.items():
+            camera[FIELDS["fn_structure"]] = camera[FIELDS["fn_structure"]].replace(key.upper() ,str(value))
+        camera[FIELDS["fn_structure"]] = camera[FIELDS["fn_structure"]].replace("/", "")
+    return camera
         
 
 # Function for performing a resize on an image.
@@ -325,7 +336,7 @@ def resize_function(camera, image_date, dest):
     # Based on the value of ts_structure, combine to form a full image path
     resized_img = os.path.join(
         camera[FIELDS["destination"]],
-        camera[FIELDS["ts_structure"]].format(folder='ouputs', res=str(new_res[0])),
+        camera[FIELDS["ts_structure"]].format(folder='outputs', res=str(new_res[0])),
         resizing_temp_outname)
     # If the resized image already exists, then just return
     if path.isfile(resized_img):
@@ -512,7 +523,7 @@ def make_timestream_name(camera, res="fullres", step="orig"):
     if isinstance(res, tuple):
         res = "x".join([str(x) for x in res])
     # raise ValueError(str((camera, res, step)))
-    return TS_NAME_FMT.format(
+    return camera[FIELDS["fn_structure"]].format(
         expt=camera[FIELDS["expt"]],
         loc=camera[FIELDS["location"]],
         cam=camera[FIELDS["cam_num"]],
@@ -559,9 +570,6 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
     # And do the copy
     dest = _dont_clobber(out_image, mode=SkipImage)
 
-    if (len(camera[FIELDS["resolutions"]]) > 1):
-        log.info("Going to resize image '{0:s}'".format(image))
-        resize_function(camera, image_date, image)
     try:
         shutil.copy(image, dest)
         log.info("Copied '{0:s}' to '{1:s}".format(image, dest))
@@ -569,7 +577,27 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
         log.warn("Couldnt copy '{0:s}' to '{1:s}', skipping image".format(
             image, dest))
         raise SkipImage
-
+    # Check if we need to rotate the image
+    # if ((camera[FIELDS["orientation"]] is not None)or (len(camera[FIELDS["orientation"]]) is not 0)):
+    #     print ("We Need to Rotate")
+    if (len(camera[FIELDS["orientation"]])>0):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            if (camera[FIELDS["orientation"]]=='1'):
+                img = skimage.io.imread(dest)
+                img = skimage.transform.rotate(img, 270, resize=True)
+                skimage.io.imsave(dest, img)
+            elif (camera[FIELDS["orientation"]]=='2'):
+                img = skimage.io.imread(dest)
+                img = skimage.transform.rotate(img, 180, resize=True)
+                skimage.io.imsave(dest, img)
+            elif (camera[FIELDS["orientation"]]=='-1'):
+                img = skimage.io.imread(dest)
+                img = skimage.transform.rotate(img, 90, resize=True)
+                skimage.io.imsave(dest, img)    
+    if (len(camera[FIELDS["resolutions"]]) > 1):
+        log.info("Going to resize image '{0:s}'".format(dest))
+        resize_function(camera, image_date, dest)
 
 def _dont_clobber(fn, mode="append"):
     """Ensure we don't overwrite things, using a variety of methods"""
@@ -708,6 +736,7 @@ def parse_camera_config_csv(filename):
     cam_config = DictReader(fh)
     for camera in cam_config:
         camera = validate_camera(camera)
+        camera = parse_structures(camera)
         camera = localise_cam_config(camera)
         if camera is not None and camera[FIELDS["use"]]:
             yield camera
@@ -904,17 +933,22 @@ def main(opts):
                     else:
                         thumb_image[i] = ''
                     i+=1
-
+            if ((camera[FIELDS["orientation"]]=="1")or(camera[FIELDS["orientation"]]=="-1")):
+                    j_width_hires = str(image_resolution[1])
+                    j_height_hires = str(image_resolution[0])
+            else:
+                    j_width_hires=str(image_resolution[0]),
+                    j_height_hires = str(image_resolution[1])
 
             json_dump.append((dict(
                 name=str(
                     camera[FIELDS["expt"]] + '-' + (camera[FIELDS["location"]])),
                 utc="false",
-                width_hires=str(image_resolution[0]),
+                width_hires=str(j_width_hires),
                 ts_version=str(1),
                 ts_end=str(calendar.timegm(camera[FIELDS["expt_end"]])),
                 image_type=str([FIELDS["image_types"]][0]),
-                height_hires=str(image_resolution[1]),
+                height_hires=str(j_height_hires),
                 expt=str(camera[FIELDS["expt"]]),
                 width=str(new_res[0]),
                 webroot=str(webrootaddr),
@@ -927,7 +961,7 @@ def main(opts):
             )))
             print("Processed {: 5d} Images. Finished this cam!".format(count))
             obj = open(path.join(camera[FIELDS["destination"]], path.dirname(
-                camera[FIELDS["ts_structure"]]), 'camera.json'), 'a+')
+                camera[FIELDS["ts_structure"]].format(folder="", res="")), 'camera.json'), 'a+')
             json.dump(json_dump, obj)
             obj.close
     secs_taken = time() - start_time

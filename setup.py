@@ -23,7 +23,7 @@ install_requires = [
 
 test_requires = [
     "coverage==3.7.1",
-    "nose==1.3.0",
+    "nose==1.3.7",
     "pep8==1.4.6",
     "pylint==1.0.0",
 ]
