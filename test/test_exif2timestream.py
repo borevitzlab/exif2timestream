@@ -44,7 +44,7 @@ class TestExifTraitcapture(unittest.TestCase):
         'IMAGE_TYPES': 'raw~jpg',
         'INTERVAL': '5',
         'mode': 'batch',
-        'resolutions': 'original~1024x768~640x480',
+        'resolutions': 'original',
         'SOURCE': '\\'.join([dirname, "img", "camupload"]),
         'sunrise': '500',
         'sunset': '2200',
@@ -71,7 +71,7 @@ class TestExifTraitcapture(unittest.TestCase):
         'INTERVAL': '5',
         'IMAGE_TYPES': 'raw~jpg',
         'mode': 'batch',
-        'resolutions': 'original~1024x768~640x480',
+        'resolutions': 'original',
         'SOURCE': '/'.join([dirname, "img", "camupload"]),
         'sunrise': '500',
         'sunset': '2200',
@@ -94,6 +94,7 @@ class TestExifTraitcapture(unittest.TestCase):
         '2013_11_12', '2013_11_12_20',
         'BVZ00000-EUC-R01C01-C01~fullres-orig_2013_11_12_20_55_00_00.JPG'
     )
+
 
     r_raw_path = path.join(
         out_dirname, "timestreams", "BVZ00000", "original",
@@ -307,7 +308,7 @@ class TestExifTraitcapture(unittest.TestCase):
                 'LOCATION': 'EUC-R01C01',
                 'METHOD': 'move',
                 'mode': 'batch',
-                'resolutions': ['original', (1024, 768), (640, 480)],
+                'resolutions': ['original'],
                 'SOURCE': './test/img/camupload',
                 'sunrise': (5, 0),
                 'sunset': (22, 0),
@@ -317,7 +318,7 @@ class TestExifTraitcapture(unittest.TestCase):
                 'PROJECT_OWNER': '',
                 'FILENAME_DATE_MASK':'',
                 'FN_PARSE': '',
-                'FN_STRUCTURE': 'BVZ00000-EUC-R01C01-c01~{res:s}-orig',
+                'FN_STRUCTURE': 'BVZ00000-EUC-R01C01-C01~{res:s}-orig',
                 'ORIENTATION' : ''
 
             }
@@ -385,34 +386,32 @@ class TestExifTraitcapture(unittest.TestCase):
         else:
             warnings.warn(
                 "Skimage Not Installed, Unable to Test Resize", ImportWarning)
-# Dont Run Until we sort out some errors
-    # tests for main function
-    # def test_main(self):
-    #     e2t.main({
-    #         '-1': False,
-    #         '-d': False,
-    #         '-a': None,
-    #         '-c': self.test_config_csv,
-    #         '-l': self.out_dirname,
-    #         '-g': None,
-    #         '-t': None})
-    #     print (self.r_fullres_path)
-    #     #os.system("tree %s" % path.dirname(self.out_dirname))
-    #     self.assertTrue(path.exists(self.r_fullres_path))
 
-# Dont Run Until we sort out some errors
-    # def test_main_raw(self):
-    #     e2t.main({
-    #         '-1': False,
-    #         '-d': False,
-    #         '-a': None,
-    #         '-c': self.test_config_raw_csv,
-    #         '-l': self.out_dirname,
-    #         '-g': None,
-    #         '-t': None})
-    #     #os.system("tree %s" % path.dirname(self.out_dirname))
-    #     self.assertTrue(path.exists(self.r_fullres_path))
-    #     self.assertTrue(path.exists(self.r_raw_path))
+    def test_main(self):
+        e2t.main({
+            '-1': False,
+            '-d': False,
+            '-a': None,
+            '-c': self.test_config_csv,
+            '-l': self.out_dirname,
+            '-g': None,
+            '-t': None})
+        print (self.r_fullres_path)
+        #os.system("tree %s" % path.dirname(self.out_dirname))
+        self.assertTrue(path.exists(self.r_fullres_path))
+
+    def test_main_raw(self):
+        e2t.main({
+            '-1': False,
+            '-d': False,
+            '-a': None,
+            '-c': self.test_config_raw_csv,
+            '-l': self.out_dirname,
+            '-g': None,
+            '-t': None})
+        #os.system("tree %s" % path.dirname(self.out_dirname))
+        self.assertTrue(path.exists(self.r_fullres_path))
+        self.assertTrue(path.exists(self.r_raw_path))
 
     def test_main_expt_dates(self):
         e2t.main({

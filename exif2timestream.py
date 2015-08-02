@@ -297,10 +297,10 @@ def parse_structures(camera):
             "{folder:s}", 
             (fname + "~" + "{res:s}" + "-orig")
             )
-    if ((camera[FIELDS['fn_structure']] is None)or (len(camera[FIELDS["fn_structure"]]) is 0)):
+    if ((not camera[FIELDS['fn_structure']])or (len(camera[FIELDS["fn_structure"]]) is 0)):
         camera[FIELDS["fn_structure"]] =  camera[FIELDS["expt"]].replace("_","-") + \
             '-' +  camera[FIELDS["location"]].replace("_","-") + \
-            '-c' +  camera[FIELDS["cam_num"]].replace("_","-") +\
+            '-C' +  camera[FIELDS["cam_num"]].replace("_","-") +\
             '~{res:s}-orig'
     else:
         for key, value in camera.items():
@@ -311,6 +311,7 @@ def parse_structures(camera):
 
 # Function for performing a resize on an image.
 def resize_function(camera, image_date, dest):
+    print ("Resize Function")
     log = logging.getLogger("exif2timestream")
     # Resize a single image, to its new location
     log.debug(
@@ -359,6 +360,7 @@ def resize_function(camera, image_date, dest):
 
 
 def resize_img(filename, destination, to_width, to_height):
+    print ("Resize Image")
     log = logging.getLogger("exif2timestream")
     # Open the Image and get its width
     img = skimage.io.imread(filename)
@@ -432,7 +434,6 @@ def get_file_date(filename, round_secs=1):
     """
     log = logging.getLogger("exif2timestream")
     # Now uses Pexif
-
     try:
         exif_tags = pexif.JpegFile.fromFile(filename)
         str_date = exif_tags.exif.primary.ExtendedEXIF.DateTimeOriginal
@@ -458,6 +459,8 @@ def get_file_date(filename, round_secs=1):
             return date
     # If its not a jpeg, we have to open with exif reader
     except pexif.JpegFile.InvalidFile:
+        shortfilename = os.path.basename(filename)
+        log.debug("Unable to Read file '{0:s}', aparently not a jpeg".format(shortfilename))
         with open(filename, "rb") as fh:
             exif_tags = er.process_file(
                 fh, details=False, stop_tag=EXIF_DATE_TAG)
@@ -635,6 +638,7 @@ def process_image(args):
     Given a camera config and list of images, will do the required
     move/copy operations.
     """
+    print ("Process Image")
     log = logging.getLogger("exif2timestream")
     log.debug("Starting to process image")
     (image, camera, ext) = args
@@ -736,10 +740,10 @@ def parse_camera_config_csv(filename):
     fh = open(filename)
     cam_config = DictReader(fh)
     for camera in cam_config:
-        camera = validate_camera(camera)
-        camera = parse_structures(camera)
+        camera = validate_camera(camera)        
         camera = localise_cam_config(camera)
         if camera is not None and camera[FIELDS["use"]]:
+            camera = parse_structures(camera)
             yield camera
 
 
@@ -787,7 +791,7 @@ def find_image_files(camera):
                             ext_files[ext] = []
                             ext_files[ext].append(fle_path)
             log.info("Found {0} {1} files for camera.".format(
-                len(files), ext))
+                len(ext_files), ext))
     return ext_files
 
 
@@ -855,7 +859,10 @@ def main(opts):
         for ext, images in find_image_files(camera).iteritems():
             images = sorted(images)
             if(image_resolution[0] == 0):
-                image_resolution = skimage.novice.open(images[0]).size
+                try:
+                    image_resolution = skimage.novice.open(images[0]).size
+                except IOError:
+                    image_resolution = (0,0)
             n_cam_images = len(images)
             print("{0} {1} images from this camera".format(n_cam_images, ext))
             log.info("Have {0} {1} images from this camera".format(
@@ -864,35 +871,6 @@ def main(opts):
             last_date = None
             subsec = 0
             count = 0
-            # TODO: sort out the whole subsecond clusterfuck
-            if "-1" in opts and opts["-1"]:
-                log.info("Using 1 process (What is this? Fucking 1990?)")
-                for image in images:
-                    count += 1
-                    print("Processed {: 5d} Images".format(count), end='\r')
-                    process_image((image, camera, ext))
-            else:
-                from multiprocessing import Pool, cpu_count
-                if "-t" in opts and opts["-t"] is not None:
-                    try:
-                        threads = int(opts["-t"])
-                    except ValueError:
-                        threads = cpu_count() - 1
-                else:
-                    threads = cpu_count() - 1
-                # Ensure that we're using at least one thread
-                threads = max(threads, 1)
-
-                log.info("Using {0:d} processes".format(threads))
-                # set the function's camera-wide arguments
-                args = zip(images, cycle([camera]), cycle([ext]))
-                pool = Pool(threads)
-                for _ in pool.imap(process_image, args):
-                    count += 1
-                    print("Processed {: 5d} Images".format(count), end='\r')
-                pool.close()
-                pool.join()
-
             if len(camera[FIELDS["resolutions"]]) > 1:
                 folder = "outputs"
                 if (camera[FIELDS["resolutions"]][1][1] is None):
@@ -941,6 +919,36 @@ def main(opts):
                     j_width_hires=str(image_resolution[0]),
                     j_height_hires = str(image_resolution[1])
 
+            # TODO: sort out the whole subsecond clusterfuck
+            if "-1" in opts and opts["-1"]:
+                log.info("Using 1 process (What is this? Fucking 1990?)")
+                for image in images:
+                    count += 1
+                    print("Processed {: 5d} Images".format(count), end='\r')
+                    process_image((image, camera, ext))
+            else:
+                from multiprocessing import Pool, cpu_count
+                if "-t" in opts and opts["-t"] is not None:
+                    try:
+                        threads = int(opts["-t"])
+                    except ValueError:
+                        threads = cpu_count() - 1
+                else:
+                    threads = cpu_count() - 1
+                # Ensure that we're using at least one thread
+                threads = max(threads, 1)
+
+                log.info("Using {0:d} processes".format(threads))
+                # set the function's camera-wide arguments
+                args = zip(images, cycle([camera]), cycle([ext]))
+                pool = Pool(threads)
+                for _ in pool.imap(process_image, args):
+                    count += 1
+                    print("Processed {: 5d} Images".format(count), end='\r')
+                pool.close()
+                pool.join()
+
+            
             json_dump.append((dict(
                 name=str(
                     camera[FIELDS["expt"]] + '-' + (camera[FIELDS["location"]])),
