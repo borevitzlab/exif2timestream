@@ -1,28 +1,32 @@
 #!usr/bin/env python
 """Take somewhat structured image collections and outputs Timestream format."""
+#pylint:disable=bad-whitespace,line-too-long,logging-format-interpolation
 
 from __future__ import print_function
 
+# Standard library imports
 import argparse
-import os
-from os import path
-import csv
-import shutil
-from sys import exit
-from time import strptime, strftime, mktime, localtime, struct_time, time
 import calendar
-#from voluptuous import Required, Schema, MultipleInvalid
-from itertools import cycle
-from inspect import isclass
-import logging
-import re
-#import pexif
-#import exifread as er
-import warnings
+import csv
+import itertools
+import inspect
 import json
+import logging
+import multiprocessing
+import os
+import re
+import shutil
+import sys
+from time import strptime, strftime, mktime, localtime, struct_time, time
+import warnings
+
+# Module imports
+import pexif
+import exifread
 import skimage
 #import skimage.io
 #import skimage.novice
+from voluptuous import Required, Schema, MultipleInvalid
 
 # versioneer
 from _version import get_versions
@@ -151,6 +155,7 @@ def validate_camera(camera):
     log = logging.getLogger("exif2timestream")
 
     def date(x):
+        """Converter / validator for date field."""
         if isinstance(x, struct_time):
             return x
         else:
@@ -161,35 +166,35 @@ def validate_camera(camera):
             except:
                 raise ValueError
 
-    num_str = lambda x: int(x)
-
     def bool_str(x):
+        """Converts a string to a boolean, even yes/no/true/false."""
         if isinstance(x, bool):
             return x
         elif isinstance(x, int):
-            return bool(int(x))
+            return bool(x)
         elif isinstance(x, str):
             x = x.strip().lower()
-            try:
-                return bool(int(x))
-            except:
-                if x in {"t", "true", "y", "yes", "f", "false", "n", "no"}:
-                    return x in {"t", "true", "y", "yes"}
+            if x in {"t", "true", "y", "yes", "f", "false", "n", "no"}:
+                return x in {"t", "true", "y", "yes"}
+            return bool(int(x))
         raise ValueError
 
     def int_time_hr_min(x):
+        """Validator for time field."""
         if isinstance(x, tuple):
             return x
         else:
             return (int(x) // 100, int(x) % 100)
 
     def path_exists(x):
-        if path.exists(x):
+        """Validator for path field."""
+        if os.path.exists(x):
             return x
         else:
             raise ValueError("path '%s' doesn't exist" % x)
 
     def resolution_str(x):
+        """Validator for resolution field."""
         if not isinstance(x, str):
             raise ValueError
         xs = x.strip().split('~')
@@ -213,30 +218,31 @@ def validate_camera(camera):
         return res_list
 
     def cam_pad_str(x):
-        if len(str(x)) is 1:
+        """Pads a numeric string to two digits."""
+        if len(str(x)) == 1:
             return '0' + str(x)
 
     def image_type_str(x):
+        """Validator for image type field."""
         if isinstance(x, list):
             return x
         if not isinstance(x, str):
             raise ValueError
         types = x.lower().strip().split('~')
-        for type in types:
-            if type not in IMAGE_TYPE_CONSTANTS:
+        for t in types:
+            if t not in IMAGE_TYPE_CONSTANTS:
                 raise ValueError
         return types
 
     def remove_underscores(x):
-        x = x.replace("_", "-")
-        return x
-        
+        """Replaces '_' with '-'."""
+        return x.replace("_", "-")
+
 
     class InList(object):
-
+        #pylint:disable=too-few-public-methods
         def __init__(self, valid_values):
-            if isinstance(valid_values, list) or \
-                    isinstance(valid_values, tuple):
+            if isinstance(valid_values, list) or isinstance(valid_values, tuple):
                 self.valid_values = set(valid_values)
 
         def __call__(self, x):
@@ -252,7 +258,7 @@ def validate_camera(camera):
         Required(FIELDS["expt_end"]): date,
         Required(FIELDS["expt_start"]): date,
         Required(FIELDS["image_types"]): image_type_str,
-        Required(FIELDS["interval"], default=1): num_str,
+        Required(FIELDS["interval"], default=1): int,
         Required(FIELDS["location"]): remove_underscores,
         Required(FIELDS["archive_dest"]): path_exists,
         Required(FIELDS["method"], default="archive"):
@@ -281,30 +287,32 @@ def validate_camera(camera):
         return None
 
 def parse_structures(camera):
-    if ((camera[FIELDS["ts_structure"]] is None)or(len(camera[FIELDS["ts_structure"]]) is 0)):
+    """Parse the file structure of the camera for conversion to timestream format."""
+    if (camera[FIELDS["ts_structure"]] is None or
+            len(camera[FIELDS["ts_structure"]]) == 0):
         # If we dont have a ts_structure, then lets do the default one
-        camera[FIELDS["ts_structure"]] = path.join(
+        camera[FIELDS["ts_structure"]] = os.path.join(
             camera[FIELDS["expt"]].replace("_","-"),
             "{folder:s}",
             camera[FIELDS["expt"]].replace("_","-") + '-' + camera[FIELDS["location"]].replace("_","-") + \
             "-C{cam:s}~{res:s}-orig")
     else:
         # Replace the ts_structure with all the other stuff
-        
+
         for key, value in camera.items():
             camera[FIELDS["ts_structure"]] = camera[FIELDS["ts_structure"]].replace(key.upper() ,str(value))
         # If it starts with a /, then we need to get rid of that
-        if (camera[FIELDS["ts_structure"]][0] == '/'):
+        if camera[FIELDS["ts_structure"]][0] == '/':
             camera[FIELDS["ts_structure"]] = camera[FIELDS["ts_structure"]][1:]
         # Split it up so we can add the "~orig~res" part
         camera[FIELDS["ts_structure"]] = camera[FIELDS["ts_structure"]].replace("_","-")
-        direc, fname = path.split(camera[FIELDS["ts_structure"]])
-        camera[FIELDS["ts_structure"]] = path.join(
-            direc, 
-            "{folder:s}", 
+        direc, fname = os.path.split(camera[FIELDS["ts_structure"]])
+        camera[FIELDS["ts_structure"]] = os.path.join(
+            direc,
+            "{folder:s}",
             (fname + "~" + "{res:s}" + "-orig")
             )
-    if ((not camera[FIELDS['fn_structure']])or (len(camera[FIELDS["fn_structure"]]) is 0)):
+    if len(camera[FIELDS["fn_structure"]]) is 0 or not camera[FIELDS['fn_structure']]:
         camera[FIELDS["fn_structure"]] =  camera[FIELDS["expt"]].replace("_","-") + \
             '-' +  camera[FIELDS["location"]].replace("_","-") + \
             '-C' +  camera[FIELDS["cam_num"]].replace("_","-") +\
@@ -314,16 +322,16 @@ def parse_structures(camera):
             camera[FIELDS["fn_structure"]] = camera[FIELDS["fn_structure"]].replace(key.upper() ,str(value))
         camera[FIELDS["fn_structure"]] = camera[FIELDS["fn_structure"]].replace("/", "")
     return camera
-        
 
-# Function for performing a resize on an image.
+
 def resize_function(camera, image_date, dest):
+    """Create a resized image in a new location."""
     print ("Resize Function")
     log = logging.getLogger("exif2timestream")
     # Resize a single image, to its new location
     log.debug(
         "Now checking if we have 1 or two resolution arguments on image '{0:s}'".format(dest))
-    if (camera[FIELDS["resolutions"]][1][1] is None):
+    if camera[FIELDS["resolutions"]][1][1] is None:
         # Read in image dimensions
         img = skimage.io.imread(dest).shape
         # Calculate the new image dimensions from the old one
@@ -333,7 +341,7 @@ def resize_function(camera, image_date, dest):
     else:
         new_res = camera[FIELDS["resolutions"]][1]
         log.debug(
-            "Two resolution arguments, '{0:d}' x '{0:d}'".format(new_res[0], new_res[1]))
+            "Two resolution arguments, '{:d}' x '{:d}'".format(new_res[0], new_res[1]))
     log.debug("Now getting Timestream name")
     # Get the timestream name to save the image as
     ts_name = make_timestream_name(camera, res=new_res[0], step="orig")
@@ -346,19 +354,19 @@ def resize_function(camera, image_date, dest):
         camera[FIELDS["ts_structure"]].format(folder='outputs', res=str(new_res[0]), cam=camera[FIELDS["cam_num"]], step='outputs'),
         resizing_temp_outname)
     # If the resized image already exists, then just return
-    if path.isfile(resized_img):
+    if os.path.isfile(resized_img):
         return
     log.debug(
         "Full resized filename which we will output to is '{0:s}'".format(resized_img))
-    resized_img_path = path.dirname(resized_img)
+    resized_img_path = os.path.dirname(resized_img)
     log.debug(
         "Now checking if image path already exists, if it does, skipping")
-    if not path.exists(resized_img_path):
+    if not os.path.exists(resized_img_path):
         try:
             os.makedirs(resized_img_path)
         except OSError:
             log.warn("Could not make dir '{0:s}', skipping image '{1:s}'".format(
-                resized_img_path, image))
+                resized_img_path, resized_img))
             raise SkipImage
     log.debug("Now actually resizing image to '{0:s}'".format(dest))
     resize_img(dest, resized_img, new_res[0], new_res[1])
@@ -367,6 +375,7 @@ def resize_function(camera, image_date, dest):
 
 
 def resize_img(filename, destination, to_width, to_height):
+    """Actually resizes the image."""
     print ("Resize Image")
     log = logging.getLogger("exif2timestream")
     # Open the Image and get its width
@@ -392,36 +401,32 @@ def resize_img(filename, destination, to_width, to_height):
         log.debug("Successfully copied exif data also")
     except AttributeError:
         log.debug("Unable to copy over some exif data")
-        pass
 
 
 def get_time_from_filename(filename, mask=EXIF_DATE_MASK):
-    # Replace the year with the regex equivalent to parse
-    regex_mask = mask.replace("%Y", "\d{4}").replace(
-        "%m", "\d{2}").replace("%d", "\d{2}")
-    regex_mask = regex_mask.replace("%H", "\d{2}").replace(
-        "%M", "\d{2}").replace("%S", "\d{2}")
+    """Replace the year with the regex equivalent to parse."""
+    regex_mask = mask.replace("%Y", r"\d{4}").replace(
+        "%m", r"\d{2}").replace("%d", r"\d{2}")
+    regex_mask = regex_mask.replace("%H", r"\d{2}").replace(
+        "%M", r"\d{2}").replace("%S", r"\d{2}")
     # Wildcard character before and after the regex
-    regex_mask = "\.*" + regex_mask + "\.*"
+    regex_mask = r"\.*" + regex_mask + r"\.*"
     # compile the regex
     date_reg_exp = re.compile(regex_mask)
     # get the list of possible date matches
     matches_list = date_reg_exp.findall(filename)
     for match in matches_list:
+        # Attempt to parse each match into a datetime; return first success
         try:
-            # Parse each match into a datetime
             datetime = strptime(match, mask)
-            # Return the datetime
             return datetime
-        # If we cant convert it to the date, then go to the next item on the
-        # list
         except ValueError:
             continue
-    # If we cant match anything, then return None
     return None
 
 
 def write_exif_date(filename, date_time):
+    """Change an image timestamp."""
     try:
         # Read in the file
         img = pexif.JpegFile.fromFile(filename)
@@ -460,7 +465,7 @@ def get_file_date(filename, round_secs=1):
                 "Unable to scrape date from '{0:s}'".format(shortfilename))
             return None
         else:
-            if not(write_exif_date(filename, date)):
+            if not write_exif_date(filename, date):
                 log.debug("Unable to write Exif Data")
                 return None
             return date
@@ -469,7 +474,7 @@ def get_file_date(filename, round_secs=1):
         shortfilename = os.path.basename(filename)
         log.debug("Unable to Read file '{0:s}', aparently not a jpeg".format(shortfilename))
         with open(filename, "rb") as fh:
-            exif_tags = er.process_file(
+            exif_tags = exifread.process_file(
                 fh, details=False, stop_tag=EXIF_DATE_TAG)
             try:
                 str_date = exif_tags[EXIF_DATE_TAG].values
@@ -536,7 +541,7 @@ def make_timestream_name(camera, res="fullres", step="orig", folder='original'):
         loc=camera[FIELDS["location"]],
         cam=camera[FIELDS["cam_num"]],
         res=str(res),
-        step=step, 
+        step=step,
         folder = folder
         )
     return ts_name
@@ -552,7 +557,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
     if not image_date:
         log.warn("Couldn't get date for image {}".format(image))
         raise SkipImage
-    in_ext = path.splitext(image)[-1].lstrip(".")
+    in_ext = os.path.splitext(image)[-1].lstrip(".")
     ts_name = make_timestream_name(camera, res="fullres", step=step)
     out_image = get_new_file_name(
         image_date,
@@ -560,22 +565,18 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
         n=subsec,
         ext=in_ext
     )
-    out_image = path.join(
+    out_image = os.path.join(
         camera[FIELDS["destination"]],
         camera[FIELDS["ts_structure"]].format(folder='original', res='fullres', cam=camera[FIELDS["cam_num"]], step='orig'),
         out_image
     )
     # make the target directory
-    out_dir = path.dirname(out_image)
-    # Just incase we need to do some image resizing below
-    if not path.exists(out_dir):
-        # makedirs is like `mkdir -p`, creates parents, but raises
-        # OSError if target already exits
+    out_dir = os.path.dirname(out_image)
+    if not os.path.exists(out_dir):
         try:
             os.makedirs(out_dir)
         except OSError:
-            log.warn("Could not make dir '{0:s}', skipping image '{1:s}'".format(
-                out_dir, image))
+            log.warn("Could not make dir '{0:s}', skipping image '{1:s}'".format(out_dir, image))
             raise SkipImage
     # And do the copy
     dest = _dont_clobber(out_image, mode=SkipImage)
@@ -587,45 +588,38 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
         log.warn("Couldnt copy '{0:s}' to '{1:s}', skipping image".format(
             image, dest))
         raise SkipImage
-    # Check if we need to rotate the image
-    # if ((camera[FIELDS["orientation"]] is not None)or (len(camera[FIELDS["orientation"]]) is not 0)):
-    #     print ("We Need to Rotate")
-    if (len(camera[FIELDS["orientation"]])>0):
+    if len(camera[FIELDS["orientation"]]) > 0:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            if (camera[FIELDS["orientation"]]=='1'):
+            rotations = {'1':270, '2':180, '-1':90}
+            orientation = camera[FIELDS["orientation"]]
+            if orientation in rotations:
                 img = skimage.io.imread(dest)
-                img = skimage.transform.rotate(img, 270, resize=True)
+                img = skimage.transform.rotate(
+                    img, rotations[orientation], resize=True)
                 skimage.io.imsave(dest, img)
-            elif (camera[FIELDS["orientation"]]=='2'):
-                img = skimage.io.imread(dest)
-                img = skimage.transform.rotate(img, 180, resize=True)
-                skimage.io.imsave(dest, img)
-            elif (camera[FIELDS["orientation"]]=='-1'):
-                img = skimage.io.imread(dest)
-                img = skimage.transform.rotate(img, 90, resize=True)
-                skimage.io.imsave(dest, img)    
-    if (len(camera[FIELDS["resolutions"]]) > 1):
+    if len(camera[FIELDS["resolutions"]]) > 1:
         log.info("Going to resize image '{0:s}'".format(dest))
         resize_function(camera, image_date, dest)
 
 def _dont_clobber(fn, mode="append"):
     """Ensure we don't overwrite things, using a variety of methods"""
+    #TODO:  will clobber something different if the new filename exists
     log = logging.getLogger("exif2timestream")
-    if path.exists(fn):
+    if os.path.exists(fn):
         # Deal with SkipImage or StopIteration exceptions
         if isinstance(mode, StopIteration):
             log.debug("Path '{0}' exists, raising StopIteration".format(fn))
             raise mode
         # Ditto, but if we pass them uninstantiated
-        elif isclass(mode) and issubclass(mode, StopIteration):
+        elif inspect.isclass(mode) and issubclass(mode, StopIteration):
             log.debug("Path '{0}' exists, raising an Exception".format(fn))
             raise mode()
         # Otherwise, append something '_1' to the file name to solve our
         # problem
         elif mode == "append":
             log.debug("Path '{0}' exists, adding '_1' to its name".format(fn))
-            base, ext = path.splitext(fn)
+            base, ext = os.path.splitext(fn)
             # append _1 to filename
             if ext != '':
                 return ".".join(["_".join([base, "1"]), ext])
@@ -661,19 +655,19 @@ def process_image(args):
     if camera[FIELDS["method"]] == "archive":
         log.debug("Will archive {}".format(image))
         ts_name = make_timestream_name(camera, res="fullres")
-        archive_image = path.join(
+        archive_image = os.path.join(
             camera[FIELDS["archive_dest"]],
             camera[FIELDS["expt"]],
             ext,
             ts_name,
-            path.basename(image)
+            os.path.basename(image)
         )
-        archive_dir = path.dirname(archive_image)
-        if not path.exists(archive_dir):
+        archive_dir = os.path.dirname(archive_image)
+        if not os.path.exists(archive_dir):
             try:
                 os.makedirs(archive_dir)
             except OSError as exc:
-                if not path.exists(archive_dir):
+                if not os.path.exists(archive_dir):
                     raise exc
             log.debug("Made archive dir {}".format(archive_dir))
         archive_image = _dont_clobber(archive_image)
@@ -723,7 +717,7 @@ def process_image(args):
 
 def get_local_path(this_path):
     """Replaces slashes with the correct kind for local system paths."""
-    return this_path.replace("/", path.sep).replace("\\", path.sep)
+    return this_path.replace("/", os.path.sep).replace("\\", os.path.sep)
 
 
 def localise_cam_config(camera):
@@ -740,7 +734,7 @@ def localise_cam_config(camera):
 
 def parse_camera_config_csv(filename):
     """
-    Parse a camera configuration 
+    Parse a camera configuration
     It yields localised, validated camera dicts
     """
     if filename is None:
@@ -748,7 +742,7 @@ def parse_camera_config_csv(filename):
     with open(filename) as fh:
         cam_config = csv.DictReader(fh)
         for camera in cam_config:
-            camera = validate_camera(camera)        
+            camera = validate_camera(camera)
             camera = localise_cam_config(camera)
             if camera is not None and camera[FIELDS["use"]]:
                 yield parse_structures(camera)
@@ -764,30 +758,24 @@ def find_image_files(camera):
     ext_files = {}
     for ext in exts:
         src = camera[FIELDS["source"]]
-        lst = os.listdir(src)
-        lst = filter(lambda x: not x.startswith(".") and not x.startswith('_'),
-                     lst)
+        lst = [x for x in os.listdir(src) if not x[0] in ('.', '_')]
         log.debug("List of src valid subdirs is {}".format(lst))
         for node in lst:
             log.debug("Found src subdir {}".format(node))
             if node.lower() == ext:
-                src = path.join(src, node)
+                src = os.path.join(src, node)
                 break
         log.info("Walking from {} to find images".format(src))
-        walk = os.walk(src, topdown=True)
-        for cur_dir, dirs, files in walk:
-            for dir in dirs:
-                if dir.lower() not in IMAGE_SUBFOLDERS and \
-                        not dir.startswith("_"):
-                    if ((camera[FIELDS["method"]] != "resize")and(camera[FIELDS["method"]] != "json")):
+        for cur_dir, dirs, files in os.walk(src):
+            for d in dirs:
+                if not (d.lower() in IMAGE_SUBFOLDERS or d.startswith("_")):
+                    if camera[FIELDS["method"]] in ("resize", "json"):
                         log.error("Source directory has too many subdirs.")
-                    # TODO: Is raising here a good idea?
-                    # raise ValueError("too many subdirs")
             for fle in files:
-                this_ext = path.splitext(fle)[-1].lower().strip(".")
+                this_ext = os.path.splitext(fle)[-1].lower().strip(".")
                 if this_ext == ext or ext == "raw" and this_ext in RAW_FORMATS:
-                    fle_path = path.join(cur_dir, fle)
-                    if (camera[FIELDS["fn_parse"]] in fle_path):
+                    fle_path = os.path.join(cur_dir, fle)
+                    if camera[FIELDS["fn_parse"]] in fle_path:
                         try:
                             ext_files[ext].append(fle_path)
                         except KeyError:
@@ -805,7 +793,7 @@ def generate_config_csv(filename):
         fh.write("\n")
 
 
-def setup_logs(opts):
+def setup_logs():
     """Sets up logging using the log logger object."""
     log = logging.getLogger("exif2timestream")
     if opts.generate:
@@ -814,7 +802,7 @@ def setup_logs(opts):
         null = logging.NullHandler()
         log.addHandler(null)
         generate_config_csv(opts.generate)
-        exit()
+        sys.exit()
     # we want logging for the real main loop
     fmt = logging.Formatter(
         '%(asctime)s - %(name)s.%(funcName)s - %(levelname)s - %(message)s')
@@ -822,15 +810,15 @@ def setup_logs(opts):
     ch.setLevel(logging.ERROR)
     ch.setFormatter(fmt)
     logdir = opts.logdir
-    if not path.exists(logdir):
+    if not os.path.exists(logdir):
         logdir = "."
-    log_fh = logging.FileHandler(path.join(logdir, "e2t_" + NOW + ".log"))
+    log_fh = logging.FileHandler(os.path.join(logdir, "e2t_" + NOW + ".log"))
     log_fh.setLevel(logging.INFO)
     log_fh.setFormatter(fmt)
     log.addHandler(log_fh)
     if opts.debug:
         debug_fh = logging.FileHandler(
-            path.join(logdir, "e2t_" + NOW + ".debug"))
+            os.path.join(logdir, "e2t_" + NOW + ".debug"))
         debug_fh.setLevel(logging.DEBUG)
         debug_fh.setFormatter(fmt)
         log.addHandler(debug_fh)
@@ -838,10 +826,10 @@ def setup_logs(opts):
     log.setLevel(logging.DEBUG)
 
 
-def main(opts):
+def main():
     """The main loop of the module, do the renaming in parallel etc."""
     log = logging.getLogger("exif2timestream")
-    setup_logs(opts)
+    setup_logs()
     # beginneth the actual main loop
     start_time = time()
     cameras = parse_camera_config_csv(opts.config)
@@ -857,25 +845,21 @@ def main(opts):
             camera[FIELDS["destination"]],
         )
         log.info(msg)
-        image_resolution = (0, 0)
-        for ext, images in find_image_files(camera).iteritems():
+        for ext, images in find_image_files(camera).items():
             images = sorted(images)
-            if(image_resolution[0] == 0):
-                try:
-                    image_resolution = skimage.novice.open(images[0]).size
-                except IOError:
-                    image_resolution = (0,0)
-            n_cam_images = len(images)
-            print("{0} {1} images from this camera".format(n_cam_images, ext))
+            try:
+                image_resolution = skimage.novice.open(images[0]).size
+            except IOError:
+                image_resolution = (0,0)
             log.info("Have {0} {1} images from this camera".format(
-                n_cam_images, ext))
-            n_images += n_cam_images
+                len(images), ext))
+            n_images += len(images)
             #last_date = None
             #subsec = 0
             count = 0
             if len(camera[FIELDS["resolutions"]]) > 1:
                 folder = "outputs"
-                if (camera[FIELDS["resolutions"]][1][1] is None):
+                if camera[FIELDS["resolutions"]][1][1] is None:
                     new_res = camera[FIELDS["resolutions"]][1][
                         0], (image_resolution[0] * camera[FIELDS["resolutions"]][1][0]) / image_resolution[1]
                 else:
@@ -886,7 +870,7 @@ def main(opts):
                 res = 'fullres'
                 new_res = image_resolution
             if "a_data" in camera[FIELDS["destination"]]:
-                if (camera[FIELDS["ts_structure"]]):
+                if camera[FIELDS["ts_structure"]]:
                     webrootaddr = "http://phenocam.anu.edu.au/cloud/data" + \
                         camera[FIELDS["destination"]].split(
                             "a_data")[1] + camera[FIELDS["ts_structure"]] + '/'
@@ -897,29 +881,26 @@ def main(opts):
             else:
                 webrootaddr = None
             thumb_image = []
-            if (n_cam_images > 3):
-                quick_div = (n_cam_images / 2)
-                thumb_image = [int(quick_div) - 1, quick_div, int(quick_div) + 1]
-                i=0
-                while (i < 3):
+            if n_images > 3:
+                thumb_image = [n + (n_images / 2) for n in (- 1, 0, 1)]
+                for i in range(3):
                     image_date = get_file_date(
                         images[thumb_image[i]], camera[FIELDS["interval"]] * 60)
                     thumb_image[i] = make_timestream_name(
                         camera, new_res[0], 'orig')
                     ts_image = get_new_file_name(image_date, thumb_image[i])
-                    ts_path, ts_fname = path.split(camera[FIELDS["ts_structure"]])
-                    thumb_image[i] = (path.join(camera[FIELDS["destination"]] ,ts_path, folder, ts_fname + '~' + str(res) + '-orig' , ts_image))
-                    if "a_data" in (thumb_image[i]):
+                    ts_path, ts_fname = os.path.split(camera[FIELDS["ts_structure"]])
+                    thumb_image[i] = (os.path.join(camera[FIELDS["destination"]] ,ts_path, folder, ts_fname + '~' + str(res) + '-orig' , ts_image))
+                    if "a_data" in thumb_image[i]:
                         thumb_image[i] = webrootaddr + thumb_image[i].split("a_data")[1]
                     else:
                         thumb_image[i] = ''
-                    i+=1
-            if ((camera[FIELDS["orientation"]]=="1")or(camera[FIELDS["orientation"]]=="-1")):
-                    j_width_hires = str(image_resolution[1])
-                    j_height_hires = str(image_resolution[0])
+            if camera[FIELDS["orientation"]] in ("1", "-1"):
+                j_width_hires = str(image_resolution[1])
+                j_height_hires = str(image_resolution[0])
             else:
-                    j_width_hires=str(image_resolution[0]),
-                    j_height_hires = str(image_resolution[1])
+                j_width_hires=str(image_resolution[0]),
+                j_height_hires = str(image_resolution[1])
 
             # TODO: sort out the whole subsecond clusterfuck
             if opts.single:
@@ -929,22 +910,21 @@ def main(opts):
                     print("Processed {: 5d} Images".format(count), end='\r')
                     process_image((image, camera, ext))
             else:
-                from multiprocessing import Pool, cpu_count
-                threads = max(cpu_count() - 1, 1)
+                threads = max(multiprocessing.cpu_count() - 1, 1)
                 if opts.threads:
                     threads = opts.threads
 
                 log.info("Using {0:d} processes".format(threads))
                 # set the function's camera-wide arguments
-                args = zip(images, cycle([camera]), cycle([ext]))
-                pool = Pool(threads)
+                args = zip(images, itertools.cycle([camera]), itertools.cycle([ext]))
+                pool = multiprocessing.Pool(threads)
                 for _ in pool.imap(process_image, args):
                     count += 1
                     print("Processed {: 5d} Images".format(count), end='\r')
                 pool.close()
                 pool.join()
 
-            
+
             json_dump.append((dict(
                 name=str(
                     camera[FIELDS["expt"]] + '-' + (camera[FIELDS["location"]])),
@@ -965,26 +945,23 @@ def main(opts):
                 thumbnails=str(thumb_image)
             )))
             print("Processed {: 5d} Images. Finished this cam!".format(count))
-            jpath = path.dirname(
+            jpath = os.path.dirname(
                 camera[FIELDS["ts_structure"]].format(folder="", res="", cam=''))
-            if not path.exists(path.join(camera[FIELDS["destination"]], jpath)):
+            if not os.path.exists(os.path.join(camera[FIELDS["destination"]], jpath)):
                 try:
-                    os.makedirs(path.join(camera[FIELDS["destination"]], jpath))
+                    os.makedirs(os.path.join(camera[FIELDS["destination"]], jpath))
                 except OSError:
                     log.warn("Could not make dir '{0:s}', skipping image '{1:s}'".format(
                         jpath, image))
-            obj = open(path.join(camera[FIELDS["destination"]], jpath, 'camera.json'), 'a+')
-            json.dump(json_dump, obj)
-            obj.close
+            with open(os.path.join(camera[FIELDS["destination"]], jpath, 'camera.json'), 'a+') as f:
+                json.dump(json_dump, f)
     secs_taken = time() - start_time
-    print("\nProcessed a total of {0} images in {1:.2f} seconds".format(
-          n_images, secs_taken))
+    print("\nProcessed a total of {0} images in {1:.2f} seconds".format(n_images, secs_taken))
 
 
 if __name__ == "__main__":
     opts = cli_options()
     if opts.version:
         print("Version {}".format(__version__))
-        exit(0)
-    # lets do this shit.
-    main(opts)
+        sys.exit(0)
+    main()
