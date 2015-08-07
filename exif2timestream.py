@@ -21,7 +21,7 @@ from time import strptime, strftime, mktime, localtime, struct_time, time
 import warnings
 
 # Module imports
-import pexif
+from lib import pexif
 import exifread
 import skimage
 #import skimage.io
@@ -54,10 +54,9 @@ def cli_options():
     parser = argparse.ArgumentParser()
     parser.add_argument('-V', '--version',
                         help='Print version information.')
-    parser.add_argument('--one', help='Use one core')
-    parser.add_argument('-t', '--threads', type=int,
+    parser.add_argument('-t', '--threads', type=int, default=1,
                         help='Number of processes to use.')
-    parser.add_argument('-d', '--debug',
+    parser.add_argument('-d', '--debug', action='store_true',
                         help='Enable debug logging (to file).')
     parser.add_argument('-l', '--logdir', default='.',
                         help='Directory to contain log files.')
@@ -282,8 +281,8 @@ def validate_camera(camera):
         log.debug("Validated camera '{0:s}'".format(cam))
         return cam
     except MultipleInvalid as e:
-        if camera[FIELDS["use"]] != '0':
-            raise e
+        #if camera[FIELDS["use"]] != '0':
+        #    raise ValueError(e)
         return None
 
 def parse_structures(camera):
@@ -474,6 +473,7 @@ def get_file_date(filename, round_secs=1):
         shortfilename = os.path.basename(filename)
         log.debug("Unable to Read file '{0:s}', aparently not a jpeg".format(shortfilename))
         with open(filename, "rb") as fh:
+            #TODO:  get this in some other way, removing exifread dependency
             exif_tags = exifread.process_file(
                 fh, details=False, stop_tag=EXIF_DATE_TAG)
             try:
@@ -903,7 +903,7 @@ def main():
                 j_height_hires = str(image_resolution[1])
 
             # TODO: sort out the whole subsecond clusterfuck
-            if opts.single:
+            if opts.threads == 1:
                 log.info("Using 1 process (What is this? Fucking 1990?)")
                 for image in images:
                     count += 1
