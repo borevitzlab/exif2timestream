@@ -1,24 +1,29 @@
+#!usr/bin/env python
+"""Take somewhat structured image collections and outputs Timestream format."""
 
 from __future__ import print_function
+
+import argparse
 import os
 from os import path
-from csv import reader, DictReader
+import csv
 import shutil
 from sys import exit
 from time import strptime, strftime, mktime, localtime, struct_time, time
 import calendar
-from voluptuous import Required, Schema, MultipleInvalid
+#from voluptuous import Required, Schema, MultipleInvalid
 from itertools import cycle
 from inspect import isclass
 import logging
 import re
-import pexif
-import exifread as er
+#import pexif
+#import exifread as er
 import warnings
 import json
 import skimage
-import skimage.io
-import skimage.novice
+#import skimage.io
+#import skimage.novice
+
 # versioneer
 from _version import get_versions
 __version__ = get_versions()['version']
@@ -39,22 +44,24 @@ IMAGE_TYPE_CONSTANTS = {"raw", "jpg"}
 RAW_FORMATS = {"cr2", "nef", "tif", "tiff"}
 IMAGE_SUBFOLDERS = {"raw", "jpg", "png", "tiff", "nef", "cr2"}
 DATE_NOW_CONSTANTS = {"now", "current"}
-CLI_OPTS = """
-USAGE:
-    exif2timestream.py [-t PROCESSES -1 -d -l LOGDIR ] -c CAM_CONFIG_CSV
-    exif2timestream.py -g CAM_CONFIG_CSV
-    exif2timestream.py -V
 
-OPTIONS:
-    -1                  Use one core
-    -d                  Enable debug logging (to file).
-    -t PROCESSES        Number of processes to use.
-    -l LOGDIR           Directory to contain log files. [Default: .]
-    -c CAM_CONFIG_CSV   Path to CSV camera config file for normal operation.
-    -g CAM_CONFIG_CSV   Generate a template camera configuration file at given
-                        path.
-    -V                  Print version information.
-"""
+def cli_options():
+    """Return CLI arguments with argparse."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-V', '--version',
+                        help='Print version information.')
+    parser.add_argument('--one', help='Use one core')
+    parser.add_argument('-t', '--threads', type=int,
+                        help='Number of processes to use.')
+    parser.add_argument('-d', '--debug',
+                        help='Enable debug logging (to file).')
+    parser.add_argument('-l', '--logdir', default='.',
+                        help='Directory to contain log files.')
+    parser.add_argument('-c', '--config', help='Path to CSV camera '
+                        'config file for normal operation.')
+    parser.add_argument('-g', '--generate',  help='Generate a template'
+                        ' camera configuration file at given path.')
+    return parser.parse_args()
 
 
 # Set up logging objects
@@ -521,7 +528,6 @@ def make_timestream_name(camera, res="fullres", step="orig", folder='original'):
     Makes a timestream name given the format (module-level constant), step,
     resolution and a camera object.
     """
-    log = logging.getLogger("exif2timestream")
     if isinstance(res, tuple):
         res = "x".join([str(x) for x in res])
     # raise ValueError(str((camera, res, step)))
@@ -532,7 +538,7 @@ def make_timestream_name(camera, res="fullres", step="orig", folder='original'):
         res=str(res),
         step=step, 
         folder = folder
-    )
+        )
     return ts_name
 
 
@@ -577,7 +583,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
     try:
         shutil.copy(image, dest)
         log.info("Copied '{0:s}' to '{1:s}".format(image, dest))
-    except Exception as e:
+    except:
         log.warn("Couldnt copy '{0:s}' to '{1:s}', skipping image".format(
             image, dest))
         raise SkipImage
@@ -642,7 +648,7 @@ def process_image(args):
     log = logging.getLogger("exif2timestream")
     log.debug("Starting to process image")
     (image, camera, ext) = args
-    EXIF_DATE_MASK = camera[FIELDS["filename_date_mask"]]
+    #EXIF_DATE_MASK = camera[FIELDS["filename_date_mask"]]
     image_date = get_file_date(image, camera[FIELDS["interval"]] * 60)
     if image_date < camera[FIELDS["expt_start"]] or \
             image_date > camera[FIELDS["expt_end"]]:
@@ -708,7 +714,7 @@ def process_image(args):
         # images have already been archived above, so just delete originals
         try:
             os.unlink(image)
-        except OSError as e:
+        except OSError:
             log.error("Could not delete '{0}'".format(image))
         log.debug("Deleted {}".format(image))
 
@@ -716,7 +722,7 @@ def process_image(args):
 
 
 def get_local_path(this_path):
-    """Replaces slashes of any kind for the correct kind for the local system"""
+    """Replaces slashes with the correct kind for local system paths."""
     return this_path.replace("/", path.sep).replace("\\", path.sep)
 
 
@@ -737,14 +743,15 @@ def parse_camera_config_csv(filename):
     Parse a camera configuration 
     It yields localised, validated camera dicts
     """
-    fh = open(filename)
-    cam_config = DictReader(fh)
-    for camera in cam_config:
-        camera = validate_camera(camera)        
-        camera = localise_cam_config(camera)
-        if camera is not None and camera[FIELDS["use"]]:
-            camera = parse_structures(camera)
-            yield camera
+    if filename is None:
+        raise StopIteration
+    with open(filename) as fh:
+        cam_config = csv.DictReader(fh)
+        for camera in cam_config:
+            camera = validate_camera(camera)        
+            camera = localise_cam_config(camera)
+            if camera is not None and camera[FIELDS["use"]]:
+                yield parse_structures(camera)
 
 
 def find_image_files(camera):
@@ -756,10 +763,6 @@ def find_image_files(camera):
     exts = camera[FIELDS["image_types"]]
     ext_files = {}
     for ext in exts:
-        if ext.lower() in RAW_FORMATS:
-            ext_dir = "raw"
-        else:
-            ext_dir = ext
         src = camera[FIELDS["source"]]
         lst = os.listdir(src)
         lst = filter(lambda x: not x.startswith(".") and not x.startswith('_'),
@@ -805,12 +808,12 @@ def generate_config_csv(filename):
 def setup_logs(opts):
     """Sets up logging using the log logger object."""
     log = logging.getLogger("exif2timestream")
-    if opts['-g'] is not None:
+    if opts.generate:
         # No logging when we're just generating a config file. What could
         # possibly go wrong...
         null = logging.NullHandler()
         log.addHandler(null)
-        generate_config_csv(opts["-g"])
+        generate_config_csv(opts.generate)
         exit()
     # we want logging for the real main loop
     fmt = logging.Formatter(
@@ -818,14 +821,14 @@ def setup_logs(opts):
     ch = logging.StreamHandler()
     ch.setLevel(logging.ERROR)
     ch.setFormatter(fmt)
-    logdir = opts['-l']
+    logdir = opts.logdir
     if not path.exists(logdir):
         logdir = "."
     log_fh = logging.FileHandler(path.join(logdir, "e2t_" + NOW + ".log"))
     log_fh.setLevel(logging.INFO)
     log_fh.setFormatter(fmt)
     log.addHandler(log_fh)
-    if opts['-d']:
+    if opts.debug:
         debug_fh = logging.FileHandler(
             path.join(logdir, "e2t_" + NOW + ".debug"))
         debug_fh.setLevel(logging.DEBUG)
@@ -841,7 +844,7 @@ def main(opts):
     setup_logs(opts)
     # beginneth the actual main loop
     start_time = time()
-    cameras = parse_camera_config_csv(opts["-c"])
+    cameras = parse_camera_config_csv(opts.config)
     n_images = 0
     json_dump = []
     for camera in cameras:
@@ -853,7 +856,6 @@ def main(opts):
             camera[FIELDS["source"]],
             camera[FIELDS["destination"]],
         )
-        print(msg)
         log.info(msg)
         image_resolution = (0, 0)
         for ext, images in find_image_files(camera).iteritems():
@@ -868,8 +870,8 @@ def main(opts):
             log.info("Have {0} {1} images from this camera".format(
                 n_cam_images, ext))
             n_images += n_cam_images
-            last_date = None
-            subsec = 0
+            #last_date = None
+            #subsec = 0
             count = 0
             if len(camera[FIELDS["resolutions"]]) > 1:
                 folder = "outputs"
@@ -920,7 +922,7 @@ def main(opts):
                     j_height_hires = str(image_resolution[1])
 
             # TODO: sort out the whole subsecond clusterfuck
-            if "-1" in opts and opts["-1"]:
+            if opts.single:
                 log.info("Using 1 process (What is this? Fucking 1990?)")
                 for image in images:
                     count += 1
@@ -928,15 +930,9 @@ def main(opts):
                     process_image((image, camera, ext))
             else:
                 from multiprocessing import Pool, cpu_count
-                if "-t" in opts and opts["-t"] is not None:
-                    try:
-                        threads = int(opts["-t"])
-                    except ValueError:
-                        threads = cpu_count() - 1
-                else:
-                    threads = cpu_count() - 1
-                # Ensure that we're using at least one thread
-                threads = max(threads, 1)
+                threads = max(cpu_count() - 1, 1)
+                if opts.threads:
+                    threads = opts.threads
 
                 log.info("Using {0:d} processes".format(threads))
                 # set the function's camera-wide arguments
@@ -986,9 +982,8 @@ def main(opts):
 
 
 if __name__ == "__main__":
-    from docopt import docopt
-    opts = docopt(CLI_OPTS)
-    if opts["-V"]:
+    opts = cli_options()
+    if opts.version:
         print("Version {}".format(__version__))
         exit(0)
     # lets do this shit.
