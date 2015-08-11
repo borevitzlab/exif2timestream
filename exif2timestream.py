@@ -7,7 +7,6 @@ from __future__ import print_function
 # Standard library imports
 import argparse
 import calendar
-import collections
 import csv
 import inspect
 import json
@@ -21,7 +20,7 @@ from time import strptime, strftime, mktime, localtime, struct_time, time
 import warnings
 
 # Module imports
-from lib import pexif
+from lib import pexif # local copy, edited for Py3 compatibility
 import exifread
 import skimage
 #import skimage.io
@@ -72,7 +71,7 @@ NOW = strftime("%Y%m%dT%H%M%S", localtime())
 
 
 class CameraFields(object):
-    """Convenience class to translate between exif and config.csv fields."""
+    """Validate input and translate between exif and config.csv fields."""
     # Should be nearly 1:1, but here just in case
     ts_csv_fields = (
         ('use', 'USE'),
@@ -100,15 +99,137 @@ class CameraFields(object):
         ('fn_parse', 'FN_PARSE'),
         ('fn_structure', 'FN_STRUCTURE')
         )
-    TS_CSV = collections.OrderedDict(ts_csv_fields)
-    CSV_TS = collections.OrderedDict([(b, a) for a, b in ts_csv_fields])
+    TS_CSV = dict(ts_csv_fields)
 
     def __init__(self, csv_config_dict):
         """Store csv settings as object attributes and validate."""
-        csv_config_dict = validate_camera(csv_config_dict)
+        csv_config_dict = self.validate_fields(csv_config_dict)
         for k, v in csv_config_dict.items():
-            setattr(self, TS_CSV[k], v)
+            setattr(self, k, v)
+        local = lambda p: p.replace(r'\\', '/').replace('/', os.path.sep)
+        self.source = local(self.source)
+        self.archive_dest = local(self.archive_dest)
+        self.destination = local(self.destination)
 
+    def validate_fields(self, config_dict):
+        """Validates and returns input data according to the schema."""
+        def date(x):
+            """Converter / validator for date field."""
+            if isinstance(x, struct_time):
+                return x
+            if x.lower() in DATE_NOW_CONSTANTS:
+                return localtime()
+            try:
+                return strptime(x, "%Y_%m_%d")
+            except:
+                raise ValueError
+
+        def bool_str(x):
+            """Converts a string to a boolean, even yes/no/true/false."""
+            if isinstance(x, bool):
+                return x
+            elif isinstance(x, int):
+                return bool(x)
+            elif isinstance(x, str):
+                x = x.strip().lower()
+                if x in {"t", "true", "y", "yes", "f", "false", "n", "no"}:
+                    return x in {"t", "true", "y", "yes"}
+                return bool(int(x))
+            raise ValueError
+
+        def int_time_hr_min(x):
+            """Validator for time field."""
+            if isinstance(x, tuple):
+                return x
+            return (int(x) // 100, int(x) % 100)
+
+        def path_exists(x):
+            """Validator for path field."""
+            if os.path.exists(x):
+                return x
+            raise ValueError("path '%s' doesn't exist" % x)
+
+        def resolution_str(x):
+            """Validator for resolution field."""
+            if not isinstance(x, str):
+                raise ValueError
+            res_list = []
+            for res in x.strip().split('~'):
+                xy = res.strip().lower().split("x")
+                if res in FULLRES_CONSTANTS:
+                    res_list.append(res)
+                elif len(xy) == 2:
+                    res_list.append(tuple(int(i) for i in xy))
+                else:
+                    # either int(x-res), or raise ValueError for validator
+                    res_list.append((int(res), None))
+            return res_list
+
+        def cam_pad_str(x):
+            """Pads a numeric string to two digits."""
+            if len(str(x)) == 1:
+                return '0' + str(x)
+
+        def image_type_str(x):
+            """Validator for image type field."""
+            if isinstance(x, list):
+                return x
+            if not isinstance(x, str):
+                raise ValueError
+            types = x.lower().strip().split('~')
+            if not all(t in IMAGE_TYPE_CONSTANTS for t in types):
+                raise ValueError
+            return types
+
+        def remove_underscores(x):
+            """Replaces '_' with '-'."""
+            return x.replace("_", "-")
+
+        def in_list_method(x):
+            """Ensure x is a vaild timestream method."""
+            if x not in {"copy", "archive", "move", "resize", "json"}:
+                raise ValueError
+            return x
+
+        def in_list_mode(x):
+            """Ensure x is a vaild timestream method."""
+            if x not in {"batch", "watch"}:
+                raise ValueError
+            return x
+
+        FIELDS = CameraFields.TS_CSV
+        sch = Schema({
+            Required(FIELDS["use"]): bool_str,
+            Required(FIELDS["destination"]): path_exists,
+            Required(FIELDS["expt"]): remove_underscores,
+            Required(FIELDS["cam_num"]): cam_pad_str,
+            Required(FIELDS["expt_end"]): date,
+            Required(FIELDS["expt_start"]): date,
+            Required(FIELDS["image_types"]): image_type_str,
+            Required(FIELDS["interval"], default=1): int,
+            Required(FIELDS["location"]): remove_underscores,
+            Required(FIELDS["archive_dest"]): path_exists,
+            Required(FIELDS["method"], default="archive"): in_list_method,
+            Required(FIELDS["source"]): path_exists,
+            FIELDS["mode"]: in_list_mode,
+            FIELDS["resolutions"]: resolution_str,
+            FIELDS["user"]: remove_underscores,
+            FIELDS["sunrise"]: int_time_hr_min,
+            FIELDS["sunset"]: int_time_hr_min,
+            FIELDS["timezone"]: int_time_hr_min,
+            FIELDS["project_owner"]: remove_underscores,
+            FIELDS["ts_structure"]: str,
+            FIELDS["filename_date_mask"]: str,
+            FIELDS["orientation"]: str,
+            FIELDS["fn_parse"]: str,
+            FIELDS["fn_structure"]: str,
+            })
+        try:
+            cam = sch(camera)
+            log.debug("Validated camera '{:s}'".format(cam))
+            return cam
+        except MultipleInvalid:
+            raise SkipImage
 
 
 class SkipImage(StopIteration):
@@ -126,142 +247,6 @@ def d2s(date):
         return strftime(TS_DATE_FMT, date)
     else:
         return date
-
-
-def validate_camera(camera):
-    """Validates and converts to python types the given camera dict (which
-    normally has string values).
-    """
-    log = logging.getLogger("exif2timestream")
-
-    def date(x):
-        """Converter / validator for date field."""
-        if isinstance(x, struct_time):
-            return x
-        if x.lower() in DATE_NOW_CONSTANTS:
-            return localtime()
-        try:
-            return strptime(x, "%Y_%m_%d")
-        except:
-            raise ValueError
-
-    def bool_str(x):
-        """Converts a string to a boolean, even yes/no/true/false."""
-        if isinstance(x, bool):
-            return x
-        elif isinstance(x, int):
-            return bool(x)
-        elif isinstance(x, str):
-            x = x.strip().lower()
-            if x in {"t", "true", "y", "yes", "f", "false", "n", "no"}:
-                return x in {"t", "true", "y", "yes"}
-            return bool(int(x))
-        raise ValueError
-
-    def int_time_hr_min(x):
-        """Validator for time field."""
-        if isinstance(x, tuple):
-            return x
-        return (int(x) // 100, int(x) % 100)
-
-    def path_exists(x):
-        """Validator for path field."""
-        if os.path.exists(x):
-            return x
-        raise ValueError("path '%s' doesn't exist" % x)
-
-    def resolution_str(x):
-        """Validator for resolution field."""
-        if not isinstance(x, str):
-            raise ValueError
-        xs = x.strip().split('~')
-        res_list = []
-        for res in xs:
-            # First, attempt splitting into X and Y components. Non <X>x<Y>
-            # resolutions will be returned as a single item in a list,
-            # hence the len(xy) below
-            xy = res.strip().lower().split("x")
-            if res in FULLRES_CONSTANTS:
-                res_list.append(res)
-            elif len(xy) == 2:
-                # it's an XxY thing, hopefully
-                x, y = xy
-                x, y = int(x), int(y)
-                res_list.append((x, y))
-            else:
-                # we'll pretend it's an int, for X resolution, and any ValueError
-                # triggered here will be propagated to the vaildator
-                res_list.append((int(res), None))
-        return res_list
-
-    def cam_pad_str(x):
-        """Pads a numeric string to two digits."""
-        if len(str(x)) == 1:
-            return '0' + str(x)
-
-    def image_type_str(x):
-        """Validator for image type field."""
-        if isinstance(x, list):
-            return x
-        if not isinstance(x, str):
-            raise ValueError
-        types = x.lower().strip().split('~')
-        for t in types:
-            if t not in IMAGE_TYPE_CONSTANTS:
-                raise ValueError
-        return types
-
-    def remove_underscores(x):
-        """Replaces '_' with '-'."""
-        return x.replace("_", "-")
-
-
-    class InList(object):
-        #pylint:disable=too-few-public-methods
-        def __init__(self, valid_values):
-            if isinstance(valid_values, list) or isinstance(valid_values, tuple):
-                self.valid_values = set(valid_values)
-
-        def __call__(self, x):
-            if x not in self.valid_values:
-                raise ValueError
-            return x
-
-    sch = Schema({
-        Required(FIELDS["use"]): bool_str,
-        Required(FIELDS["destination"]): path_exists,
-        Required(FIELDS["expt"]): remove_underscores,
-        Required(FIELDS["cam_num"]): cam_pad_str,
-        Required(FIELDS["expt_end"]): date,
-        Required(FIELDS["expt_start"]): date,
-        Required(FIELDS["image_types"]): image_type_str,
-        Required(FIELDS["interval"], default=1): int,
-        Required(FIELDS["location"]): remove_underscores,
-        Required(FIELDS["archive_dest"]): path_exists,
-        Required(FIELDS["method"], default="archive"):
-            InList(["copy", "archive", "move", "resize", "json"]),
-        Required(FIELDS["source"]): path_exists,
-        FIELDS["mode"]: InList(["batch", "watch"]),
-        FIELDS["resolutions"]: resolution_str,
-        FIELDS["user"]: remove_underscores,
-        FIELDS["sunrise"]: int_time_hr_min,
-        FIELDS["sunset"]: int_time_hr_min,
-        FIELDS["timezone"]: int_time_hr_min,
-        FIELDS["project_owner"]: remove_underscores,
-        FIELDS["ts_structure"]: str,
-        FIELDS["filename_date_mask"]: str,
-        FIELDS["orientation"]: str,
-        FIELDS["fn_parse"]: str,
-        FIELDS["fn_structure"]: str,
-    })
-    try:
-        cam = sch(camera)
-        log.debug("Validated camera '{0:s}'".format(cam))
-        return cam
-    except MultipleInvalid as e:
-        if camera.use != '0':
-            raise ValueError(e)
-        return None
 
 def parse_structures(camera):
     """Parse the file structure of the camera for conversion to timestream format."""
@@ -303,7 +288,6 @@ def parse_structures(camera):
 def resize_function(camera, image_date, dest):
     """Create a resized image in a new location."""
     print ("Resize Function")
-    log = logging.getLogger("exif2timestream")
     # Resize a single image, to its new location
     log.debug(
         "Now checking if we have 1 or two resolution arguments on image '{0:s}'".format(dest))
@@ -353,7 +337,6 @@ def resize_function(camera, image_date, dest):
 def resize_img(filename, destination, to_width, to_height):
     """Actually resizes the image."""
     print ("Resize Image")
-    log = logging.getLogger("exif2timestream")
     # Open the Image and get its width
     img = skimage.io.imread(filename)
     # Resize the image
@@ -420,7 +403,6 @@ def get_file_date(filename, round_secs=1):
     """
     Gets a time.struct_time from an image's EXIF, or None if not possible.
     """
-    log = logging.getLogger("exif2timestream")
     # Now uses Pexif
     try:
         exif_tags = pexif.JpegFile.fromFile(filename)
@@ -469,7 +451,6 @@ def get_new_file_name(date_tuple, ts_name, n=0, fmt=TS_FMT, ext="jpg"):
     Gives the new file name for an image within a timestream, based on
     datestamp, timestream name, sub-second series count and extension.
     """
-    log = logging.getLogger("exif2timestream")
     if date_tuple is None or not date_tuple:
         log.error("Must supply get_new_file_name with a valid date." +
                   "Date is '{0:s}'".format(d2s(date_tuple)))
@@ -488,7 +469,6 @@ def round_struct_time(in_time, round_secs, tz_hrs=0, uselocal=True):
     """
     Round a struct_time object to any time interval in seconds
     """
-    log = logging.getLogger("exif2timestream")
     seconds = mktime(in_time)
     rounded = int(round(seconds / float(round_secs)) * round_secs)
     if not uselocal:
@@ -526,7 +506,6 @@ def make_timestream_name(camera, res="fullres", step="orig", folder='original'):
 
 def timestreamise_image(image, camera, subsec=0, step="orig"):
     """Process a single image, mv/cp-ing it to its new location"""
-    log = logging.getLogger("exif2timestream")
     # Edit the global variable for the date mask
     global EXIF_DATE_MASK
     EXIF_DATE_MASK = camera.filename_date_mask
@@ -581,7 +560,6 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
 def _dont_clobber(fn, mode="append"):
     """Ensure we don't overwrite things, using a variety of methods"""
     #TODO:  will clobber something different if the new filename exists
-    log = logging.getLogger("exif2timestream")
     if os.path.exists(fn):
         # Deal with SkipImage or StopIteration exceptions
         if isinstance(mode, StopIteration):
@@ -615,7 +593,6 @@ def process_image(args):
     move/copy operations.
     """
     print ("Process Image")
-    log = logging.getLogger("exif2timestream")
     log.debug("Starting to process image")
     (image, camera, ext) = args
     image_date = get_file_date(image, camera.interval * 60)
@@ -675,23 +652,6 @@ def process_image(args):
             log.error("Could not delete '{0}'".format(image))
         log.debug("Deleted {}".format(image))
 
-        # Resize the fields here
-
-
-def get_local_path(this_path):
-    """Replaces slashes with the correct kind for local system paths."""
-    return this_path.replace("/", os.path.sep).replace("\\", os.path.sep)
-
-
-def localise_cam_config(camera):
-    """Make camera use localised settings, e.g. path separators"""
-    if camera is None:
-        return None
-    camera.source = get_local_path(camera.source)
-    camera.archive_dest = get_local_path(camera.archive_dest)
-    camera.destination = get_local_path(camera.destination)
-    return camera
-
 
 def parse_camera_config_csv(filename):
     """
@@ -703,10 +663,12 @@ def parse_camera_config_csv(filename):
     with open(filename) as fh:
         cam_config = csv.DictReader(fh)
         for camera in cam_config:
-            camera = CameraFields(camera)
-            camera = localise_cam_config(camera)
-            if camera is not None and camera.use:
-                yield parse_structures(camera)
+            try:
+                camera = CameraFields(camera)
+                if camera.use:
+                    yield parse_structures(camera)
+            except SkipImage:
+                continue
 
 
 def find_image_files(camera):
@@ -714,7 +676,6 @@ def find_image_files(camera):
     Scrape a directory for image files, by extension.
     Possibly, in future, use file magic numbers, but a bad idea on windows.
     """
-    log = logging.getLogger("exif2timestream")
     exts = camera.image_types
     ext_files = {}
     for ext in exts:
@@ -750,20 +711,12 @@ def find_image_files(camera):
 def generate_config_csv(filename):
     """Make a config csv template"""
     with open(filename, "w") as fh:
-        fh.write(",".join(CameraFields.CSV_TS.keys()))
+        fh.write(",".join([f[1] for f in CameraFields.ts_csv_fields]))
         fh.write("\n")
 
 
 def setup_logs():
     """Sets up logging using the log logger object."""
-    log = logging.getLogger("exif2timestream")
-    if opts.generate:
-        # No logging when we're just generating a config file. What could
-        # possibly go wrong...
-        null = logging.NullHandler()
-        log.addHandler(null)
-        generate_config_csv(opts.generate)
-        sys.exit()
     # we want logging for the real main loop
     fmt = logging.Formatter(
         '%(asctime)s - %(name)s.%(funcName)s - %(levelname)s - %(message)s')
@@ -789,7 +742,6 @@ def setup_logs():
 
 def main():
     """The main loop of the module, do the renaming in parallel etc."""
-    log = logging.getLogger("exif2timestream")
     setup_logs()
     # beginneth the actual main loop
     start_time = time()
@@ -923,4 +875,8 @@ if __name__ == "__main__":
     if opts.version:
         print("Version {}".format(__version__))
         sys.exit(0)
+    if opts.generate:
+        generate_config_csv(opts.generate)
+        sys.exit()
+    log = logging.getLogger("exif2timestream")
     main()
