@@ -111,7 +111,8 @@ class CameraFields(object):
         self.archive_dest = local(self.archive_dest)
         self.destination = local(self.destination)
 
-    def validate_fields(self, config_dict):
+    @staticmethod
+    def validate_fields(config_dict):
         """Validates and returns input data according to the schema."""
         def date(x):
             """Converter / validator for date field."""
@@ -225,7 +226,7 @@ class CameraFields(object):
             FIELDS["fn_structure"]: str,
             })
         try:
-            cam = sch(camera)
+            cam = sch(config_dict)
             log.debug("Validated camera '{:s}'".format(cam))
             return cam
         except MultipleInvalid:
