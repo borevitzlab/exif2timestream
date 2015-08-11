@@ -259,7 +259,7 @@ def parse_structures(camera):
         # Replace the ts_structure with all the other stuff
 
         for key, value in camera.items():
-            camera.ts_structure = camera.ts_structure.replace(key.upper() ,str(value))
+            camera.ts_structure = camera.ts_structure.replace(key.upper(), str(value))
         # If it starts with a /, then we need to get rid of that
         if camera.ts_structure[0] == '/':
             camera.ts_structure = camera.ts_structure[1:]
@@ -285,10 +285,10 @@ def parse_structures(camera):
 
 def resize_function(camera, image_date, dest):
     """Create a resized image in a new location."""
-    print ("Resize Function")
+    log.debug("Resize Function")
     # Resize a single image, to its new location
-    log.debug(
-        "Now checking if we have 1 or two resolution arguments on image '{0:s}'".format(dest))
+    log.debug("Now checking if we have 1 or two resolution arguments on image"
+              "'{0:s}'".format(dest))
     if camera.resolutions[1][1] is None:
         # Read in image dimensions
         img = skimage.io.imread(dest).shape
@@ -298,27 +298,25 @@ def resize_function(camera, image_date, dest):
         log.debug("One resolution arguments, '{0:d}'".format(new_res[0]))
     else:
         new_res = camera.resolutions[1]
-        log.debug(
-            "Two resolution arguments, '{:d}' x '{:d}'".format(new_res[0], new_res[1]))
-    log.debug("Now getting Timestream name")
+        log.debug("Two resolution arguments, "
+                  "'{:d}' x '{:d}'".format(new_res[0], new_res[1]))
+    log.info("Now getting Timestream name")
     # Get the timestream name to save the image as
     ts_name = make_timestream_name(camera, res=new_res[0], step="orig")
     # Get the full output file name from the ts_name and the image date
-    resizing_temp_outname = get_new_file_name(
-        image_date, ts_name)
+    resizing_temp_outname = get_new_file_name(image_date, ts_name)
     # Based on the value of ts_structure, combine to form a full image path
     resized_img = os.path.join(
         camera.destination,
-        camera.ts_structure.format(folder='outputs', res=str(new_res[0]), cam=camera.cam_num, step='outputs'),
+        camera.ts_structure.format(folder='outputs', res=str(new_res[0]),
+                                   cam=camera.cam_num, step='outputs'),
         resizing_temp_outname)
     # If the resized image already exists, then just return
     if os.path.isfile(resized_img):
         return
-    log.debug(
-        "Full resized filename which we will output to is '{0:s}'".format(resized_img))
+    log.debug("Full resized filename which we will output to is "
+              "'{0:s}'".format(resized_img))
     resized_img_path = os.path.dirname(resized_img)
-    log.debug(
-        "Now checking if image path already exists, if it does, skipping")
     if not os.path.exists(resized_img_path):
         try:
             os.makedirs(resized_img_path)
@@ -706,13 +704,6 @@ def find_image_files(camera):
     return ext_files
 
 
-def generate_config_csv(filename):
-    """Make a config csv template"""
-    with open(filename, "w") as fh:
-        fh.write(",".join([f[1] for f in CameraFields.ts_csv_fields]))
-        fh.write("\n")
-
-
 def setup_logs():
     """Sets up logging options."""
     NOW = strftime("%Y%m%dT%H%M%S", localtime())
@@ -741,132 +732,140 @@ def setup_logs():
         log.setLevel(logging.DEBUG)
 
 
+def process_camera(camera, ext, images, n_images, json_dump):
+    """Process a set of images for one extension for a single camera."""
+    images = sorted(images)
+    try:
+        image_resolution = skimage.novice.open(images[0]).size
+    except IOError:
+        image_resolution = (0, 0)
+    log.info("Have {0} {1} images from this camera".format(
+        len(images), ext))
+    n_images += len(images)
+    #last_date = None
+    #subsec = 0
+    count = 0
+    if len(camera.resolutions) > 1:
+        folder = "outputs"
+        if camera.resolutions[1][1] is None:
+            x, y = image_resolution
+            new_res = (camera.resolutions[1][0],
+                       camera.resolutions[1][0] * x / y)
+        else:
+            new_res = camera.resolutions[1]
+        res = new_res[0]
+    else:
+        folder = "original"
+        res = 'fullres'
+        new_res = image_resolution
+    if "a_data" in camera.destination:
+        if camera.ts_structure:
+            webrootaddr = "http://phenocam.anu.edu.au/cloud/data" + \
+                camera.destination.split(
+                    "a_data")[1] + camera.ts_structure + '/'
+        else:
+            webrootaddr = "http://phenocam.anu.edu.au/cloud/data" + \
+                camera.destination.split(
+                    "a_data")[1] + camera.location + '/'
+    else:
+        webrootaddr = None
+    thumb_image = []
+    if n_images > 3:
+        thumb_image = [n + (n_images / 2) for n in (- 1, 0, 1)]
+        for i in range(3):
+            image_date = get_file_date(
+                images[thumb_image[i]], camera.interval * 60)
+            thumb_image[i] = make_timestream_name(
+                camera, new_res[0], 'orig')
+            ts_image = get_new_file_name(image_date, thumb_image[i])
+            ts_path, ts_fname = os.path.split(camera.ts_structure)
+            thumb_image[i] = os.path.join(
+                camera.destination, ts_path, folder,
+                ts_fname + '~' + str(res) + '-orig', ts_image)
+            if "a_data" in thumb_image[i]:
+                thumb_image[i] = webrootaddr + thumb_image[i].split("a_data")[1]
+            else:
+                thumb_image[i] = ''
+    if camera.orientation in ("1", "-1"):
+        j_width_hires = str(image_resolution[1])
+        j_height_hires = str(image_resolution[0])
+    else:
+        j_width_hires=str(image_resolution[0]),
+        j_height_hires = str(image_resolution[1])
+
+    # TODO: sort out the whole subsecond clusterfuck
+    if opts.threads == 1:
+        log.info("Using 1 process - what is this? 1990?")
+        for image in images:
+            count += 1
+            print("Processed {:5d} Images".format(count), end='\r')
+            process_image((image, camera, ext))
+    else:
+        threads = max(opts.threads, multiprocessing.cpu_count() - 1, 1)
+        if opts.threads:
+            threads = opts.threads
+
+        log.info("Using {0:d} processes".format(threads))
+        # set the function's camera-wide arguments
+        args = [(image, camera, ext) for image in images]
+        pool = multiprocessing.Pool(threads)
+        for _ in pool.imap(process_image, args):
+            count += 1
+            print("Processed {: 5d} Images".format(count), end='\r')
+        pool.close()
+        pool.join()
+
+
+    json_dump.append((dict(
+        name='{}-{}'.format(camera.expt, camera.location),
+        utc="false",
+        width_hires=str(j_width_hires),
+        ts_version='1',
+        ts_end=str(calendar.timegm(camera.expt_end)),
+        image_type=str(CameraFields.TS_CSV["image_types"][0]),
+        height_hires=str(j_height_hires),
+        expt=str(camera.expt),
+        width=str(new_res[0]),
+        webroot=str(webrootaddr),
+        period_in_minutes=str(camera.interval),
+        timezone=str(camera.timezone[0]),
+        ts_start=str(calendar.timegm(camera.expt_start)),
+        height=str(new_res[1]),
+        access='0',
+        thumbnails=str(thumb_image)
+    )))
+    print("Processed {: 5d} Images. Finished this cam!".format(count))
+    jpath = os.path.dirname(
+        camera.ts_structure.format(folder='', res='', cam=''))
+    if not os.path.exists(os.path.join(camera.destination, jpath)):
+        try:
+            os.makedirs(os.path.join(camera.destination, jpath))
+        except OSError:
+            log.warn("Could not make dir '{}', skipping images".format(
+                jpath))
+    with open(os.path.join(camera.destination, jpath, 'camera.json'), 'a+') as f:
+        #TODO: check duplication (appending json list, file mode a+)
+        json.dump(json_dump, f)
+    return n_images, json_dump
+
+
 def main():
     """The main loop of the module, do the renaming in parallel etc."""
     setup_logs()
     start_time = time()
-    cameras = parse_camera_config_csv(opts.config)
     n_images = 0
     json_dump = []
-    for camera in cameras:
+    for camera in parse_camera_config_csv(opts.config):
         log.info("Processing experiment {}, location {}".format(
             camera.expt, camera.location))
         log.info("Images are coming from {}, being put in {}".format(
             camera.source, camera.destination))
         for ext, images in find_image_files(camera).items():
-            images = sorted(images)
-            try:
-                image_resolution = skimage.novice.open(images[0]).size
-            except IOError:
-                image_resolution = (0,0)
-            log.info("Have {0} {1} images from this camera".format(
-                len(images), ext))
-            n_images += len(images)
-            #last_date = None
-            #subsec = 0
-            count = 0
-            if len(camera.resolutions) > 1:
-                folder = "outputs"
-                if camera.resolutions[1][1] is None:
-                    x, y = image_resolution
-                    new_res = (camera.resolutions[1][0],
-                               camera.resolutions[1][0] * x / y)
-                else:
-                    new_res = camera.resolutions[1]
-                res = new_res[0]
-            else:
-                folder = "original"
-                res = 'fullres'
-                new_res = image_resolution
-            if "a_data" in camera.destination:
-                if camera.ts_structure:
-                    webrootaddr = "http://phenocam.anu.edu.au/cloud/data" + \
-                        camera.destination.split(
-                            "a_data")[1] + camera.ts_structure + '/'
-                else:
-                    webrootaddr = "http://phenocam.anu.edu.au/cloud/data" + \
-                        camera.destination.split(
-                            "a_data")[1] + camera.location + '/'
-            else:
-                webrootaddr = None
-            thumb_image = []
-            if n_images > 3:
-                thumb_image = [n + (n_images / 2) for n in (- 1, 0, 1)]
-                for i in range(3):
-                    image_date = get_file_date(
-                        images[thumb_image[i]], camera.interval * 60)
-                    thumb_image[i] = make_timestream_name(
-                        camera, new_res[0], 'orig')
-                    ts_image = get_new_file_name(image_date, thumb_image[i])
-                    ts_path, ts_fname = os.path.split(camera.ts_structure)
-                    thumb_image[i] = os.path.join(
-                        camera.destination, ts_path, folder,
-                        ts_fname + '~' + str(res) + '-orig', ts_image)
-                    if "a_data" in thumb_image[i]:
-                        thumb_image[i] = webrootaddr + thumb_image[i].split("a_data")[1]
-                    else:
-                        thumb_image[i] = ''
-            if camera.orientation in ("1", "-1"):
-                j_width_hires = str(image_resolution[1])
-                j_height_hires = str(image_resolution[0])
-            else:
-                j_width_hires=str(image_resolution[0]),
-                j_height_hires = str(image_resolution[1])
-
-            # TODO: sort out the whole subsecond clusterfuck
-            if opts.threads == 1:
-                log.info("Using 1 process - what is this? 1990?")
-                for image in images:
-                    count += 1
-                    print("Processed {:5d} Images".format(count), end='\r')
-                    process_image((image, camera, ext))
-            else:
-                threads = max(opts.threads, multiprocessing.cpu_count() - 1, 1)
-                if opts.threads:
-                    threads = opts.threads
-
-                log.info("Using {0:d} processes".format(threads))
-                # set the function's camera-wide arguments
-                args = [(image, camera, ext) for image in images]
-                pool = multiprocessing.Pool(threads)
-                for _ in pool.imap(process_image, args):
-                    count += 1
-                    print("Processed {: 5d} Images".format(count), end='\r')
-                pool.close()
-                pool.join()
-
-
-            json_dump.append((dict(
-                name='{}-{}'.format(camera.expt, camera.location),
-                utc="false",
-                width_hires=str(j_width_hires),
-                ts_version='1',
-                ts_end=str(calendar.timegm(camera.expt_end)),
-                image_type=str(CameraFields.TS_CSV["image_types"][0]),
-                height_hires=str(j_height_hires),
-                expt=str(camera.expt),
-                width=str(new_res[0]),
-                webroot=str(webrootaddr),
-                period_in_minutes=str(camera.interval),
-                timezone=str(camera.timezone[0]),
-                ts_start=str(calendar.timegm(camera.expt_start)),
-                height=str(new_res[1]),
-                access='0',
-                thumbnails=str(thumb_image)
-            )))
-            print("Processed {: 5d} Images. Finished this cam!".format(count))
-            jpath = os.path.dirname(
-                camera.ts_structure.format(folder='', res='', cam=''))
-            if not os.path.exists(os.path.join(camera.destination, jpath)):
-                try:
-                    os.makedirs(os.path.join(camera.destination, jpath))
-                except OSError:
-                    log.warn("Could not make dir '{}', skipping image '{}'".format(
-                        jpath, image))
-            with open(os.path.join(camera.destination, jpath, 'camera.json'), 'a+') as f:
-                json.dump(json_dump, f)
+            n_images, json_dump = process_camera(camera, ext, images,
+                                                 n_images, json_dump)
     secs_taken = time() - start_time
-    print("\nProcessed a total of {0} images in {1:.2f} seconds".format(n_images, secs_taken))
+    print("\nProcessed a total of {0} images in {1:.2f} seconds".format(
+        n_images, secs_taken))
 
 
 if __name__ == "__main__":
@@ -875,7 +874,9 @@ if __name__ == "__main__":
         print("Version {}".format(__version__))
         sys.exit(0)
     if opts.generate:
-        generate_config_csv(opts.generate)
+        #Make a config csv template
+        with open(opts.generate, "w") as fh:
+            fh.write(",".join(b for a, b in CameraFields.ts_csv_fields) + "\n")
         sys.exit()
     log = logging.getLogger("exif2timestream")
     main()
