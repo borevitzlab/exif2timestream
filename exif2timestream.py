@@ -57,17 +57,13 @@ def cli_options():
                         help='Number of processes to use.')
     parser.add_argument('-d', '--debug', action='store_true',
                         help='Enable debug logging (to file).')
-    parser.add_argument('-l', '--logdir', default='.',
+    parser.add_argument('-l', '--logdir',
                         help='Directory to contain log files.')
     parser.add_argument('-c', '--config', help='Path to CSV camera '
                         'config file for normal operation.')
     parser.add_argument('-g', '--generate',  help='Generate a template'
                         ' camera configuration file at given path.')
     return parser.parse_args()
-
-
-# Set up logging objects
-NOW = strftime("%Y%m%dT%H%M%S", localtime())
 
 
 class CameraFields(object):
@@ -103,6 +99,7 @@ class CameraFields(object):
 
     def __init__(self, csv_config_dict):
         """Store csv settings as object attributes and validate."""
+        self.use = False
         csv_config_dict = self.validate_fields(csv_config_dict)
         for k, v in csv_config_dict.items():
             setattr(self, k, v)
@@ -717,44 +714,45 @@ def generate_config_csv(filename):
 
 
 def setup_logs():
-    """Sets up logging using the log logger object."""
-    # we want logging for the real main loop
+    """Sets up logging options."""
+    NOW = strftime("%Y%m%dT%H%M%S", localtime())
     fmt = logging.Formatter(
         '%(asctime)s - %(name)s.%(funcName)s - %(levelname)s - %(message)s')
+    # Errors are logged to sys.stderr
     ch = logging.StreamHandler()
     ch.setLevel(logging.ERROR)
     ch.setFormatter(fmt)
-    logdir = opts.logdir
-    if not os.path.exists(logdir):
-        logdir = "."
-    log_fh = logging.FileHandler(os.path.join(logdir, "e2t_" + NOW + ".log"))
-    log_fh.setLevel(logging.INFO)
-    log_fh.setFormatter(fmt)
-    log.addHandler(log_fh)
+    log.addHandler(ch)
+    # Warnings and Info are also logged to file
+    if opts.logdir is not None or opts.debug:
+        logdir = opts.logdir if os.path.exists(opts.logdir) else '.'
+        log_fh = logging.FileHandler(
+            os.path.join(logdir, "e2t_" + NOW + ".log"))
+        log_fh.setLevel(logging.INFO)
+        log_fh.setFormatter(fmt)
+        log.addHandler(log_fh)
+    # Debug is optionally logged to another file
     if opts.debug:
         debug_fh = logging.FileHandler(
             os.path.join(logdir, "e2t_" + NOW + ".debug"))
         debug_fh.setLevel(logging.DEBUG)
         debug_fh.setFormatter(fmt)
         log.addHandler(debug_fh)
-    log.addHandler(ch)
-    log.setLevel(logging.DEBUG)
+        log.setLevel(logging.DEBUG)
 
 
 def main():
     """The main loop of the module, do the renaming in parallel etc."""
     setup_logs()
-    # beginneth the actual main loop
     start_time = time()
     cameras = parse_camera_config_csv(opts.config)
     n_images = 0
     json_dump = []
     for camera in cameras:
-        msg = "Processing experiment {}, location {}\n".format(
-            camera.expt, camera.location)
-        msg += "Images are coming from {}, being put in {}".format(
-            camera.source, camera.destination)
-        log.info(msg)
+        log.info("Processing experiment {}, location {}".format(
+            camera.expt, camera.location))
+        log.info("Images are coming from {}, being put in {}".format(
+            camera.source, camera.destination))
         for ext, images in find_image_files(camera).items():
             images = sorted(images)
             try:
