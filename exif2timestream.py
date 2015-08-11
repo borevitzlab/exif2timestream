@@ -306,12 +306,13 @@ def parse_structures(camera):
         for key, value in camera.items():
             camera[FIELDS["fn_structure"]] = camera[FIELDS["fn_structure"]].replace(key.upper() ,str(value))
         camera[FIELDS["fn_structure"]] = camera[FIELDS["fn_structure"]].replace("/", "")
+        camera[FIELDS["fn_structure"]] = camera[FIELDS["fn_structure"]].replace("_", "-")
+        camera[FIELDS["fn_structure"]] = camera[FIELDS["fn_structure"]]+ '~{res:s}-orig'
     return camera
         
 
 # Function for performing a resize on an image.
 def resize_function(camera, image_date, dest):
-    print ("Resize Function")
     log = logging.getLogger("exif2timestream")
     # Resize a single image, to its new location
     log.debug(
@@ -360,7 +361,6 @@ def resize_function(camera, image_date, dest):
 
 
 def resize_img(filename, destination, to_width, to_height):
-    print ("Resize Image")
     log = logging.getLogger("exif2timestream")
     # Open the Image and get its width
     img = skimage.io.imread(filename)
@@ -570,6 +570,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
         except OSError:
             log.warn("Could not make dir '{0:s}', skipping image '{1:s}'".format(
                 out_dir, image))
+
             raise SkipImage
     # And do the copy
     dest = _dont_clobber(out_image, mode=SkipImage)
@@ -638,7 +639,6 @@ def process_image(args):
     Given a camera config and list of images, will do the required
     move/copy operations.
     """
-    print ("Process Image")
     log = logging.getLogger("exif2timestream")
     log.debug("Starting to process image")
     (image, camera, ext) = args
@@ -698,6 +698,7 @@ def process_image(args):
         timestreamise_image(image, camera, subsec=subsec, step=step)
         log.debug("Successfully timestreamed {}".format(image))
     except SkipImage:
+
         log.debug("Failed to timestream {} (got SkipImage)".format(image))
         if camera[FIELDS["method"]] == "archive":
             # we have changed this so that all images are moved to the archive
@@ -874,8 +875,7 @@ def main(opts):
             if len(camera[FIELDS["resolutions"]]) > 1:
                 folder = "outputs"
                 if (camera[FIELDS["resolutions"]][1][1] is None):
-                    new_res = camera[FIELDS["resolutions"]][1][
-                        0], (image_resolution[0] * camera[FIELDS["resolutions"]][1][0]) / image_resolution[1]
+                    new_res = camera[FIELDS["resolutions"]][1][0] ,int((float(camera[FIELDS["resolutions"]][1][0]) / image_resolution[0])*image_resolution[1])
                 else:
                     new_res = camera[FIELDS["resolutions"]][1]
                 res = new_res[0]
@@ -884,14 +884,9 @@ def main(opts):
                 res = 'fullres'
                 new_res = image_resolution
             if "a_data" in camera[FIELDS["destination"]]:
-                if (camera[FIELDS["ts_structure"]]):
-                    webrootaddr = "http://phenocam.anu.edu.au/cloud/data" + \
-                        camera[FIELDS["destination"]].split(
-                            "a_data")[1] + camera[FIELDS["ts_structure"]] + '/'
-                else:
-                    webrootaddr = "http://phenocam.anu.edu.au/cloud/data" + \
-                        camera[FIELDS["destination"]].split(
-                            "a_data")[1] + camera[FIELDS["location"]] + '/'
+                webrootaddr = "http://phenocam.anu.edu.au/cloud/data" + \
+                    camera[FIELDS["destination"]].split(
+                        "a_data")[1] + camera[FIELDS["ts_structure"]] + '/'
             else:
                 webrootaddr = None
             thumb_image = []
@@ -903,12 +898,12 @@ def main(opts):
                     image_date = get_file_date(
                         images[thumb_image[i]], camera[FIELDS["interval"]] * 60)
                     thumb_image[i] = make_timestream_name(
-                        camera, new_res[0], 'orig')
+                        camera, new_res[0], 'orig').format(folder="original", res="fullres")
                     ts_image = get_new_file_name(image_date, thumb_image[i])
-                    ts_path, ts_fname = path.split(camera[FIELDS["ts_structure"]])
-                    thumb_image[i] = (path.join(camera[FIELDS["destination"]] ,ts_path, folder, ts_fname + '~' + str(res) + '-orig' , ts_image))
-                    if "a_data" in (thumb_image[i]):
-                        thumb_image[i] = webrootaddr + thumb_image[i].split("a_data")[1]
+                    temp = camera[FIELDS["ts_structure"]].format(folder="original", res="fullres")
+                    ts_image = os.path.join(temp , ts_image)
+                    if "a_data" in (camera[FIELDS["destination"]]):
+                        thumb_image[i] = (os.path.join(webrootaddr, camera[FIELDS["destination"]].split("a_data")[1], ts_image)).format(folder='original', res='fullres')
                     else:
                         thumb_image[i] = ''
                     i+=1
@@ -916,8 +911,8 @@ def main(opts):
                     j_width_hires = str(image_resolution[1])
                     j_height_hires = str(image_resolution[0])
             else:
-                    j_width_hires=str(image_resolution[0]),
-                    j_height_hires = str(image_resolution[1])
+                    j_width_hires=str(image_resolution[0])
+                    j_height_hires= str(image_resolution[1])
 
             # TODO: sort out the whole subsecond clusterfuck
             if "-1" in opts and opts["-1"]:
