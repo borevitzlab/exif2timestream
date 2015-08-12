@@ -909,7 +909,7 @@ def main(opts):
                             thumb_image[i] = ''
                         i+=1
                     except SkipImage:
-                        pass
+                        thumb_image[i] = ''
                     
             if ((camera[FIELDS["orientation"]]=="1")or(camera[FIELDS["orientation"]]=="-1")):
                     j_width_hires = str(image_resolution[1])
