@@ -484,11 +484,11 @@ def get_new_file_name(date_tuple, ts_name, n=0, fmt=TS_FMT, ext="jpg"):
     if date_tuple is None or not date_tuple:
         log.error("Must supply get_new_file_name with a valid date." +
                   "Date is '{0:s}'".format(d2s(date_tuple)))
-        raise SkipImage("Must supply get_new_file_name with a valid date.")
+        raise SkipImage#("Must supply get_new_file_name with a valid date.")
     if not ts_name:
         log.error("Must supply get_new_file_name with timestream name." +
                   "TimeStream name is '{0:s}'".format(ts_name))
-        raise SkipImage("Must supply get_new_file_name with timestream name.")
+        raise SkipImage#("Must supply get_new_file_name with timestream name.")
     date_formatted_name = strftime(fmt, date_tuple)
     name = date_formatted_name.format(tsname=ts_name, n=n, ext=ext)
     log.debug("New filename is '{0:s}'".format(name))
