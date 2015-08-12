@@ -907,9 +907,9 @@ def main(opts):
                             thumb_image[i] = (os.path.join(webrootaddr, camera[FIELDS["destination"]].split("a_data")[1], ts_image)).format(folder='original', res='fullres')
                         else:
                             thumb_image[i] = ''
-                        i+=1
                     except SkipImage:
                         thumb_image[i] = ''
+                    i+=1
                     
             if ((camera[FIELDS["orientation"]]=="1")or(camera[FIELDS["orientation"]]=="-1")):
                     j_width_hires = str(image_resolution[1])
