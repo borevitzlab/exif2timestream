@@ -895,18 +895,22 @@ def main(opts):
                 thumb_image = [int(quick_div) - 1, quick_div, int(quick_div) + 1]
                 i=0
                 while (i < 3):
-                    image_date = get_file_date(
-                        images[thumb_image[i]], camera[FIELDS["interval"]] * 60)
-                    thumb_image[i] = make_timestream_name(
-                        camera, new_res[0], 'orig').format(folder="original", res="fullres")
-                    ts_image = get_new_file_name(image_date, thumb_image[i])
-                    temp = camera[FIELDS["ts_structure"]].format(folder="original", res="fullres")
-                    ts_image = os.path.join(temp , ts_image)
-                    if "a_data" in (camera[FIELDS["destination"]]):
-                        thumb_image[i] = (os.path.join(webrootaddr, camera[FIELDS["destination"]].split("a_data")[1], ts_image)).format(folder='original', res='fullres')
-                    else:
-                        thumb_image[i] = ''
-                    i+=1
+                    try{
+                        image_date = get_file_date(
+                            images[thumb_image[i]], camera[FIELDS["interval"]] * 60)
+                        thumb_image[i] = make_timestream_name(
+                            camera, new_res[0], 'orig').format(folder="original", res="fullres")
+                        ts_image = get_new_file_name(image_date, thumb_image[i])
+                        temp = camera[FIELDS["ts_structure"]].format(folder="original", res="fullres")
+                        ts_image = os.path.join(temp , ts_image)
+                        if "a_data" in (camera[FIELDS["destination"]]):
+                            thumb_image[i] = (os.path.join(webrootaddr, camera[FIELDS["destination"]].split("a_data")[1], ts_image)).format(folder='original', res='fullres')
+                        else:
+                            thumb_image[i] = ''
+                        i+=1
+                    catch SkipImage{
+                        pass
+                    }
             if ((camera[FIELDS["orientation"]]=="1")or(camera[FIELDS["orientation"]]=="-1")):
                     j_width_hires = str(image_resolution[1])
                     j_height_hires = str(image_resolution[0])
