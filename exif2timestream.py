@@ -313,49 +313,54 @@ def parse_structures(camera):
 
 # Function for performing a resize on an image.
 def resize_function(camera, image_date, dest):
-    log = logging.getLogger("exif2timestream")
-    # Resize a single image, to its new location
-    log.debug(
-        "Now checking if we have 1 or two resolution arguments on image '{0:s}'".format(dest))
-    if (camera[FIELDS["resolutions"]][1][1] is None):
-        # Read in image dimensions
-        img = skimage.io.imread(dest).shape
-        # Calculate the new image dimensions from the old one
-        new_res = camera[FIELDS["resolutions"]][1][
-            0], (img[0] * camera[FIELDS["resolutions"]][1][0]) / img[1]
-        log.debug("One resolution arguments, '{0:d}'".format(new_res[0]))
-    else:
-        new_res = camera[FIELDS["resolutions"]][1]
+    try:
+        log = logging.getLogger("exif2timestream")
+        # Resize a single image, to its new location
         log.debug(
-            "Two resolution arguments, '{0:d}' x '{0:d}'".format(new_res[0], new_res[1]))
-    log.debug("Now getting Timestream name")
-    # Get the timestream name to save the image as
-    ts_name = make_timestream_name(camera, res=new_res[0], step="orig")
-    # Get the full output file name from the ts_name and the image date
-    resizing_temp_outname = get_new_file_name(
-        image_date, ts_name)
-    # Based on the value of ts_structure, combine to form a full image path
-    resized_img = os.path.join(
-        camera[FIELDS["destination"]],
-        camera[FIELDS["ts_structure"]].format(folder='outputs', res=str(new_res[0]), cam=camera[FIELDS["cam_num"]], step='outputs'),
-        resizing_temp_outname)
-    # If the resized image already exists, then just return
-    if path.isfile(resized_img):
-        return
-    log.debug(
-        "Full resized filename which we will output to is '{0:s}'".format(resized_img))
-    resized_img_path = path.dirname(resized_img)
-    log.debug(
-        "Now checking if image path already exists, if it does, skipping")
-    if not path.exists(resized_img_path):
-        try:
-            os.makedirs(resized_img_path)
-        except OSError:
-            log.warn("Could not make dir '{0:s}', skipping image '{1:s}'".format(
-                resized_img_path, image))
-            raise SkipImage
-    log.debug("Now actually resizing image to '{0:s}'".format(dest))
-    resize_img(dest, resized_img, new_res[0], new_res[1])
+            "Now checking if we have 1 or two resolution arguments on image '{0:s}'".format(dest))
+        if (camera[FIELDS["resolutions"]][1][1] is None):
+            # Read in image dimensions
+            img = skimage.io.imread(dest).shape
+            # Calculate the new image dimensions from the old one
+            new_res = camera[FIELDS["resolutions"]][1][
+                0], (img[0] * camera[FIELDS["resolutions"]][1][0]) / img[1]
+            log.debug("One resolution arguments, '{0:d}'".format(new_res[0]))
+        else:
+            new_res = camera[FIELDS["resolutions"]][1]
+            log.debug(
+                "Two resolution arguments, '{0:d}' x '{0:d}'".format(new_res[0], new_res[1]))
+        log.debug("Now getting Timestream name")
+        # Get the timestream name to save the image as
+        ts_name = make_timestream_name(camera, res=new_res[0], step="orig")
+        # Get the full output file name from the ts_name and the image date
+        resizing_temp_outname = get_new_file_name(
+            image_date, ts_name)
+        # Based on the value of ts_structure, combine to form a full image path
+        resized_img = os.path.join(
+            camera[FIELDS["destination"]],
+            camera[FIELDS["ts_structure"]].format(folder='outputs', res=str(new_res[0]), cam=camera[FIELDS["cam_num"]], step='outputs'),
+            resizing_temp_outname)
+        # If the resized image already exists, then just return
+        if path.isfile(resized_img):
+            return
+        log.debug(
+            "Full resized filename which we will output to is '{0:s}'".format(resized_img))
+        resized_img_path = path.dirname(resized_img)
+        log.debug(
+            "Now checking if image path already exists, if it does, skipping")
+        if not path.exists(resized_img_path):
+            try:
+                os.makedirs(resized_img_path)
+            except OSError:
+                log.warn("Could not make dir '{0:s}', skipping image '{1:s}'".format(
+                    resized_img_path, image))
+                raise SkipImage
+        log.debug("Now actually resizing image to '{0:s}'".format(dest))
+        resize_img(dest, resized_img, new_res[0], new_res[1])
+    except ValueError:
+        raise SkipImage
+    except IOError:
+        raise SkipImage
 
 # Function which only performs the actual resize.
 
