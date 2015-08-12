@@ -895,7 +895,7 @@ def main(opts):
                 thumb_image = [int(quick_div) - 1, quick_div, int(quick_div) + 1]
                 i=0
                 while (i < 3):
-                    try{
+                    try:
                         image_date = get_file_date(
                             images[thumb_image[i]], camera[FIELDS["interval"]] * 60)
                         thumb_image[i] = make_timestream_name(
@@ -908,9 +908,9 @@ def main(opts):
                         else:
                             thumb_image[i] = ''
                         i+=1
-                    except SkipImage{
+                    except SkipImage:
                         pass
-                    }
+                    
             if ((camera[FIELDS["orientation"]]=="1")or(camera[FIELDS["orientation"]]=="-1")):
                     j_width_hires = str(image_resolution[1])
                     j_height_hires = str(image_resolution[0])
