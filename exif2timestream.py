@@ -908,7 +908,7 @@ def main(opts):
                         else:
                             thumb_image[i] = ''
                         i+=1
-                    catch SkipImage{
+                    except SkipImage{
                         pass
                     }
             if ((camera[FIELDS["orientation"]]=="1")or(camera[FIELDS["orientation"]]=="-1")):
