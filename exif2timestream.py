@@ -576,7 +576,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
     dest = _dont_clobber(out_image, mode=SkipImage)
 
     try:
-        shutil.copy(image, dest)
+        shutil.copyfile(image, dest)
         log.info("Copied '{0:s}' to '{1:s}".format(image, dest))
     except Exception as e:
         log.warn("Couldnt copy '{0:s}' to '{1:s}', skipping image".format(
@@ -972,7 +972,7 @@ def main(opts):
                 except OSError:
                     log.warn("Could not make dir '{0:s}', skipping image '{1:s}'".format(
                         jpath, image))
-            obj = open(path.join(camera[FIELDS["destination"]], jpath, 'camera.json'), 'a+')
+            obj = open(path.join(camera[FIELDS["destination"]], 'camera.json'), 'a+')
             json.dump(json_dump, obj)
             obj.close
     secs_taken = time() - start_time
