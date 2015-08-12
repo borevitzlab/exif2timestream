@@ -1,6 +1,6 @@
 #!usr/bin/env python
 """Take somewhat structured image collections and outputs Timestream format."""
-#pylint:disable=logging-format-interpolation
+# pylint:disable=logging-format-interpolation
 
 from __future__ import print_function
 
@@ -20,17 +20,18 @@ from time import strptime, strftime, mktime, localtime, struct_time, time
 import warnings
 
 # Module imports
-from lib import pexif # local copy, edited for Py3 compatibility
+from lib import pexif  # local copy, slightly edited for Py3 compatibility
 import exifread
 import skimage
-#import skimage.io
-#import skimage.novice
-from voluptuous import Required, Schema, MultipleInvalid
+# import skimage.io
+# import skimage.novice
 
 # versioneer
 from _version import get_versions
 __version__ = get_versions()['version']
 del get_versions
+
+# Constants
 EXIF_DATE_TAG = "Image DateTime"
 EXIF_DATE_FMT = "%Y:%m:%d %H:%M:%S"
 DATE_MASK = EXIF_DATE_FMT
@@ -47,6 +48,7 @@ IMAGE_TYPE_CONSTANTS = {"raw", "jpg"}
 RAW_FORMATS = {"cr2", "nef", "tif", "tiff"}
 IMAGE_SUBFOLDERS = {"raw", "jpg", "png", "tiff", "nef", "cr2"}
 DATE_NOW_CONSTANTS = {"now", "current"}
+
 
 def cli_options():
     """Return CLI arguments with argparse."""
@@ -96,17 +98,36 @@ class CameraFields(object):
         ('fn_structure', 'FN_STRUCTURE')
         )
     TS_CSV = dict(ts_csv_fields)
+    CSV_TS = {v: k for k, v in ts_csv_fields.items()}
+    REQUIRED = {"use", "destination", "expt", "cam_num", "expt_end",
+                "expt_start", "image_types", "interval", "location",
+                "archive_dest", "method", "source"}
 
     def __init__(self, csv_config_dict):
         """Store csv settings as object attributes and validate."""
-        self.use = False
+        # Set default properties
+        if 'interval' not in csv_config_dict:
+            csv_config_dict['interval'] = 1
+        if 'method' not in csv_config_dict:
+            csv_config_dict['method'] = 'archive'
+        # Ensure required properties are included, and no unknown attributes
+        if not all(key in csv_config_dict for key in REQUIRED):
+            raise ValueError('CSV config dict lacks required key/s.')
+        if any(key not in CSV_TS for key in csv_config_dict):
+            raise ValueError('CSV config dict has unknown key/s.')
+        # Validate config
         csv_config_dict = self.validate_fields(csv_config_dict)
+        # Set object attributes from config
         for k, v in csv_config_dict.items():
-            setattr(self, k, v)
-        local = lambda p: p.replace(r'\\', '/').replace('/', os.path.sep)
+            setattr(self, CSV_TS[k], v)
+
+        # Localise pathnames
+        def local(p):
+            return p.replace(r'\\', '/').replace('/', os.path.sep)
         self.source = local(self.source)
         self.archive_dest = local(self.archive_dest)
         self.destination = local(self.destination)
+        log.debug("Validated camera '{:s}'".format(csv_config_dict))
 
     @staticmethod
     def validate_fields(config_dict):
@@ -195,39 +216,35 @@ class CameraFields(object):
                 raise ValueError
             return x
 
-        FIELDS = CameraFields.TS_CSV
-        sch = Schema({
-            Required(FIELDS["use"]): bool_str,
-            Required(FIELDS["destination"]): path_exists,
-            Required(FIELDS["expt"]): remove_underscores,
-            Required(FIELDS["cam_num"]): cam_pad_str,
-            Required(FIELDS["expt_end"]): date,
-            Required(FIELDS["expt_start"]): date,
-            Required(FIELDS["image_types"]): image_type_str,
-            Required(FIELDS["interval"], default=1): int,
-            Required(FIELDS["location"]): remove_underscores,
-            Required(FIELDS["archive_dest"]): path_exists,
-            Required(FIELDS["method"], default="archive"): in_list_method,
-            Required(FIELDS["source"]): path_exists,
-            FIELDS["mode"]: in_list_mode,
-            FIELDS["resolutions"]: resolution_str,
-            FIELDS["user"]: remove_underscores,
-            FIELDS["sunrise"]: int_time_hr_min,
-            FIELDS["sunset"]: int_time_hr_min,
-            FIELDS["timezone"]: int_time_hr_min,
-            FIELDS["project_owner"]: remove_underscores,
-            FIELDS["ts_structure"]: str,
-            FIELDS["filename_date_mask"]: str,
-            FIELDS["orientation"]: str,
-            FIELDS["fn_parse"]: str,
-            FIELDS["fn_structure"]: str,
-            })
-        try:
-            cam = sch(config_dict)
-            log.debug("Validated camera '{:s}'".format(cam))
-            return cam
-        except MultipleInvalid:
-            raise SkipImage
+        schema = {
+            "use": bool_str,
+            "destination": path_exists,
+            "expt": remove_underscores,
+            "cam_num": cam_pad_str,
+            "expt_end": date,
+            "expt_start": date,
+            "image_types": image_type_str,
+            "interval": int,
+            "location": remove_underscores,
+            "archive_dest": path_exists,
+            "method": in_list_method,
+            "source": path_exists,
+            "mode": in_list_mode,
+            "resolutions": resolution_str,
+            "user": remove_underscores,
+            "sunrise": int_time_hr_min,
+            "sunset": int_time_hr_min,
+            "timezone": int_time_hr_min,
+            "project_owner": remove_underscores,
+            "ts_structure": str,
+            "filename_date_mask": str,
+            "orientation": str,
+            "fn_parse": str,
+            "fn_structure": str
+            }
+        # Converts dict keys and calls validation function on each value
+        return {CameraFields.TS_CSV[k]: schema[k](v)
+                for k, v in config_dict.items()}
 
 
 class SkipImage(StopIteration):
@@ -246,6 +263,7 @@ def d2s(date):
     else:
         return date
 
+
 def parse_structures(camera):
     """Parse the file structure of the camera for conversion to timestream
     format."""
@@ -253,7 +271,7 @@ def parse_structures(camera):
         # If we dont have a ts_structure, then lets do the default one
         camera.ts_structure = os.path.join(
             camera.expt.replace("_", "-"), "{folder:s}",
-            camera.expt.replace("_", "-") + '-' +\
+            camera.expt.replace("_", "-") + '-' +
             camera.location.replace("_", "-") + "-C{cam:s}~{res:s}-orig")
     else:
         # Replace the ts_structure with all the other stuff
@@ -274,8 +292,8 @@ def parse_structures(camera):
             )
     if len(camera.fn_structure) is 0 or not camera.fn_structure:
         camera.fn_structure = camera.expt.replace("_", "-") + \
-            '-' +  camera.location.replace("_", "-") + \
-            '-C' +  camera.cam_num.replace("_", "-") +\
+            '-' + camera.location.replace("_", "-") + \
+            '-C' + camera.cam_num.replace("_", "-") +\
             '~{res:s}-orig'
     else:
         for key, value in camera.items():
@@ -323,8 +341,8 @@ def resize_function(camera, image_date, dest):
         try:
             os.makedirs(resized_img_path)
         except OSError:
-            log.warn("Could not make dir '{0:s}', skipping image '{1:s}'"\
-                .format(resized_img_path, resized_img))
+            log.warn("Could not make dir '{0:s}', skipping image '{1:s}'"
+                     .format(resized_img_path, resized_img))
             raise SkipImage
     log.debug("Now actually resizing image to '{0:s}'".format(dest))
     resize_img(dest, resized_img, new_res[0], new_res[1])
@@ -522,8 +540,8 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
         try:
             os.makedirs(out_dir)
         except OSError:
-            log.warn("Could not make dir '{0:s}', skipping image '{1:s}'"\
-                .format(out_dir, image))
+            log.warn("Could not make dir '{0:s}', skipping image '{1:s}'"
+                     .format(out_dir, image))
             raise SkipImage
     # And do the copy
     dest = _dont_clobber(out_image, mode=SkipImage)
@@ -537,7 +555,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
         raise SkipImage
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        rotations = {'1':270, '2':180, '-1':90}
+        rotations = {'1': 270, '2': 180, '-1': 90}
         if camera.orientation in rotations:
             img = skimage.io.imread(dest)
             img = skimage.transform.rotate(
@@ -546,6 +564,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
     if len(camera.resolutions) > 1:
         log.info("Going to resize image '{0:s}'".format(dest))
         resize_function(camera, image_date, dest)
+
 
 def _dont_clobber(fn, mode="append"):
     """Ensure we don't overwrite things, using a variety of methods"""
@@ -657,7 +676,7 @@ def parse_camera_config_csv(filename):
                 camera = CameraFields(camera)
                 if camera.use:
                     yield parse_structures(camera)
-            except SkipImage:
+            except (SkipImage, ValueError):
                 continue
 
 
@@ -767,13 +786,9 @@ def process_camera(camera, ext, images, json_dump):
     if thumb_image and "a_data" in thumb_image[0]:
         thumb_image = [webrootaddr + t.split("a_data")[1] for t in thumb_image]
 
-
-    j_width_hires = str(image_resolution[0]),
-    j_height_hires = str(image_resolution[1])
+    j_width_hires, j_height_hires = image_resolution
     if camera.orientation in ("1", "-1"):
-        j_width_hires = str(image_resolution[1])
-        j_height_hires = str(image_resolution[0])
-
+        j_width_hires, j_height_hires = j_height_hires, j_width_hires
 
     # TODO: sort out the whole subsecond clusterfuck
     if opts.threads == 1:
@@ -853,7 +868,7 @@ if __name__ == "__main__":
         print("Version {}".format(__version__))
         sys.exit(0)
     if opts.generate:
-        #Make a config csv template
+        # Make a config csv template
         with open(opts.generate, "w") as f:
             f.write(",".join(b for a, b in CameraFields.ts_csv_fields) + "\n")
         sys.exit()
