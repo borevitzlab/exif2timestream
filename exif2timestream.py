@@ -70,38 +70,120 @@ def cli_options():
 
 class CameraFields(object):
     """Validate input and translate between exif and config.csv fields."""
-    # Should be nearly 1:1, but here just in case
+    # Validation functions, then schema, then the __init__ and execution
+    def date(x):
+        """Converter / validator for date field."""
+        if isinstance(x, struct_time):
+            return x
+        if x.lower() in DATE_NOW_CONSTANTS:
+            return localtime()
+        try:
+            return strptime(x, "%Y_%m_%d")
+        except:
+            raise ValueError
+
+    def bool_str(x):
+        """Converts a string to a boolean, even yes/no/true/false."""
+        if isinstance(x, bool):
+            return x
+        elif isinstance(x, int):
+            return bool(x)
+        x = x.strip().lower()
+        if x in {"t", "true", "y", "yes", "f", "false", "n", "no"}:
+            return x in {"t", "true", "y", "yes"}
+        return bool(int(x))
+
+    def int_time_hr_min(x):
+        """Validator for time field."""
+        if isinstance(x, tuple):
+            return x
+        return (int(x) // 100, int(x) % 100)
+
+    def path_exists(x):
+        """Validator for path field."""
+        if os.path.exists(x):
+            return x
+        raise ValueError("path '%s' doesn't exist" % x)
+
+    def resolution_str(x):
+        """Validator for resolution field."""
+        if not isinstance(x, str):
+            raise ValueError
+        res_list = []
+        for res in x.strip().split('~'):
+            xy = res.strip().lower().split("x")
+            if res in FULLRES_CONSTANTS:
+                res_list.append(res)
+            elif len(xy) == 2:
+                res_list.append(tuple(int(i) for i in xy))
+            else:
+                # either int(x-res), or raise ValueError for validator
+                res_list.append((int(res), None))
+        return res_list
+
+    def cam_pad_str(x):
+        """Pads a numeric string to two digits."""
+        if len(str(x)) == 1:
+            return '0' + str(x)
+        return x
+
+    def image_type_str(x):
+        """Validator for image type field."""
+        if isinstance(x, list):
+            return x
+        if not isinstance(x, str):
+            raise ValueError
+        types = x.lower().strip().split('~')
+        if not all(t in IMAGE_TYPE_CONSTANTS for t in types):
+            raise ValueError
+        return types
+
+    def remove_underscores(x):
+        """Replaces '_' with '-'."""
+        return x.replace("_", "-")
+
+    def in_list(lst):
+        """Ensure x is a vaild timestream method."""
+        def valid(x):
+            if x not in lst:
+                raise ValueError
+            return x
+        return valid
+
     ts_csv_fields = (
-        ('use', 'USE'),
-        ('location', 'LOCATION'),
-        ('expt', 'EXPT'),
-        ('cam_num', 'CAM_NUM'),
-        ('source', 'SOURCE'),
-        ('destination', 'DESTINATION'),
-        ('archive_dest', 'ARCHIVE_DEST'),
-        ('expt_end', 'EXPT_END'),
-        ('expt_start', 'EXPT_START'),
-        ('interval', 'INTERVAL'),
-        ('image_types', 'IMAGE_TYPES'),
-        ('method', 'METHOD'),
-        ('resolutions', 'resolutions'),
-        ('sunrise', 'sunrise'),
-        ('sunset', 'sunset'),
-        ('timezone', 'camera_timezone'),
-        ('user', 'user'),
-        ('mode', 'mode'),
-        ('project_owner', 'PROJECT_OWNER'),
-        ('ts_structure', 'TS_STRUCTURE'),
-        ('filename_date_mask', 'FILENAME_DATE_MASK'),
-        ('orientation', 'ORIENTATION'),
-        ('fn_parse', 'FN_PARSE'),
-        ('fn_structure', 'FN_STRUCTURE')
+        ('use', 'USE', bool_str),
+        ('location', 'LOCATION', remove_underscores),
+        ('expt', 'EXPT', remove_underscores),
+        ('cam_num', 'CAM_NUM', cam_pad_str),
+        ('source', 'SOURCE', path_exists),
+        ('destination', 'DESTINATION', path_exists),
+        ('archive_dest', 'ARCHIVE_DEST', path_exists),
+        ('expt_end', 'EXPT_END', date),
+        ('expt_start', 'EXPT_START', date),
+        ('interval', 'INTERVAL', int),
+        ('image_types', 'IMAGE_TYPES', image_type_str),
+        ('method', 'METHOD', in_list({"copy", "archive",
+                                      "move", "resize", "json"})),
+        ('resolutions', 'resolutions', resolution_str),
+        ('sunrise', 'sunrise', int_time_hr_min),
+        ('sunset', 'sunset', int_time_hr_min),
+        ('timezone', 'camera_timezone', int_time_hr_min),
+        ('user', 'user', remove_underscores),
+        ('mode', 'mode', in_list({"batch", "watch"})),
+        ('project_owner', 'PROJECT_OWNER', remove_underscores),
+        ('ts_structure', 'TS_STRUCTURE', str),
+        ('filename_date_mask', 'FILENAME_DATE_MASK', str),
+        ('orientation', 'ORIENTATION', str),
+        ('fn_parse', 'FN_PARSE', str),
+        ('fn_structure', 'FN_STRUCTURE', str)
         )
-    TS_CSV = dict(ts_csv_fields)
+
+    TS_CSV = dict((a, b) for a, b, c in ts_csv_fields)
     CSV_TS = {v: k for k, v in ts_csv_fields.items()}
     REQUIRED = {"use", "destination", "expt", "cam_num", "expt_end",
                 "expt_start", "image_types", "interval", "location",
                 "archive_dest", "method", "source"}
+    SCHEMA = dict((a, c) for a, b, c in ts_csv_fields)
 
     def __init__(self, csv_config_dict):
         """Store csv settings as object attributes and validate."""
@@ -115,8 +197,9 @@ class CameraFields(object):
             raise ValueError('CSV config dict lacks required key/s.')
         if any(key not in CSV_TS for key in csv_config_dict):
             raise ValueError('CSV config dict has unknown key/s.')
-        # Validate config
-        csv_config_dict = self.validate_fields(csv_config_dict)
+        # Converts dict keys and calls validation function on each value
+        csv_config_dict = {CameraFields.TS_CSV[k]: SCHEMA[k](v)
+                           for k, v in csv_config_dict.items()}
         # Set object attributes from config
         for k, v in csv_config_dict.items():
             setattr(self, CSV_TS[k], v)
@@ -128,123 +211,6 @@ class CameraFields(object):
         self.archive_dest = local(self.archive_dest)
         self.destination = local(self.destination)
         log.debug("Validated camera '{:s}'".format(csv_config_dict))
-
-    @staticmethod
-    def validate_fields(config_dict):
-        """Validates and returns input data according to the schema."""
-        def date(x):
-            """Converter / validator for date field."""
-            if isinstance(x, struct_time):
-                return x
-            if x.lower() in DATE_NOW_CONSTANTS:
-                return localtime()
-            try:
-                return strptime(x, "%Y_%m_%d")
-            except:
-                raise ValueError
-
-        def bool_str(x):
-            """Converts a string to a boolean, even yes/no/true/false."""
-            if isinstance(x, bool):
-                return x
-            elif isinstance(x, int):
-                return bool(x)
-            elif isinstance(x, str):
-                x = x.strip().lower()
-                if x in {"t", "true", "y", "yes", "f", "false", "n", "no"}:
-                    return x in {"t", "true", "y", "yes"}
-                return bool(int(x))
-            raise ValueError
-
-        def int_time_hr_min(x):
-            """Validator for time field."""
-            if isinstance(x, tuple):
-                return x
-            return (int(x) // 100, int(x) % 100)
-
-        def path_exists(x):
-            """Validator for path field."""
-            if os.path.exists(x):
-                return x
-            raise ValueError("path '%s' doesn't exist" % x)
-
-        def resolution_str(x):
-            """Validator for resolution field."""
-            if not isinstance(x, str):
-                raise ValueError
-            res_list = []
-            for res in x.strip().split('~'):
-                xy = res.strip().lower().split("x")
-                if res in FULLRES_CONSTANTS:
-                    res_list.append(res)
-                elif len(xy) == 2:
-                    res_list.append(tuple(int(i) for i in xy))
-                else:
-                    # either int(x-res), or raise ValueError for validator
-                    res_list.append((int(res), None))
-            return res_list
-
-        def cam_pad_str(x):
-            """Pads a numeric string to two digits."""
-            if len(str(x)) == 1:
-                return '0' + str(x)
-
-        def image_type_str(x):
-            """Validator for image type field."""
-            if isinstance(x, list):
-                return x
-            if not isinstance(x, str):
-                raise ValueError
-            types = x.lower().strip().split('~')
-            if not all(t in IMAGE_TYPE_CONSTANTS for t in types):
-                raise ValueError
-            return types
-
-        def remove_underscores(x):
-            """Replaces '_' with '-'."""
-            return x.replace("_", "-")
-
-        def in_list_method(x):
-            """Ensure x is a vaild timestream method."""
-            if x not in {"copy", "archive", "move", "resize", "json"}:
-                raise ValueError
-            return x
-
-        def in_list_mode(x):
-            """Ensure x is a vaild timestream method."""
-            if x not in {"batch", "watch"}:
-                raise ValueError
-            return x
-
-        schema = {
-            "use": bool_str,
-            "destination": path_exists,
-            "expt": remove_underscores,
-            "cam_num": cam_pad_str,
-            "expt_end": date,
-            "expt_start": date,
-            "image_types": image_type_str,
-            "interval": int,
-            "location": remove_underscores,
-            "archive_dest": path_exists,
-            "method": in_list_method,
-            "source": path_exists,
-            "mode": in_list_mode,
-            "resolutions": resolution_str,
-            "user": remove_underscores,
-            "sunrise": int_time_hr_min,
-            "sunset": int_time_hr_min,
-            "timezone": int_time_hr_min,
-            "project_owner": remove_underscores,
-            "ts_structure": str,
-            "filename_date_mask": str,
-            "orientation": str,
-            "fn_parse": str,
-            "fn_structure": str
-            }
-        # Converts dict keys and calls validation function on each value
-        return {CameraFields.TS_CSV[k]: schema[k](v)
-                for k, v in config_dict.items()}
 
 
 class SkipImage(StopIteration):
@@ -578,22 +544,14 @@ def _dont_clobber(fn, mode="append"):
         elif inspect.isclass(mode) and issubclass(mode, StopIteration):
             log.debug("Path '{0}' exists, raising an Exception".format(fn))
             raise mode()
-        # Otherwise, append something '_1' to the file name to solve our
-        # problem
+        # Otherwise, append something '_1' to the file name
         elif mode == "append":
             log.debug("Path '{0}' exists, adding '_1' to its name".format(fn))
             base, ext = os.path.splitext(fn)
-            # append _1 to filename
-            if ext != '':
-                return ".".join(["_".join([base, "1"]), ext])
-            else:
-                return "_".join([base, "1"])
-        else:
-            raise ValueError("Bad _dont_clobber mode: %r", mode)
-    else:
-        # Doesn't exist, so return good path
-        log.debug("Path '{0}' doesn't exist. Returning it.".format(fn))
-        return fn
+            return '{}_1.{}'.format(base, ext) if ext else '{}_1'.format(base)
+        raise ValueError("Bad _dont_clobber mode: %r", mode)
+    log.debug("Path '{0}' doesn't exist. Returning it.".format(fn))
+    return fn
 
 
 def process_image(args):
@@ -601,7 +559,6 @@ def process_image(args):
     Given a camera config and list of images, will do the required
     move/copy operations.
     """
-    print("Process Image")
     log.debug("Starting to process image")
     (image, camera, ext) = args
     image_date = get_file_date(image, camera.interval * 60)
@@ -747,7 +704,6 @@ def setup_logs():
 
 def process_camera(camera, ext, images, json_dump):
     """Process a set of images for one extension for a single camera."""
-    #TODO: extract special handling of a_data destination
     try:
         image_resolution = skimage.novice.open(images[0]).size
     except IOError:
@@ -836,7 +792,6 @@ def process_camera(camera, ext, images, json_dump):
             log.warn("Could not make dir '{}', skipping images".format(jpath))
     with open(os.path.join(camera.destination,
                            jpath, 'camera.json'), 'a+') as f:
-        #TODO: check duplication (appending json list, file mode a+)
         json.dump(json_dump, f)
     return json_dump
 
