@@ -964,7 +964,7 @@ def main(opts):
                 height_hires=str(j_height_hires),
                 expt=str(camera[FIELDS["expt"]]),
                 width=str(new_res[0]),
-                webroot=str(webrootaddr.format(folder='outputs', res=str(width))),
+                webroot=str(webrootaddr.format(folder='outputs', res=str(new_res[0]))),
                 webroot_hires=str(webrootaddr.format(folder='original', res='orig')),
                 period_in_minutes=str(camera[FIELDS["interval"]]),
                 timezone=str(camera[FIELDS["timezone"]][0]),
