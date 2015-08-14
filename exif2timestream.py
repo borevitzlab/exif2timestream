@@ -904,7 +904,7 @@ def main(opts):
                         image_date = get_file_date(
                             images[thumb_image[i]], camera[FIELDS["interval"]] * 60)
                         thumb_image[i] = make_timestream_name(
-                            camera, new_res[0], 'orig').format(folder="original", res="fullres")
+                            camera, 'fullres', 'orig').format(folder="original", res="fullres")
                         ts_image = get_new_file_name(image_date, thumb_image[i])
                         # temp = camera[FIELDS["ts_structure"]].format(folder="original", res="fullres")
                         # ts_image = os.path.join(temp , ts_image)
