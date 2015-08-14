@@ -909,7 +909,7 @@ def main(opts):
                         temp = camera[FIELDS["ts_structure"]].format(folder="original", res="fullres")
                         ts_image = os.path.join(temp , ts_image)
                         if "a_data" in (camera[FIELDS["destination"]]):
-                            thumb_image[i] = (os.path.join(webrootaddr, camera[FIELDS["destination"]].split("a_data")[1], ts_image)).format(folder='original', res='fullres')
+                            thumb_image[i] = (os.path.join(webrootaddr.format(folder='outputs', res=str(new_res[0])), camera[FIELDS["destination"]].split("a_data")[1], ts_image)).format(folder='original', res='fullres')
                         else:
                             thumb_image[i] = ''
                     except SkipImage:
