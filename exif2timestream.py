@@ -783,7 +783,7 @@ def find_image_files(camera):
                 if dir.lower() not in IMAGE_SUBFOLDERS and \
                         not dir.startswith("_"):
                     if ((camera[FIELDS["method"]] != "resize")and(camera[FIELDS["method"]] != "json")):
-                        log.error("Source directory has too many subdirs.")
+                        log.debug("Source directory has too many subdirs.")
                     # TODO: Is raising here a good idea?
                     # raise ValueError("too many subdirs")
             for fle in files:
