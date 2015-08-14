@@ -906,8 +906,8 @@ def main(opts):
                         thumb_image[i] = make_timestream_name(
                             camera, new_res[0], 'orig').format(folder="original", res="fullres")
                         ts_image = get_new_file_name(image_date, thumb_image[i])
-                        temp = camera[FIELDS["ts_structure"]].format(folder="original", res="fullres")
-                        ts_image = os.path.join(temp , ts_image)
+                        # temp = camera[FIELDS["ts_structure"]].format(folder="original", res="fullres")
+                        # ts_image = os.path.join(temp , ts_image)
                         if "a_data" in (camera[FIELDS["destination"]]):
                             thumb_image[i] = str(webrootaddr.format(folder='original', res='fullres')  + ts_image)
                         else:
@@ -965,7 +965,7 @@ def main(opts):
                 expt=str(camera[FIELDS["expt"]]),
                 width=str(new_res[0]),
                 webroot=str(webrootaddr.format(folder='outputs', res=str(new_res[0]))),
-                webroot_hires=str(webrootaddr.format(folder='original', res='orig')),
+                webroot_hires=str(webrootaddr.format(folder='original', res='fullres')),
                 period_in_minutes=str(camera[FIELDS["interval"]]),
                 timezone=str(camera[FIELDS["timezone"]][0]),
                 ts_start=str(calendar.timegm(camera[FIELDS["expt_start"]])),
