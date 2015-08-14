@@ -300,7 +300,7 @@ def parse_structures(camera):
     if ((not camera[FIELDS['fn_structure']])or (len(camera[FIELDS["fn_structure"]]) is 0)):
         camera[FIELDS["fn_structure"]] =  camera[FIELDS["expt"]].replace("_","-") + \
             '-' +  camera[FIELDS["location"]].replace("_","-") + \
-            '-C' +  camera[FIELDS["cam_num"]].replace("_","-") +\
+            '-c' +  camera[FIELDS["cam_num"]].replace("_","-") +\
             '~{res:s}-orig'
     else:
         for key, value in camera.items():
