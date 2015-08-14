@@ -955,7 +955,7 @@ def main(opts):
             
             json_dump.append((dict(
                 name=str(
-                    camera[FIELDS["expt"]] + '-' + (camera[FIELDS["location"]])),
+                    camera[FIELDS["expt"]] + '-' + (camera[FIELDS["location"]]) + (camera[FIELDS["cam_num"]])),
                 utc="false",
                 width_hires=str(j_width_hires),
                 ts_version=str(1),
@@ -964,7 +964,8 @@ def main(opts):
                 height_hires=str(j_height_hires),
                 expt=str(camera[FIELDS["expt"]]),
                 width=str(new_res[0]),
-                webroot=str(webrootaddr),
+                webroot=str(webrootaddr.format(folder='outputs', res=str(width))),
+                webroot_hires=str(webrootaddr.format(folder='original', res='orig')),
                 period_in_minutes=str(camera[FIELDS["interval"]]),
                 timezone=str(camera[FIELDS["timezone"]][0]),
                 ts_start=str(calendar.timegm(camera[FIELDS["expt_start"]])),
