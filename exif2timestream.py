@@ -893,7 +893,7 @@ def main(opts):
                     camera[FIELDS["destination"]].split(
                         "a_data")[1] + camera[FIELDS["ts_structure"]] + '/'
             else:
-                webrootaddr = None
+                webrootaddr = "None"
             thumb_image = []
             if (n_cam_images > 3):
                 quick_div = (n_cam_images / 2)
@@ -909,7 +909,7 @@ def main(opts):
                         temp = camera[FIELDS["ts_structure"]].format(folder="original", res="fullres")
                         ts_image = os.path.join(temp , ts_image)
                         if "a_data" in (camera[FIELDS["destination"]]):
-                            thumb_image[i] = (os.path.join(webrootaddr.format(folder='outputs', res=str(new_res[0])), camera[FIELDS["destination"]].split("a_data")[1], ts_image)).format(folder='original', res='fullres')
+                            thumb_image[i] = str(webrootaddr.format(folder='original', res='fullres') + '/'+ (camera[FIELDS["destination"]].split("a_data")[1]).format(folder='original', res='fullres') + '/' + ts_image)
                         else:
                             thumb_image[i] = ''
                     except SkipImage:
