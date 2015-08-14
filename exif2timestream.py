@@ -889,7 +889,7 @@ def main(opts):
                 res = 'fullres'
                 new_res = image_resolution
             if "a_data" in camera[FIELDS["destination"]]:
-                webrootaddr = "http://phenocam.anu.edu.au/cloud/data" + \
+                webrootaddr = "http://phenocam.anu.edu.au/cloud/a_data" + \
                     camera[FIELDS["destination"]].split(
                         "a_data")[1] + camera[FIELDS["ts_structure"]] + '/'
             else:
