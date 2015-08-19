@@ -850,7 +850,7 @@ def main(opts):
     cameras = parse_camera_config_csv(opts["-c"])
     n_images = 0
     try:
-        already_json = open(path.join(camera[FIELDS["destination"]], 'camera.json'), 'r')
+        already_json = open(path.join(cameras[0][FIELDS["destination"]], 'camera.json'), 'r')
         json_dump = json.load(already_json)    
         already_json.close    
     except IOError:
