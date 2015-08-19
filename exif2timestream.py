@@ -852,8 +852,8 @@ def main(opts):
     json_dump=[]
     for camera in cameras:
         try:
-            alread_json = open(path.join(camera[FIELDS["destination"]], 'camera.json'), 'r')
-            json_dump = json.load(alread_json)    
+            already_json = open(path.join(camera[FIELDS["destination"]], 'camera.json'), 'r')
+            json_dump = json.load(already_json)    
             already_json.close    
         except IOError:
             json_dump=[]
