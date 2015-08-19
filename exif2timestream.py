@@ -849,7 +849,12 @@ def main(opts):
     start_time = time()
     cameras = parse_camera_config_csv(opts["-c"])
     n_images = 0
-    json_dump = []
+    
+    try:
+        json_data=open(path.join(camera[FIELDS["destination"]], 'camera.json')).read()
+        json_dump = json.loads(json_data)        
+    except IOError:
+        json_dump=[]
     for camera in cameras:
         msg = "Processing experiment {}, location {}\n".format(
             camera[FIELDS["expt"]],
@@ -982,7 +987,7 @@ def main(opts):
                 except OSError:
                     log.warn("Could not make dir '{0:s}', skipping image '{1:s}'".format(
                         jpath, image))
-            obj = open(path.join(camera[FIELDS["destination"]], 'camera.json'), 'a+')
+            obj = open(path.join(camera[FIELDS["destination"]], 'camera.json'), 'w+')
             json.dump(json_dump, obj)
             obj.close
     secs_taken = time() - start_time
