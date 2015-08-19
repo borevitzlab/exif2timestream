@@ -854,7 +854,7 @@ def main(opts):
         if (len(json_dump) is 0):
             try:
                 already_json = open(path.join(camera[FIELDS["destination"]], 'camera.json'), 'r')
-                json_dump.len = json.load(already_json)    
+                json_dump = json.load(already_json)    
                 already_json.close    
             except IOError:
                 pass
