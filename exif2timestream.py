@@ -849,14 +849,15 @@ def main(opts):
     start_time = time()
     cameras = parse_camera_config_csv(opts["-c"])
     n_images = 0
-    try:
-        already_json = open(path.join(cameras[0][FIELDS["destination"]], 'camera.json'), 'r')
-        json_dump = json.load(already_json)    
-        already_json.close    
-    except IOError:
-        json_dump=[]
+    json_dump=[]
     for camera in cameras:
-        
+        try:
+            already_json = open(path.join(camera[FIELDS["destination"]], 'camera.json'), 'r')
+            json_dump = json.load(already_json)    
+            already_json.close    
+        except IOError:
+            if (json_dump is None):
+                json_dump=[]
         msg = "Processing experiment {}, location {}\n".format(
             camera[FIELDS["expt"]],
             camera[FIELDS["location"]],
