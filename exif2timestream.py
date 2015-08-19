@@ -955,12 +955,12 @@ def main(opts):
             
             json_dump.append((dict(
                 name=str(
-                    camera[FIELDS["expt"]] + '-' + (camera[FIELDS["location"]]) + (camera[FIELDS["cam_num"]])),
+                    camera[FIELDS["expt"]] + '-' + (camera[FIELDS["location"]]) +'-' (camera[FIELDS["cam_num"]])),
                 utc="false",
                 width_hires=str(j_width_hires),
                 ts_version=str(1),
                 posix_end=str(calendar.timegm(camera[FIELDS["expt_end"]])),
-                image_type=str("jpg"),
+                image_type=str("JPG"),
                 height_hires=str(j_height_hires),
                 expt=str(camera[FIELDS["expt"]]),
                 width=str(new_res[0]),
