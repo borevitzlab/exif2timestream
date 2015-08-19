@@ -851,8 +851,8 @@ def main(opts):
     n_images = 0
     for camera in cameras:
         try:
-            json_data=open(path.join(camera[FIELDS["destination"]], 'camera.json')).read()
-            json_dump = json.load(json_data)        
+            alread_json = open(path.join(camera[FIELDS["destination"]], 'camera.json'), 'w+')
+            json_dump = json.load(alread_json)        
         except IOError:
             json_dump=[]
         msg = "Processing experiment {}, location {}\n".format(
