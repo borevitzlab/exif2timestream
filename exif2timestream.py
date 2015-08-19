@@ -851,13 +851,13 @@ def main(opts):
     n_images = 0
     json_dump=[]
     for camera in cameras:
-        try:
-            already_json = open(path.join(camera[FIELDS["destination"]], 'camera.json'), 'r')
-            json_dump = json.load(already_json)    
-            already_json.close    
-        except IOError:
-            if (json_dump is None):
-                json_dump=[]
+        if (json_dump is None):
+            try:
+                already_json = open(path.join(camera[FIELDS["destination"]], 'camera.json'), 'r')
+                json_dump = json.load(already_json)    
+                already_json.close    
+            except IOError:
+                pass
         msg = "Processing experiment {}, location {}\n".format(
             camera[FIELDS["expt"]],
             camera[FIELDS["location"]],
