@@ -852,7 +852,7 @@ def main(opts):
     for camera in cameras:
         try:
             json_data=open(path.join(camera[FIELDS["destination"]], 'camera.json')).read()
-            json_dump = json.loads(json_data)        
+            json_dump = json.load(json_data)        
         except IOError:
             json_dump=[]
         msg = "Processing experiment {}, location {}\n".format(
