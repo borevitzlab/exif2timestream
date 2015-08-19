@@ -980,7 +980,6 @@ def main(opts):
                 access=str(0),
                 thumbnails=str(thumb_image)
             )))
-            print("JSON Dump is " + json_dump)
             print("Processed {: 5d} Images. Finished this cam!".format(count))
             jpath = path.dirname(
                 camera[FIELDS["ts_structure"]].format(folder="", res="", cam=''))
