@@ -849,6 +849,7 @@ def main(opts):
     start_time = time()
     cameras = parse_camera_config_csv(opts["-c"])
     n_images = 0
+    json_dump=[]
     for camera in cameras:
         try:
             alread_json = open(path.join(camera[FIELDS["destination"]], 'camera.json'), 'r')
@@ -987,9 +988,9 @@ def main(opts):
                 except OSError:
                     log.warn("Could not make dir '{0:s}', skipping image '{1:s}'".format(
                         jpath, image))
-            obj = open(path.join(camera[FIELDS["destination"]], 'camera.json'), 'w+')
-            json.dump(json_dump, obj)
-            obj.close
+    obj = open(path.join(camera[FIELDS["destination"]], 'camera.json'), 'w+')
+    json.dump(json_dump, obj)
+    obj.close
     secs_taken = time() - start_time
     print("\nProcessed a total of {0} images in {1:.2f} seconds".format(
           n_images, secs_taken))
