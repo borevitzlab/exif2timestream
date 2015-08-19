@@ -891,7 +891,7 @@ def main(opts):
             if "a_data" in camera[FIELDS["destination"]]:
                 webrootaddr = "http://phenocam.anu.edu.au/cloud/a_data" + \
                     camera[FIELDS["destination"]].split(
-                        "a_data")[1] + camera[FIELDS["ts_structure"]] + '/'
+                        "a_data")[1] + camera[FIELDS["ts_structure"]]
             else:
                 webrootaddr = "None"
             thumb_image = []
