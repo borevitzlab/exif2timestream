@@ -978,7 +978,7 @@ def main(opts):
                 posix_start=str(calendar.timegm(camera[FIELDS["expt_start"]])),
                 height=str(new_res[1]),
                 access=str(0),
-                thumbnails=str(thumb_image)
+                thumbnails=thumb_image
             )))
             print("Processed {: 5d} Images. Finished this cam!".format(count))
             jpath = path.dirname(
