@@ -265,7 +265,7 @@ def validate_camera(camera):
         FIELDS["orientation"]: str,
         FIELDS["fn_parse"]: str,
         FIELDS["fn_structure"]: str,
-        FIELDS["datasetID"]:str,
+        FIELDS["datasetID"]:cam_pad_str,
     })
     try:
         cam = sch(camera)
