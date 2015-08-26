@@ -330,8 +330,7 @@ def resize_function(camera, image_date, dest):
                 new_res = (img[0] * camera[FIELDS["resolutions"]][1][0]) / img[1], 
                 camera[FIELDS["resolutions"]][1][0] 
             else:
-                new_res = camera[FIELDS["resolutions"]][1][
-                    0], (img[0] * camera[FIELDS["resolutions"]][1][0]) / img[1]
+                new_res = camera[FIELDS["resolutions"]][1][0], (img[0] * camera[FIELDS["resolutions"]][1][0]) / img[1]
             log.debug("One resolution arguments, '{0:d}'".format(new_res[0]))
         else:
             new_res = camera[FIELDS["resolutions"]][1]
