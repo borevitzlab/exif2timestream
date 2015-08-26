@@ -955,7 +955,7 @@ def main(opts):
                 pool.join()
             json_dump.append((dict(
                 name=str(
-                    camera[FIELDS["expt"]] + '-' + (camera[FIELDS["location"]]) +'-' +(camera[FIELDS["cam_num"]])),
+                    camera[FIELDS["expt"]] + '-' + (camera[FIELDS["location"]]) +'-' +(camera[FIELDS["cam_num"]]) + '-' + (camera[FIELDS["datasetID"]])),
                 utc="false",
                 width_hires=str(j_width_hires),
                 ts_version=str(1),
