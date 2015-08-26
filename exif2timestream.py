@@ -607,8 +607,9 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
         log.info("Going to resize image '{0:s}'".format(dest))
         try:
             resize_function(camera, image_date, dest)
+            print("Successfully Resized")
         except IOError as e:
-            log.warn(e)
+            raise SkipImage
 
 def _dont_clobber(fn, mode="append"):
     """Ensure we don't overwrite things, using a variety of methods"""
