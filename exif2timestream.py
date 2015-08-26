@@ -596,6 +596,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
     #     print ("We Need to Rotate")
     if (len(camera[FIELDS["orientation"]])>0):
         with warnings.catch_warnings():
+            pass
             # warnings.simplefilter("ignore")
             # img = skimage.io.imread(dest)
             # img = skimage.transform.rotate(img, (int)(camera[FIELDS["orientation"]]), resize=True)
