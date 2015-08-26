@@ -959,7 +959,6 @@ def main(opts):
                     print("Processed {: 5d} Images".format(count), end='\r')
                 pool.close()
                 pool.join()
-            print(start_time + '\n')
             json_dump.append((dict(
                 name=str(
                     camera[FIELDS["expt"]] + '-' + (camera[FIELDS["location"]]) +'-' +(camera[FIELDS["cam_num"]])),
@@ -975,7 +974,7 @@ def main(opts):
                 webroot_hires=str(webrootaddr.format(folder='original', res='fullres')),
                 period_in_minutes=str(camera[FIELDS["interval"]]),
                 timezone=str(camera[FIELDS["timezone"]][0]),
-                posix_start=str(calendar.timegm(start_time)),
+                posix_start=str(calendar.timegm(start_date)),
                 height=str(new_res[1]),
                 access=str(0),
                 thumbnails=thumb_image
