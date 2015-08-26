@@ -304,6 +304,7 @@ def parse_structures(camera):
         camera[FIELDS["fn_structure"]] =  camera[FIELDS["expt"]].replace("_","-") + \
             '-' +  camera[FIELDS["location"]].replace("_","-") + \
             '-c' +  camera[FIELDS["cam_num"]].replace("_","-") +\
+            '-' + camera[FIELDS["datasetID"]].replace("_", "-") + \
             '~{res:s}-orig'
     else:
         for key, value in camera.items():
