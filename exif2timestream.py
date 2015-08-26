@@ -605,7 +605,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
             sleep(1)
     if (len(camera[FIELDS["resolutions"]]) > 1):
         log.info("Going to resize image '{0:s}'".format(dest))
-        resize_function(camera, image_date, dest)
+        # resize_function(camera, image_date, dest)
 
 def _dont_clobber(fn, mode="append"):
     """Ensure we don't overwrite things, using a variety of methods"""
