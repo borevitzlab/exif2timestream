@@ -328,7 +328,6 @@ def resize_function(camera, image_date, dest):
             # Calculate the new image dimensions from the old one
             if((camera[FIELDS["orientation"]]=='90')or(camera[FIELDS["orientation"]]=='270')):
                 new_res = (img[1] * camera[FIELDS["resolutions"]][1][0]) / img[0], camera[FIELDS["resolutions"]][1][0] 
-                print(new_res)
             else:
                 new_res = camera[FIELDS["resolutions"]][1][0], (img[0] * camera[FIELDS["resolutions"]][1][0]) / img[1]
             log.debug("One resolution arguments, '{0:d}'".format(new_res[0]))
