@@ -397,6 +397,7 @@ def resize_img(filename, destination, to_width, to_height):
             log.debug("Unable to copy over some exif data")
             pass
     except pexif.JpegFile.InvalidFile:
+        print("We skipped this one")
         raise SkipImage
 
 
