@@ -87,7 +87,8 @@ FIELDS = {
     'filename_date_mask': 'FILENAME_DATE_MASK',
     'orientation': 'ORIENTATION',
     'fn_parse': 'FN_PARSE',
-    'fn_structure': 'FN_STRUCTURE'
+    'fn_structure': 'FN_STRUCTURE', 
+    'datasetID' : 'DATASETID',
 }
 
 FIELD_ORDER = [
@@ -114,7 +115,8 @@ FIELD_ORDER = [
     'orientation',
     'ts_structure',
     'fn_parse',
-    'fn_structure'
+    'fn_structure', 
+    'datasetID'
 ]
 
 
@@ -263,6 +265,7 @@ def validate_camera(camera):
         FIELDS["orientation"]: str,
         FIELDS["fn_parse"]: str,
         FIELDS["fn_structure"]: str,
+        FIELDS["datasetID"]:str,
     })
     try:
         cam = sch(camera)
