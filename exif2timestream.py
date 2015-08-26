@@ -377,24 +377,27 @@ def resize_img(filename, destination, to_width, to_height):
     log.debug("Now resizing the image")
     img = skimage.transform.resize(img, (to_height, to_width))
     # read in old exxif data
-    exif_source = pexif.JpegFile.fromFile(filename)
-    # Save image
-    log.debug("Saving Image")
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        skimage.io.imsave(destination, img)
-    # Write new exif data from old image
     try:
-        exif_dest = pexif.JpegFile.fromFile(destination)
-        exif_dest.exif.primary.ExtendedEXIF.DateTimeOriginal = \
-            exif_source.exif.primary.ExtendedEXIF.DateTimeOriginal
-        exif_dest.exif.primary.Orientation = \
-            exif_source.exif.primary.Orientation
-        exif_dest.writeFile(destination)
-        log.debug("Successfully copied exif data also")
-    except AttributeError:
-        log.debug("Unable to copy over some exif data")
-        pass
+        exif_source = pexif.JpegFile.fromFile(filename)
+        # Save image
+        log.debug("Saving Image")
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            skimage.io.imsave(destination, img)
+        # Write new exif data from old image
+        try:
+            exif_dest = pexif.JpegFile.fromFile(destination)
+            exif_dest.exif.primary.ExtendedEXIF.DateTimeOriginal = \
+                exif_source.exif.primary.ExtendedEXIF.DateTimeOriginal
+            exif_dest.exif.primary.Orientation = \
+                exif_source.exif.primary.Orientation
+            exif_dest.writeFile(destination)
+            log.debug("Successfully copied exif data also")
+        except AttributeError:
+            log.debug("Unable to copy over some exif data")
+            pass
+    except pexif.JpegFile.InvalidFile:
+        raise SkipImage
 
 
 def get_time_from_filename(filename, mask=EXIF_DATE_MASK):
