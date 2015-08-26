@@ -600,7 +600,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
             img = skimage.io.imread(dest)
             img = skimage.transform.rotate(img, (int)(camera[FIELDS["orientation"]]), resize=True)
             skimage.io.imsave(dest, img)
-            time.sleep(0.1)
+            sleep(0.1)
     if (len(camera[FIELDS["resolutions"]]) > 1):
         log.info("Going to resize image '{0:s}'".format(dest))
         resize_function(camera, image_date, dest)
