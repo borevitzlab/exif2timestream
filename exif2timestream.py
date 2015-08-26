@@ -922,7 +922,8 @@ def main(opts):
                     except SkipImage:
                         thumb_image[i] = ''
                     i+=1
-                    
+            start_date = get_file_date(images[0], camera[FIELDS["interval"]]*60)
+            end_date = get_file_date(images[-1], camera[FIELDS["interval"]]*60)
             if ((camera[FIELDS["orientation"]]=="1")or(camera[FIELDS["orientation"]]=="-1")):
                     j_width_hires = str(image_resolution[1])
                     j_height_hires = str(image_resolution[0])
@@ -959,14 +960,13 @@ def main(opts):
                 pool.close()
                 pool.join()
 
-            
             json_dump.append((dict(
                 name=str(
                     camera[FIELDS["expt"]] + '-' + (camera[FIELDS["location"]]) +'-' +(camera[FIELDS["cam_num"]])),
                 utc="false",
                 width_hires=str(j_width_hires),
                 ts_version=str(1),
-                posix_end=str(calendar.timegm(camera[FIELDS["expt_end"]])),
+                posix_end=str(end_date),
                 image_type=str("JPG"),
                 height_hires=str(j_height_hires),
                 expt=str(camera[FIELDS["expt"]]),
@@ -975,7 +975,7 @@ def main(opts):
                 webroot_hires=str(webrootaddr.format(folder='original', res='fullres')),
                 period_in_minutes=str(camera[FIELDS["interval"]]),
                 timezone=str(camera[FIELDS["timezone"]][0]),
-                posix_start=str(calendar.timegm(camera[FIELDS["expt_start"]])),
+                posix_start=str(start_date),
                 height=str(new_res[1]),
                 access=str(0),
                 thumbnails=thumb_image
@@ -987,9 +987,7 @@ def main(opts):
                 try:
                     os.makedirs(path.join(camera[FIELDS["destination"]], jpath))
                 except OSError:
-                    print("UNABLE TO MAKE DIR????\n")
-                    log.warn("Could not make dir '{0:s}', skipping image '{1:s}'".format(
-                        jpath, "asdf"))
+                    log.warn("Could not make dir for json output?".)
     obj = open(path.join(camera[FIELDS["destination"]], 'camera.json'), 'w+')
     json.dump(json_dump, obj)
     obj.close
