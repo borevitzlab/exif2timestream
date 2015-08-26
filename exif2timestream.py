@@ -603,9 +603,10 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
             img = skimage.io.imread(dest)
             img = skimage.transform.rotate(img, (int)(camera[FIELDS["orientation"]]), resize=True)
             try:
+                sleep(0.1)
                 skimage.io.imsave(dest, img)
             except IOError as e:
-                print ("It's failing on the save")
+                raise SkipImage
              # Because it seems to try and read before its done writing otherwise
     if (len(camera[FIELDS["resolutions"]]) > 1):
         log.info("Going to resize image '{0:s}'".format(dest))
