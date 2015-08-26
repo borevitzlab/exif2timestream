@@ -599,12 +599,12 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
             warnings.simplefilter("ignore")
             img = skimage.io.imread(dest)
             img = skimage.transform.rotate(img, (int)(camera[FIELDS["orientation"]]), resize=True)
-            skimage.io.imsave(dest, img)
-            img.close()    
+            skimage.io.imsave(dest, img)    
     if (len(camera[FIELDS["resolutions"]]) > 1):
         print("going to resize")
         log.info("Going to resize image '{0:s}'".format(dest))
         resize_function(camera, image_date, dest)
+        print("Resized")
 
 def _dont_clobber(fn, mode="append"):
     """Ensure we don't overwrite things, using a variety of methods"""
