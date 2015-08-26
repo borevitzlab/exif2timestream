@@ -987,7 +987,7 @@ def main(opts):
                 try:
                     os.makedirs(path.join(camera[FIELDS["destination"]], jpath))
                 except OSError:
-                    log.warn("Could not make dir for json output?".)
+                    log.warn("Could not make dir for json output?")
     obj = open(path.join(camera[FIELDS["destination"]], 'camera.json'), 'w+')
     json.dump(json_dump, obj)
     obj.close
