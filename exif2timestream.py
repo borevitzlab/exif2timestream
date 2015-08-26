@@ -966,7 +966,7 @@ def main(opts):
                 utc="false",
                 width_hires=str(j_width_hires),
                 ts_version=str(1),
-                posix_end=str(end_date),
+                posix_end=str(calendar.timegm(end_date)),
                 image_type=str("JPG"),
                 height_hires=str(j_height_hires),
                 expt=str(camera[FIELDS["expt"]]),
@@ -975,7 +975,7 @@ def main(opts):
                 webroot_hires=str(webrootaddr.format(folder='original', res='fullres')),
                 period_in_minutes=str(camera[FIELDS["interval"]]),
                 timezone=str(camera[FIELDS["timezone"]][0]),
-                posix_start=str(start_date),
+                posix_start=str(calendar.timegm(start_time)),
                 height=str(new_res[1]),
                 access=str(0),
                 thumbnails=thumb_image
