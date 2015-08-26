@@ -5,7 +5,7 @@ from os import path
 from csv import reader, DictReader
 import shutil
 from sys import exit
-from time import strptime, strftime, mktime, localtime, struct_time, time
+from time import strptime, strftime, mktime, localtime, struct_time, time, sleep
 import calendar
 from voluptuous import Required, Schema, MultipleInvalid
 from itertools import cycle
