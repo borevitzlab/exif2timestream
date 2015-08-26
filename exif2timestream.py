@@ -930,7 +930,7 @@ def main(opts):
                     i+=1
             start_date = get_file_date(images[0], camera[FIELDS["interval"]]*60)
             end_date = get_file_date(images[-1], camera[FIELDS["interval"]]*60)
-            if ((camera[FIELDS["orientation"]]=="1")or(camera[FIELDS["orientation"]]=="-1")):
+            if ((camera[FIELDS["orientation"]]=="90")or(camera[FIELDS["orientation"]]=="270")):
                     j_width_hires = str(image_resolution[1])
                     j_height_hires = str(image_resolution[0])
             else:
@@ -965,7 +965,6 @@ def main(opts):
                     print("Processed {: 5d} Images".format(count), end='\r')
                 pool.close()
                 pool.join()
-            print("Got to json")
             json_dump.append((dict(
                 name=str(
                     camera[FIELDS["expt"]] + '-' + (camera[FIELDS["location"]]) +'-' +(camera[FIELDS["cam_num"]]) + '-' + (camera[FIELDS["datasetID"]])),
