@@ -20,7 +20,7 @@ from time import strptime, strftime, mktime, localtime, struct_time, time
 import warnings
 
 # Module imports
-from lib import pexif  # local copy, slightly edited for Py3 compatibility
+import pexif
 import exifread
 import skimage
 # import skimage.io
@@ -45,7 +45,7 @@ TS_NAME_FMT = "{expt:s}-{loc:s}-c{cam:s}~{res:s}-{step:s}"
 TS_NAME_STRUCT = "EXPT-LOCATION-CAM_NUM"
 FULLRES_CONSTANTS = {"original", "orig", "fullres"}
 IMAGE_TYPE_CONSTANTS = {"raw", "jpg"}
-RAW_FORMATS = {"cr2", "nef", "tif", "tiff"}
+RAW_FORMATS = {"cr2", "nef", "tif", "tiff", "raw"}
 IMAGE_SUBFOLDERS = {"raw", "jpg", "png", "tiff", "nef", "cr2"}
 DATE_NOW_CONSTANTS = {"now", "current"}
 
@@ -71,6 +71,7 @@ def cli_options():
 class CameraFields(object):
     """Validate input and translate between exif and config.csv fields."""
     # Validation functions, then schema, then the __init__ and execution
+    @staticmethod
     def date(x):
         """Converter / validator for date field."""
         if isinstance(x, struct_time):
@@ -82,6 +83,7 @@ class CameraFields(object):
         except:
             raise ValueError
 
+    @staticmethod
     def bool_str(x):
         """Converts a string to a boolean, even yes/no/true/false."""
         if isinstance(x, bool):
@@ -93,18 +95,21 @@ class CameraFields(object):
             return x in {"t", "true", "y", "yes"}
         return bool(int(x))
 
+    @staticmethod
     def int_time_hr_min(x):
         """Validator for time field."""
         if isinstance(x, tuple):
             return x
         return (int(x) // 100, int(x) % 100)
 
+    @staticmethod
     def path_exists(x):
         """Validator for path field."""
         if os.path.exists(x):
             return x
         raise ValueError("path '%s' doesn't exist" % x)
 
+    @staticmethod
     def resolution_str(x):
         """Validator for resolution field."""
         if not isinstance(x, str):
@@ -121,12 +126,14 @@ class CameraFields(object):
                 res_list.append((int(res), None))
         return res_list
 
+    @staticmethod
     def cam_pad_str(x):
         """Pads a numeric string to two digits."""
         if len(str(x)) == 1:
             return '0' + str(x)
         return x
 
+    @staticmethod
     def image_type_str(x):
         """Validator for image type field."""
         if isinstance(x, list):
@@ -138,13 +145,16 @@ class CameraFields(object):
             raise ValueError
         return types
 
+    @staticmethod
     def remove_underscores(x):
         """Replaces '_' with '-'."""
         return x.replace("_", "-")
 
+    @staticmethod
     def in_list(lst):
         """Ensure x is a vaild timestream method."""
         def valid(x):
+            """Ensures that x is in the list passed to the factory function."""
             if x not in lst:
                 raise ValueError
             return x
@@ -193,19 +203,20 @@ class CameraFields(object):
         if 'method' not in csv_config_dict:
             csv_config_dict['method'] = 'archive'
         # Ensure required properties are included, and no unknown attributes
-        if not all(key in csv_config_dict for key in REQUIRED):
+        if not all(key in csv_config_dict for key in self.REQUIRED):
             raise ValueError('CSV config dict lacks required key/s.')
-        if any(key not in CSV_TS for key in csv_config_dict):
+        if any(key not in self.CSV_TS for key in csv_config_dict):
             raise ValueError('CSV config dict has unknown key/s.')
         # Converts dict keys and calls validation function on each value
-        csv_config_dict = {CameraFields.TS_CSV[k]: SCHEMA[k](v)
+        csv_config_dict = {self.TS_CSV[k]: self.SCHEMA[k](v)
                            for k, v in csv_config_dict.items()}
         # Set object attributes from config
         for k, v in csv_config_dict.items():
-            setattr(self, CSV_TS[k], v)
+            setattr(self, self.CSV_TS[k], v)
 
         # Localise pathnames
         def local(p):
+            """Ensure that pathnames are correct for this system."""
             return p.replace(r'\\', '/').replace('/', os.path.sep)
         self.source = local(self.source)
         self.archive_dest = local(self.archive_dest)
@@ -256,16 +267,17 @@ def parse_structures(camera):
             "{folder:s}",
             (fname + "~" + "{res:s}" + "-orig")
             )
-    if len(camera.fn_structure) is 0 or not camera.fn_structure:
+    if not len(camera.fn_structure) and camera.fn_structure:
         camera.fn_structure = camera.expt.replace("_", "-") + \
             '-' + camera.location.replace("_", "-") + \
-            '-C' + camera.cam_num.replace("_", "-") +\
+            '-c' + camera.cam_num.replace("_", "-") +\
             '~{res:s}-orig'
     else:
         for key, value in camera.items():
             camera.fn_structure = camera.fn_structure.replace(key.upper(),
                                                               str(value))
-        camera.fn_structure = camera.fn_structure.replace("/", "")
+        camera.fn_structure = camera.fn_structure.replace("/", "")\
+            .replace("_", "-") + '~{res:s}-orig'
     return camera
 
 
@@ -313,20 +325,13 @@ def resize_function(camera, image_date, dest):
     log.debug("Now actually resizing image to '{0:s}'".format(dest))
     resize_img(dest, resized_img, new_res[0], new_res[1])
 
-# Function which only performs the actual resize.
-
 
 def resize_img(filename, destination, to_width, to_height):
     """Actually resizes the image."""
-    print("Resize Image")
-    # Open the Image and get its width
     img = skimage.io.imread(filename)
-    # Resize the image
     log.debug("Now resizing the image")
     img = skimage.transform.resize(img, (to_height, to_width))
-    # read in old exxif data
     exif_source = pexif.JpegFile.fromFile(filename)
-    # Save image
     log.debug("Saving Image")
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
@@ -365,12 +370,9 @@ def get_time_from_filename(filename, mask=None):
 def write_exif_date(filename, date_time):
     """Change an image timestamp."""
     try:
-        # Read in the file
         img = pexif.JpegFile.fromFile(filename)
-        # Edit the exif data
         img.exif.primary.ExtendedEXIF.DateTimeOriginal = strftime(
             EXIF_DATE_FMT, date_time)
-        # Write to the file
         img.writeFile(filename)
         return True
     except IOError:
@@ -378,38 +380,29 @@ def write_exif_date(filename, date_time):
 
 
 def get_file_date(filename, round_secs=1):
+    """Gets a time.struct_time from an image's EXIF, or None if not possible.
     """
-    Gets a time.struct_time from an image's EXIF, or None if not possible.
-    """
-    # Now uses Pexif
     try:
         exif_tags = pexif.JpegFile.fromFile(filename)
         str_date = exif_tags.exif.primary.ExtendedEXIF.DateTimeOriginal
         date = strptime(str_date, EXIF_DATE_FMT)
-        # print (date)
     except AttributeError:
-        # Try and Grab datetime from the filename
-        # Grab only the filename, not the directory
-        shortfilename = os.path.basename(filename)
-        log.debug("No Exif data in '{0:s}'".format(shortfilename) +
-                  ", attempting to read from filename")
-        # Try and grab the date
-        # We can put a custom mask in here if we want
+        # Try to get datetime from the filename, but not the directory
+        log.debug("No Exif data in '{0:s}', reading from filename".format(
+            os.path.basename(filename)))
+        # Try and grab the date, we can put a custom mask in here if we want
         date = get_time_from_filename(filename)
         if date is None:
-            log.debug(
-                "Unable to scrape date from '{0:s}'".format(shortfilename))
+            log.debug("Unable to scrape date from '{0:s}'".format(filename))
             return None
         else:
             if not write_exif_date(filename, date):
                 log.debug("Unable to write Exif Data")
                 return None
             return date
-    # If its not a jpeg, we have to open with exif reader
     except pexif.JpegFile.InvalidFile:
-        shortfilename = os.path.basename(filename)
-        log.debug("Unable to Read file '{0:s}', aparently not a jpeg".format(
-            shortfilename))
+        log.debug("Unable to Read file '{0:s}', not a jpeg?".format(
+            os.path.basename(filename)))
         with open(filename, "rb") as fh:
             #TODO:  get this in some other way, removing exifread dependency
             exif_tags = exifread.process_file(
@@ -433,11 +426,11 @@ def get_new_file_name(date_tuple, ts_name, n=0, fmt=TS_FMT, ext="jpg"):
     if date_tuple is None or not date_tuple:
         log.error("Must supply get_new_file_name with a valid date." +
                   "Date is '{0:s}'".format(d2s(date_tuple)))
-        raise ValueError("Must supply get_new_file_name with a valid date.")
+        raise SkipImage#("Must supply get_new_file_name with a valid date.")
     if not ts_name:
         log.error("Must supply get_new_file_name with timestream name." +
                   "TimeStream name is '{0:s}'".format(ts_name))
-        raise ValueError("Must supply get_new_file_name with timestream name.")
+        raise SkipImage#("Must supply get_new_file_name with timestream name.")
     date_formatted_name = strftime(fmt, date_tuple)
     name = date_formatted_name.format(tsname=ts_name, n=n, ext=ext)
     log.debug("New filename is '{0:s}'".format(name))
@@ -445,17 +438,13 @@ def get_new_file_name(date_tuple, ts_name, n=0, fmt=TS_FMT, ext="jpg"):
 
 
 def round_struct_time(in_time, round_secs, tz_hrs=0, uselocal=True):
-    """
-    Round a struct_time object to any time interval in seconds
-    """
+    """Round a struct_time object to any time interval in seconds."""
+    # TODO:  replace use of time module with more reliable datetime
     seconds = mktime(in_time)
     rounded = int(round(seconds / float(round_secs)) * round_secs)
     if not uselocal:
         rounded -= tz_hrs * 60 * 60  # remove tz seconds, back to UTC
-    retval = localtime(rounded)
-    # This is hacky as fuck. We need to replace stuff from time module with
-    # stuff from datetime, which actually fucking works.
-    rv_list = list(retval)
+    rv_list = list(localtime(rounded))
     rv_list[8] = in_time.tm_isdst
     rv_list[6] = in_time.tm_wday
     retval = struct_time(tuple(rv_list))
@@ -466,13 +455,10 @@ def round_struct_time(in_time, round_secs, tz_hrs=0, uselocal=True):
 
 def make_timestream_name(camera, res="fullres", step="orig",
                          folder='original'):
-    """
-    Makes a timestream name given the format (module-level constant), step,
-    resolution and a camera object.
-    """
+    """Makes a timestream name given the format (module-level constant), step,
+    resolution and a camera object."""
     if isinstance(res, tuple):
         res = "x".join([str(x) for x in res])
-    # raise ValueError(str((camera, res, step)))
     ts_name = camera.fn_structure.format(
         expt=camera.expt,
         loc=camera.location,
@@ -485,7 +471,7 @@ def make_timestream_name(camera, res="fullres", step="orig",
 
 def timestreamise_image(image, camera, subsec=0, step="orig"):
     """Process a single image, mv/cp-ing it to its new location"""
-    # Edit the global variable for the date mask
+    # Edit the global variable for the date mask, used elsewhere
     global DATE_MASK
     DATE_MASK = camera.filename_date_mask
     image_date = get_file_date(image, camera.interval * 60)
@@ -501,19 +487,18 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
                                    cam=camera.cam_num, step='orig'),
         out_image)
     # make the target directory
-    out_dir = os.path.dirname(out_image)
-    if not os.path.exists(out_dir):
-        try:
-            os.makedirs(out_dir)
-        except OSError:
+    try:
+        os.makedirs(os.path.dirname(out_image))
+    except OSError:
+        if not os.path.exists(os.path.dirname(out_image)):
             log.warn("Could not make dir '{0:s}', skipping image '{1:s}'"
-                     .format(out_dir, image))
+                     .format(os.path.dirname(out_image), image))
             raise SkipImage
     # And do the copy
     dest = _dont_clobber(out_image, mode=SkipImage)
 
     try:
-        shutil.copy(image, dest)
+        shutil.copyfile(image, dest)
         log.info("Copied '{0:s}' to '{1:s}".format(image, dest))
     except:
         log.warn("Couldnt copy '{0:s}' to '{1:s}', skipping image".format(
@@ -536,11 +521,10 @@ def _dont_clobber(fn, mode="append"):
     """Ensure we don't overwrite things, using a variety of methods"""
     #TODO:  will clobber something different if the new filename exists
     if os.path.exists(fn):
-        # Deal with SkipImage or StopIteration exceptions
+        # Deal with SkipImage or StopIteration exceptions, even uninstantiated
         if isinstance(mode, StopIteration):
             log.debug("Path '{0}' exists, raising StopIteration".format(fn))
             raise mode
-        # Ditto, but if we pass them uninstantiated
         elif inspect.isclass(mode) and issubclass(mode, StopIteration):
             log.debug("Path '{0}' exists, raising an Exception".format(fn))
             raise mode()
@@ -555,63 +539,46 @@ def _dont_clobber(fn, mode="append"):
 
 
 def process_image(args):
-    """
-    Given a camera config and list of images, will do the required
-    move/copy operations.
-    """
+    """Do move and copy operations for a camera config and list of images."""
     log.debug("Starting to process image")
-    (image, camera, ext) = args
+    image, camera, ext = args
     image_date = get_file_date(image, camera.interval * 60)
     if camera.expt_start > image_date or image_date > camera.expt_end:
         log.debug("Skipping {}. Outside of date range {} to {}".format(
             image, d2s(camera.expt_start), d2s(camera.expt_end)))
         return
 
-    # archive a backup before we fuck anything up
-    if camera.method == "archive":
-        log.debug("Will archive {}".format(image))
-        ts_name = make_timestream_name(camera, res="fullres")
-        archive_image = os.path.join(
-            camera.archive_dest,
-            camera.expt,
-            ext,
-            ts_name,
-            os.path.basename(image)
-            )
-        archive_dir = os.path.dirname(archive_image)
-        if not os.path.exists(archive_dir):
-            try:
-                os.makedirs(archive_dir)
-            except OSError as exc:
-                if not os.path.exists(archive_dir):
-                    raise exc
-            log.debug("Made archive dir {}".format(archive_dir))
-        archive_image = _dont_clobber(archive_image)
-        shutil.copy2(image, archive_image)
-        log.debug("Copied {} to {}".format(image, archive_image))
+    if camera.method == "json":
+        return
     if camera.method == "resize":
         resize_function(camera, image_date, image)
         log.debug("Rezied Image {}".format(image))
-    if camera.method == "json":
-        return
+    if camera.method == "archive":
+        log.debug("Will archive {}".format(image))
+        ts_name = make_timestream_name(camera, res="fullres")
+        archive_image = os.path.join(camera.archive_dest, camera.expt, ext,
+                                     ts_name, os.path.basename(image))
+        try:
+            os.makedirs(os.path.dirname(archive_image))
+            log.debug("Made archive dir {}".format(os.path.dirname(archive_image)))
+        except OSError as exc:
+            if not os.path.exists(os.path.dirname(archive_image)):
+                raise exc
+        archive_image = _dont_clobber(archive_image)
+        shutil.copy2(image, archive_image)
+        log.debug("Copied {} to {}".format(image, archive_image))
 
-    step = "orig"
-    if ext.lower() == "raw" or ext.lower() in RAW_FORMATS:
-        step = "raw"
-    subsec = 0
     try:
         # deal with original image (move/copy etc)
-        timestreamise_image(image, camera, subsec=subsec, step=step)
+        timestreamise_image(
+            image, camera, subsec=0,
+            step="raw" if ext.lower() in RAW_FORMATS else "orig")
         log.debug("Successfully timestreamed {}".format(image))
     except SkipImage:
         log.debug("Failed to timestream {} (got SkipImage)".format(image))
-        if camera.method == "archive":
-            # we have changed this so that all images are moved to the archive
-            pass
-        else:
-            return  # don't delete skipped images if we haven't archived them
+
     if camera.method in {"move", "archive"}:
-        # images have already been archived above, so just delete originals
+        # images have been archived above, so just delete originals
         try:
             os.unlink(image)
         except OSError:
@@ -620,10 +587,8 @@ def process_image(args):
 
 
 def parse_camera_config_csv(filename):
-    """
-    Parse a camera configuration
-    It yields localised, validated camera dicts
-    """
+    """Parse a camera configuration, yielding localised and validated
+    camera configuration objects."""
     if filename is None:
         raise StopIteration
     with open(filename) as fh:
@@ -638,8 +603,7 @@ def parse_camera_config_csv(filename):
 
 
 def find_image_files(camera):
-    """
-    Scrape a directory for image files, by extension.
+    """Scrape a directory for image files, by extension.
     Possibly, in future, use file magic numbers, but a bad idea on windows.
     """
     exts = camera.image_types
@@ -659,6 +623,7 @@ def find_image_files(camera):
                 if not (d.lower() in IMAGE_SUBFOLDERS or d.startswith("_")):
                     if camera.method in ("resize", "json"):
                         log.error("Source directory has too many subdirs.")
+
             for fle in files:
                 this_ext = os.path.splitext(fle)[-1].lower().strip(".")
                 if ext in (this_ext, "raw") and this_ext in RAW_FORMATS:
@@ -728,16 +693,14 @@ def process_camera(camera, ext, images, json_dump):
 
     thumb_image = []
     if len(images) > 4:
-        thumb_image = [make_timestream_name(camera, new_res[0], 'orig')
-                       for _ in range(3)]
+        thumb_image = [None, None, None]
         for i in range(3):
             image_date = get_file_date(images[len(images)//2 + i],
                                        camera.interval * 60)
             ts_image = get_new_file_name(image_date, thumb_image[i])
             thumb_image[i] = os.path.join(
                 camera.destination, os.path.dirname(camera.ts_structure),
-                folder,
-                '{}~{}-orig'.format(
+                folder, '{}~{}-orig'.format(
                     os.path.basename(camera.ts_structure), res), ts_image)
     if thumb_image and "a_data" in thumb_image[0]:
         thumb_image = [webrootaddr + t.split("a_data")[1] for t in thumb_image]
@@ -756,12 +719,13 @@ def process_camera(camera, ext, images, json_dump):
         threads = max(1, min(opts.threads, multiprocessing.cpu_count() - 1))
         log.info("Using {0:d} processes".format(threads))
         # set the function's camera-wide arguments
-        args = [(image, camera, ext) for image in images]
+        args = ((image, camera, ext) for image in images)
         pool = multiprocessing.Pool(threads)
         for count, _ in enumerate(pool.imap(process_image, args)):
             print("Processed {:5d} Images".format(count), end='\r')
         pool.close()
         pool.join()
+    print("Processed {:5d} Images. Finished this cam!".format(count))
 
     jdump = dict(
         name='{}-{}'.format(camera.expt, camera.location),
@@ -782,17 +746,6 @@ def process_camera(camera, ext, images, json_dump):
         thumbnails=thumb_image
         )
     json_dump.append({k: str(v) for k, v in jdump.items()})
-    print("Processed {:5d} Images. Finished this cam!".format(count))
-    jpath = os.path.dirname(
-        camera.ts_structure.format(folder='', res='', cam=''))
-    if not os.path.exists(os.path.join(camera.destination, jpath)):
-        try:
-            os.makedirs(os.path.join(camera.destination, jpath))
-        except OSError:
-            log.warn("Could not make dir '{}', skipping images".format(jpath))
-    with open(os.path.join(camera.destination,
-                           jpath, 'camera.json'), 'a+') as f:
-        json.dump(json_dump, f)
     return json_dump
 
 
@@ -812,6 +765,16 @@ def main():
                 len(images), ext))
             n_images += len(images)
             json_dump = process_camera(camera, ext, sorted(images), json_dump)
+            jpath = os.path.join(camera.destination, os.path.dirname(
+                camera.ts_structure.format(folder='', res='', cam='')))
+            try:
+                os.makedirs(jpath)
+            except OSError:
+                if not os.path.exists(jpath):
+                    log.warn("Could not make dir '{}', skipping images"
+                             .format(jpath))
+            with open(os.path.join(jpath, 'camera.json'), 'w') as fname:
+                json.dump(json_dump, fname)
     secs_taken = time() - start_time
     print("\nProcessed a total of {0} images in {1:.2f} seconds".format(
         n_images, secs_taken))
