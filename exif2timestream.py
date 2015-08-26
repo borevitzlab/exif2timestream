@@ -593,18 +593,9 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
     if (len(camera[FIELDS["orientation"]])>0):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            if (camera[FIELDS["orientation"]]=='1'):
-                img = skimage.io.imread(dest)
-                img = skimage.transform.rotate(img, 270, resize=True)
-                skimage.io.imsave(dest, img)
-            elif (camera[FIELDS["orientation"]]=='2'):
-                img = skimage.io.imread(dest)
-                img = skimage.transform.rotate(img, 180, resize=True)
-                skimage.io.imsave(dest, img)
-            elif (camera[FIELDS["orientation"]]=='-1'):
-                img = skimage.io.imread(dest)
-                img = skimage.transform.rotate(img, 90, resize=True)
-                skimage.io.imsave(dest, img)    
+            img = skimage.io.imread(dest)
+            img = skimage.transform.rotate(img, (int)(camera[FIELDS["orientation"]]), resize=True)
+            skimage.io.imsave(dest, img)    
     if (len(camera[FIELDS["resolutions"]]) > 1):
         log.info("Going to resize image '{0:s}'".format(dest))
         resize_function(camera, image_date, dest)
