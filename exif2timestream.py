@@ -975,7 +975,7 @@ def main(opts):
                 webroot_hires=str(webrootaddr.format(folder='original', res='fullres')),
                 period_in_minutes=str(camera[FIELDS["interval"]]),
                 timezone=str(camera[FIELDS["timezone"]][0]),
-                posix_start=str(calendar.timegm(start_time)),
+                posix_start=calendar.timegm(start_time),
                 height=str(new_res[1]),
                 access=str(0),
                 thumbnails=thumb_image
