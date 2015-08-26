@@ -954,6 +954,7 @@ def main(opts):
                     print("Processed {: 5d} Images".format(count), end='\r')
                 pool.close()
                 pool.join()
+            print("Got to json")
             json_dump.append((dict(
                 name=str(
                     camera[FIELDS["expt"]] + '-' + (camera[FIELDS["location"]]) +'-' +(camera[FIELDS["cam_num"]]) + '-' + (camera[FIELDS["datasetID"]])),
