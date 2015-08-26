@@ -606,6 +606,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
     if (len(camera[FIELDS["resolutions"]]) > 1):
         log.info("Going to resize image '{0:s}'".format(dest))
         try:
+            print("Trying to resize")
             resize_function(camera, image_date, dest)
             print("Successfully Resized")
         except IOError as e:
