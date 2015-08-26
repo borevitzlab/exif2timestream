@@ -357,7 +357,7 @@ def resize_function(camera, image_date, dest):
                 os.makedirs(resized_img_path)
             except OSError:
                 log.warn("Could not make dir '{0:s}', skipping image '{1:s}'".format(
-                    resized_img_path, image))
+                    resized_img_path, "asdf"))
                 raise SkipImage
         log.debug("Now actually resizing image to '{0:s}'".format(dest))
         resize_img(dest, resized_img, new_res[0], new_res[1])
