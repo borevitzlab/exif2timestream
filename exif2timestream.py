@@ -326,14 +326,8 @@ def resize_function(camera, image_date, dest):
             # Read in image dimensions
             img = skimage.io.imread(dest).shape
             # Calculate the new image dimensions from the old one
-            if((camera[FIELDS["orientation"]]=='90') or (camera[FIELDS["orientation"]]=='270')):
-                print("We rotated that stufF")    
-                new_res = (img[0] * camera[FIELDS["resolutions"]][1][0]) / img[1], \
-                    camera[FIELDS["resolutions"]][1][0]
-            else:
-                print("We Didn't Rotate that stuff")
-                new_res = camera[FIELDS["resolutions"]][1][
-                    0], (img[0] * camera[FIELDS["resolutions"]][1][0]) / img[1]
+            new_res = camera[FIELDS["resolutions"]][1][
+                0], (img[0] * camera[FIELDS["resolutions"]][1][0]) / img[1]
             log.debug("One resolution arguments, '{0:d}'".format(new_res[0]))
         else:
             new_res = camera[FIELDS["resolutions"]][1]
@@ -899,7 +893,11 @@ def main(opts):
             if len(camera[FIELDS["resolutions"]]) > 1:
                 folder = "outputs"
                 if (camera[FIELDS["resolutions"]][1][1] is None):
-                    new_res = camera[FIELDS["resolutions"]][1][0] ,int((float(camera[FIELDS["resolutions"]][1][0]) / image_resolution[0])*image_resolution[1])
+                    if(camera[FIELDS["orientation"]]=='90' or camera[FIELDS["orientation"]]=='270'):
+                        print("Swapped it")
+                        new_res = int((float(camera[FIELDS["resolutions"]][1][0]) / image_resolution[0])*image_resolution[1]), camera[FIELDS["resolutions"]][1][0]
+                    else:
+                        new_res = camera[FIELDS["resolutions"]][1][0] ,int((float(camera[FIELDS["resolutions"]][1][0]) / image_resolution[0])*image_resolution[1])
                 else:
                     new_res = camera[FIELDS["resolutions"]][1]
                 res = new_res[0]
