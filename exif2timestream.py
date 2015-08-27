@@ -27,21 +27,24 @@ import skimage
 # import skimage.novice
 
 # versioneer
-from _version import get_versions
+from ._version import get_versions
 __version__ = get_versions()['version']
 del get_versions
+
+# global logger
+log = logging.getLogger("exif2timestream")
 
 # Constants
 EXIF_DATE_TAG = "Image DateTime"
 EXIF_DATE_FMT = "%Y:%m:%d %H:%M:%S"
 DATE_MASK = EXIF_DATE_FMT
 TS_V1_FMT = ("%Y/%Y_%m/%Y_%m_%d/%Y_%m_%d_%H/"
-             "{tsname:s}_%Y_%m_%d_%H_%M_%S_{n:02d}.{ext:s}")
+             "{tsname}_%Y_%m_%d_%H_%M_%S_{n:02d}.{ext}")
 TS_V2_FMT = ("%Y/%Y_%m/%Y_%m_%d/%Y_%m_%d_%H/"
-             "{tsname:s}_%Y_%m_%d_%H_%M_%S_{n:02d}.{ext:s}")
+             "{tsname}_%Y_%m_%d_%H_%M_%S_{n:02d}.{ext}")
 TS_DATE_FMT = "%Y_%m_%d_%H_%M_%S"
 TS_FMT = TS_V1_FMT
-TS_NAME_FMT = "{expt:s}-{loc:s}-c{cam:s}~{res:s}-{step:s}"
+TS_NAME_FMT = "{expt}-{loc}-c{cam}~{res}-{step}"
 TS_NAME_STRUCT = "EXPT-LOCATION-CAM_NUM"
 FULLRES_CONSTANTS = {"original", "orig", "fullres"}
 IMAGE_TYPE_CONSTANTS = {"raw", "jpg"}
@@ -68,97 +71,92 @@ def cli_options():
     return parser.parse_args()
 
 
+def date(x):
+    """Converter / validator for date field."""
+    if isinstance(x, struct_time):
+        return x
+    if x.lower() in DATE_NOW_CONSTANTS:
+        return localtime()
+    try:
+        return strptime(x, "%Y_%m_%d")
+    except:
+        raise ValueError
+
+def bool_str(x):
+    """Converts a string to a boolean, even yes/no/true/false."""
+    if isinstance(x, bool):
+        return x
+    elif isinstance(x, int):
+        return bool(x)
+    x = x.strip().lower()
+    if x in {"t", "true", "y", "yes", "f", "false", "n", "no"}:
+        return x in {"t", "true", "y", "yes"}
+    return bool(int(x))
+
+def int_time_hr_min(x):
+    """Validator for time field."""
+    if isinstance(x, tuple):
+        return x
+    return (int(x) // 100, int(x) % 100)
+
+def path_exists(x):
+    """Validator for path field."""
+    if os.path.exists(x):
+        return x
+    raise ValueError("path '%s' doesn't exist" % x)
+
+def resolution_str(x):
+    """Validator for resolution field."""
+    if not isinstance(x, str):
+        raise ValueError
+    res_list = []
+    for res in x.strip().split('~'):
+        xy = res.strip().lower().split("x")
+        if res in FULLRES_CONSTANTS:
+            res_list.append(res)
+        elif len(xy) == 2:
+            res_list.append(tuple(int(i) for i in xy))
+        else:
+            # either int(x-res), or raise ValueError for validator
+            res_list.append((int(res), None))
+    return res_list
+
+def cam_pad_str(x):
+    """Pads a numeric string to two digits."""
+    if len(str(x)) == 1:
+        return '0' + str(x)
+    return x
+
+def image_type_str(x):
+    """Validator for image type field."""
+    if isinstance(x, list):
+        return x
+    if not isinstance(x, str):
+        raise ValueError
+    types = x.lower().strip().split('~')
+    if not all(t in IMAGE_TYPE_CONSTANTS for t in types):
+        raise ValueError
+    return types
+
+def remove_underscores(x):
+    """Replaces '_' with '-'."""
+    return x.replace("_", "-")
+
+def method_list(x):
+    """Ensure x is a vaild timestream method."""
+    if x not in {"copy", "archive", "move", "resize", "json"}:
+        raise ValueError
+    return x
+
+def mode_list(x):
+    """Ensure x is a vaild timestream method."""
+    if x not in {"batch", "watch"}:
+        raise ValueError
+    return x
+
 class CameraFields(object):
     """Validate input and translate between exif and config.csv fields."""
     # Validation functions, then schema, then the __init__ and execution
-    @staticmethod
-    def date(x):
-        """Converter / validator for date field."""
-        if isinstance(x, struct_time):
-            return x
-        if x.lower() in DATE_NOW_CONSTANTS:
-            return localtime()
-        try:
-            return strptime(x, "%Y_%m_%d")
-        except:
-            raise ValueError
-
-    @staticmethod
-    def bool_str(x):
-        """Converts a string to a boolean, even yes/no/true/false."""
-        if isinstance(x, bool):
-            return x
-        elif isinstance(x, int):
-            return bool(x)
-        x = x.strip().lower()
-        if x in {"t", "true", "y", "yes", "f", "false", "n", "no"}:
-            return x in {"t", "true", "y", "yes"}
-        return bool(int(x))
-
-    @staticmethod
-    def int_time_hr_min(x):
-        """Validator for time field."""
-        if isinstance(x, tuple):
-            return x
-        return (int(x) // 100, int(x) % 100)
-
-    @staticmethod
-    def path_exists(x):
-        """Validator for path field."""
-        if os.path.exists(x):
-            return x
-        raise ValueError("path '%s' doesn't exist" % x)
-
-    @staticmethod
-    def resolution_str(x):
-        """Validator for resolution field."""
-        if not isinstance(x, str):
-            raise ValueError
-        res_list = []
-        for res in x.strip().split('~'):
-            xy = res.strip().lower().split("x")
-            if res in FULLRES_CONSTANTS:
-                res_list.append(res)
-            elif len(xy) == 2:
-                res_list.append(tuple(int(i) for i in xy))
-            else:
-                # either int(x-res), or raise ValueError for validator
-                res_list.append((int(res), None))
-        return res_list
-
-    @staticmethod
-    def cam_pad_str(x):
-        """Pads a numeric string to two digits."""
-        if len(str(x)) == 1:
-            return '0' + str(x)
-        return x
-
-    @staticmethod
-    def image_type_str(x):
-        """Validator for image type field."""
-        if isinstance(x, list):
-            return x
-        if not isinstance(x, str):
-            raise ValueError
-        types = x.lower().strip().split('~')
-        if not all(t in IMAGE_TYPE_CONSTANTS for t in types):
-            raise ValueError
-        return types
-
-    @staticmethod
-    def remove_underscores(x):
-        """Replaces '_' with '-'."""
-        return x.replace("_", "-")
-
-    @staticmethod
-    def in_list(lst):
-        """Ensure x is a vaild timestream method."""
-        def valid(x):
-            """Ensures that x is in the list passed to the factory function."""
-            if x not in lst:
-                raise ValueError
-            return x
-        return valid
 
     ts_csv_fields = (
         ('use', 'USE', bool_str),
@@ -172,14 +170,13 @@ class CameraFields(object):
         ('expt_start', 'EXPT_START', date),
         ('interval', 'INTERVAL', int),
         ('image_types', 'IMAGE_TYPES', image_type_str),
-        ('method', 'METHOD', in_list({"copy", "archive",
-                                      "move", "resize", "json"})),
+        ('method', 'METHOD', method_list),
         ('resolutions', 'resolutions', resolution_str),
         ('sunrise', 'sunrise', int_time_hr_min),
         ('sunset', 'sunset', int_time_hr_min),
         ('timezone', 'camera_timezone', int_time_hr_min),
         ('user', 'user', remove_underscores),
-        ('mode', 'mode', in_list({"batch", "watch"})),
+        ('mode', 'mode', mode_list),
         ('project_owner', 'PROJECT_OWNER', remove_underscores),
         ('ts_structure', 'TS_STRUCTURE', str),
         ('filename_date_mask', 'FILENAME_DATE_MASK', str),
@@ -189,7 +186,7 @@ class CameraFields(object):
         )
 
     TS_CSV = dict((a, b) for a, b, c in ts_csv_fields)
-    CSV_TS = {v: k for k, v in ts_csv_fields.items()}
+    CSV_TS = {v: k for k, v in TS_CSV.items()}
     REQUIRED = {"use", "destination", "expt", "cam_num", "expt_end",
                 "expt_start", "image_types", "interval", "location",
                 "archive_dest", "method", "source"}
@@ -197,6 +194,8 @@ class CameraFields(object):
 
     def __init__(self, csv_config_dict):
         """Store csv settings as object attributes and validate."""
+        csv_config_dict = {self.CSV_TS[k]: v for k, v in
+                           csv_config_dict.items() if k in self.CSV_TS}
         # Set default properties
         if 'interval' not in csv_config_dict:
             csv_config_dict['interval'] = 1
@@ -205,14 +204,13 @@ class CameraFields(object):
         # Ensure required properties are included, and no unknown attributes
         if not all(key in csv_config_dict for key in self.REQUIRED):
             raise ValueError('CSV config dict lacks required key/s.')
-        if any(key not in self.CSV_TS for key in csv_config_dict):
-            raise ValueError('CSV config dict has unknown key/s.')
+#        if any(key not in self.TS_CSV for key in csv_config_dict):
+#            raise ValueError('CSV config dict has unknown key/s.')
         # Converts dict keys and calls validation function on each value
-        csv_config_dict = {self.TS_CSV[k]: self.SCHEMA[k](v)
-                           for k, v in csv_config_dict.items()}
+        csv_config_dict = {k: self.SCHEMA[k](v) for k, v in csv_config_dict.items()}
         # Set object attributes from config
         for k, v in csv_config_dict.items():
-            setattr(self, self.CSV_TS[k], v)
+            setattr(self, self.CSV_TS[k] if k in self.CSV_TS else k, v)
 
         # Localise pathnames
         def local(p):
@@ -221,7 +219,7 @@ class CameraFields(object):
         self.source = local(self.source)
         self.archive_dest = local(self.archive_dest)
         self.destination = local(self.destination)
-        log.debug("Validated camera '{:s}'".format(csv_config_dict))
+        log.debug("Validated camera '{}'".format(csv_config_dict))
 
 
 class SkipImage(StopIteration):
@@ -247,9 +245,9 @@ def parse_structures(camera):
     if camera.ts_structure is None or len(camera.ts_structure) == 0:
         # If we dont have a ts_structure, then lets do the default one
         camera.ts_structure = os.path.join(
-            camera.expt.replace("_", "-"), "{folder:s}",
+            camera.expt.replace("_", "-"), "{folder}",
             camera.expt.replace("_", "-") + '-' +
-            camera.location.replace("_", "-") + "-C{cam:s}~{res:s}-orig")
+            camera.location.replace("_", "-") + "-C{cam}~{res}-orig")
     else:
         # Replace the ts_structure with all the other stuff
 
@@ -264,20 +262,20 @@ def parse_structures(camera):
         direc, fname = os.path.split(camera.ts_structure)
         camera.ts_structure = os.path.join(
             direc,
-            "{folder:s}",
-            (fname + "~" + "{res:s}" + "-orig")
+            "{folder}",
+            (fname + "~" + "{res}" + "-orig")
             )
     if not len(camera.fn_structure) and camera.fn_structure:
         camera.fn_structure = camera.expt.replace("_", "-") + \
             '-' + camera.location.replace("_", "-") + \
             '-c' + camera.cam_num.replace("_", "-") +\
-            '~{res:s}-orig'
+            '~{res}-orig'
     else:
         for key, value in camera.items():
             camera.fn_structure = camera.fn_structure.replace(key.upper(),
                                                               str(value))
         camera.fn_structure = camera.fn_structure.replace("/", "")\
-            .replace("_", "-") + '~{res:s}-orig'
+            .replace("_", "-") + '~{res}-orig'
     return camera
 
 
@@ -285,8 +283,8 @@ def resize_function(camera, image_date, dest):
     """Create a resized image in a new location."""
     log.debug("Resize Function")
     # Resize a single image, to its new location
-    log.debug("Now checking if we have 1 or two resolution arguments on image"
-              "'{0:s}'".format(dest))
+    log.debug("Now checking if we have 1 or 2 resolution arguments on '{}'"
+              .format(dest))
     if camera.resolutions[1][1] is None:
         # Read in image dimensions
         img = skimage.io.imread(dest).shape
@@ -312,17 +310,16 @@ def resize_function(camera, image_date, dest):
     # If the resized image already exists, then just return
     if os.path.isfile(resized_img):
         return
-    log.debug("Full resized filename which we will output to is "
-              "'{0:s}'".format(resized_img))
+    log.debug("Full resized filename for output is '{}'".format(resized_img))
     resized_img_path = os.path.dirname(resized_img)
     if not os.path.exists(resized_img_path):
         try:
             os.makedirs(resized_img_path)
         except OSError:
-            log.warn("Could not make dir '{0:s}', skipping image '{1:s}'"
+            log.warn("Could not make dir '{}', skipping image '{}'"
                      .format(resized_img_path, resized_img))
             raise SkipImage
-    log.debug("Now actually resizing image to '{0:s}'".format(dest))
+    log.debug("Now actually resizing image to '{}'".format(dest))
     resize_img(dest, resized_img, new_res[0], new_res[1])
 
 
@@ -388,12 +385,12 @@ def get_file_date(filename, round_secs=1):
         date = strptime(str_date, EXIF_DATE_FMT)
     except AttributeError:
         # Try to get datetime from the filename, but not the directory
-        log.debug("No Exif data in '{0:s}', reading from filename".format(
+        log.debug("No Exif data in '{}', reading from filename".format(
             os.path.basename(filename)))
         # Try and grab the date, we can put a custom mask in here if we want
         date = get_time_from_filename(filename)
         if date is None:
-            log.debug("Unable to scrape date from '{0:s}'".format(filename))
+            log.debug("Unable to scrape date from '{}'".format(filename))
             return None
         else:
             if not write_exif_date(filename, date):
@@ -401,7 +398,7 @@ def get_file_date(filename, round_secs=1):
                 return None
             return date
     except pexif.JpegFile.InvalidFile:
-        log.debug("Unable to Read file '{0:s}', not a jpeg?".format(
+        log.debug("Unable to Read file '{}', not a jpeg?".format(
             os.path.basename(filename)))
         with open(filename, "rb") as fh:
             #TODO:  get this in some other way, removing exifread dependency
@@ -414,7 +411,7 @@ def get_file_date(filename, round_secs=1):
                 return None
     if round_secs > 1:
         date = round_struct_time(date, round_secs)
-    log.debug("Date of '{0:s}' is '{1:s}'".format(filename, d2s(date)))
+    log.debug("Date of '{}' is '{}'".format(filename, d2s(date)))
     return date
 
 
@@ -425,15 +422,15 @@ def get_new_file_name(date_tuple, ts_name, n=0, fmt=TS_FMT, ext="jpg"):
     """
     if date_tuple is None or not date_tuple:
         log.error("Must supply get_new_file_name with a valid date." +
-                  "Date is '{0:s}'".format(d2s(date_tuple)))
+                  "Date is '{}'".format(d2s(date_tuple)))
         raise SkipImage#("Must supply get_new_file_name with a valid date.")
     if not ts_name:
         log.error("Must supply get_new_file_name with timestream name." +
-                  "TimeStream name is '{0:s}'".format(ts_name))
+                  "TimeStream name is '{}'".format(ts_name))
         raise SkipImage#("Must supply get_new_file_name with timestream name.")
     date_formatted_name = strftime(fmt, date_tuple)
     name = date_formatted_name.format(tsname=ts_name, n=n, ext=ext)
-    log.debug("New filename is '{0:s}'".format(name))
+    log.debug("New filename is '{}'".format(name))
     return name
 
 
@@ -448,7 +445,7 @@ def round_struct_time(in_time, round_secs, tz_hrs=0, uselocal=True):
     rv_list[8] = in_time.tm_isdst
     rv_list[6] = in_time.tm_wday
     retval = struct_time(tuple(rv_list))
-    log.debug("time {0:s} rounded to {1:d} seconds is {2:s}".format(
+    log.debug("time {} rounded to {:d} seconds is {}".format(
         d2s(in_time), round_secs, d2s(retval)))
     return retval
 
@@ -491,7 +488,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
         os.makedirs(os.path.dirname(out_image))
     except OSError:
         if not os.path.exists(os.path.dirname(out_image)):
-            log.warn("Could not make dir '{0:s}', skipping image '{1:s}'"
+            log.warn("Could not make dir '{}', skipping image '{}'"
                      .format(os.path.dirname(out_image), image))
             raise SkipImage
     # And do the copy
@@ -499,9 +496,9 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
 
     try:
         shutil.copyfile(image, dest)
-        log.info("Copied '{0:s}' to '{1:s}".format(image, dest))
+        log.info("Copied '{}' to '{}".format(image, dest))
     except:
-        log.warn("Couldnt copy '{0:s}' to '{1:s}', skipping image".format(
+        log.warn("Couldnt copy '{}' to '{}', skipping image".format(
             image, dest))
         raise SkipImage
     with warnings.catch_warnings():
@@ -513,7 +510,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
                 img, rotations[camera.orientation], resize=True)
             skimage.io.imsave(dest, img)
     if len(camera.resolutions) > 1:
-        log.info("Going to resize image '{0:s}'".format(dest))
+        log.info("Going to resize image '{}'".format(dest))
         resize_function(camera, image_date, dest)
 
 
@@ -560,7 +557,8 @@ def process_image(args):
                                      ts_name, os.path.basename(image))
         try:
             os.makedirs(os.path.dirname(archive_image))
-            log.debug("Made archive dir {}".format(os.path.dirname(archive_image)))
+            log.debug("Made archive dir {}".format(os.path.dirname(
+                archive_image)))
         except OSError as exc:
             if not os.path.exists(os.path.dirname(archive_image)):
                 raise exc
@@ -790,5 +788,4 @@ if __name__ == "__main__":
         with open(opts.generate, "w") as f:
             f.write(",".join(b for a, b in CameraFields.ts_csv_fields) + "\n")
         sys.exit()
-    log = logging.getLogger("exif2timestream")
     main()
