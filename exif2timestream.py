@@ -622,6 +622,10 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
         try:
             resize_function(camera, image_date, dest)
         except IOError as e:
+            log.debug("Resize failed due to io error")
+            raise SkipImage
+        except e:
+            log.debug("Resize failed for unknown reason")
             raise SkipImage
 
 def _dont_clobber(fn, mode="append"):
