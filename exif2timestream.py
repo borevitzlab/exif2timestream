@@ -404,6 +404,7 @@ def resize_img(filename, destination, to_width, to_height):
 
 def get_time_from_filename(filename, mask=EXIF_DATE_MASK):
     # Replace the year with the regex equivalent to parse
+    print("Trying to get from filename")
     regex_mask = mask.replace("%Y", "\d{4}").replace(
         "%m", "\d{2}").replace("%d", "\d{2}")
     regex_mask = regex_mask.replace("%H", "\d{2}").replace(
