@@ -90,7 +90,7 @@ FIELDS = {
     'fn_parse': 'FN_PARSE',
     'fn_structure': 'FN_STRUCTURE', 
     'datasetID' : 'DATASETID',
-    'timeshift' : 'TIMESHIFT'
+    'timeshift' : 'TIMESHIFT',
 }
 
 FIELD_ORDER = [
@@ -274,6 +274,7 @@ def validate_camera(camera):
         FIELDS["fn_parse"]: str,
         FIELDS["fn_structure"]: str,
         FIELDS["datasetID"]:cam_pad_str,
+        FIELDS["timeshift"]:str,
     })
     try:
         cam = sch(camera)
