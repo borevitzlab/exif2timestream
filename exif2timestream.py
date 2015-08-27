@@ -228,7 +228,7 @@ def validate_camera(camera):
 
     def set_fn_mask(x):
         global EXIF_DATE_MASK
-        EXIF_DATE_MASK = camera[FIELDS["filename_date_mask"]]]
+        EXIF_DATE_MASK = x
         return x
         
 
