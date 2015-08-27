@@ -19,6 +19,7 @@ import json
 import skimage
 import skimage.io
 import skimage.novice
+import datetime
 # versioneer
 from _version import get_versions
 __version__ = get_versions()['version']
@@ -89,6 +90,7 @@ FIELDS = {
     'fn_parse': 'FN_PARSE',
     'fn_structure': 'FN_STRUCTURE', 
     'datasetID' : 'DATASETID',
+    'timeshift' : 'TIMESHIFT'
 }
 
 FIELD_ORDER = [
@@ -116,7 +118,8 @@ FIELD_ORDER = [
     'ts_structure',
     'fn_parse',
     'fn_structure', 
-    'datasetID'
+    'datasetID', 
+    'timeshift'
 ]
 
 
@@ -477,7 +480,10 @@ def get_file_date(filename, round_secs=1):
             if not(write_exif_date(filename, date)):
                 log.debug("Unable to write Exif Data")
                 return None
-            return date
+            datetime = datetime.datetime.fromtimemstamp(time.mktime(date))
+            minus = datetime.timedelta(hours=(int)(camera[FIELDS["timeshift"]]))
+            datetime = datetime + minus
+            return datetime.timetuple()
     # If its not a jpeg, we have to open with exif reader
     except pexif.JpegFile.InvalidFile:
         shortfilename = os.path.basename(filename)
@@ -493,7 +499,10 @@ def get_file_date(filename, round_secs=1):
     if round_secs > 1:
         date = round_struct_time(date, round_secs)
     log.debug("Date of '{0:s}' is '{1:s}'".format(filename, d2s(date)))
-    return date
+    datetime = datetime.datetime.fromtimemstamp(time.mktime(date))
+    minus = datetime.timedelta(hours=(int)(camera[FIELDS["timeshift"]]))
+    datetime = datetime + minus
+    return datetime.timetuple()
 
 
 def get_new_file_name(date_tuple, ts_name, n=0, fmt=TS_FMT, ext="jpg"):
