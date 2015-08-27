@@ -5,7 +5,7 @@ from os import path
 from csv import reader, DictReader
 import shutil
 from sys import exit
-from time import strptime, strftime, mktime, localtime, struct_time, time, sleep
+from time import strptime, strftime, mktime, localtime, struct_time, time, sleep, mktime
 import calendar
 from voluptuous import Required, Schema, MultipleInvalid
 from itertools import cycle
@@ -481,7 +481,7 @@ def get_file_date(filename, round_secs=1):
             if not(write_exif_date(filename, date)):
                 log.debug("Unable to write Exif Data")
                 return None
-            datetime_date = datetime.datetime.fromtimestamp(time.mktime(date))
+            datetime_date = datetime.datetime.fromtimestamp(mktime(date))
             minus = datetime.timedelta(hours=(int)(camera[FIELDS["timeshift"]]))
             datetime_date = datetime_date + minus
             return datetime_date.timetuple()
@@ -500,7 +500,7 @@ def get_file_date(filename, round_secs=1):
     if round_secs > 1:
         date = round_struct_time(date, round_secs)
     log.debug("Date of '{0:s}' is '{1:s}'".format(filename, d2s(date)))
-    datetime_date = datetime.datetime.fromtimestamp(time.mktime(date))
+    datetime_date = datetime.datetime.fromtimestamp(mktime(date))
     minus = datetime.timedelta(hours=(int)(camera[FIELDS["timeshift"]]))
     datetime_date = datetime_date + minus
     return datetime_date.timetuple()
