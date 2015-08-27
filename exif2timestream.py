@@ -453,7 +453,7 @@ def write_exif_date(filename, date_time):
         return False
 
 
-def get_file_date(filename, round_secs=1, timeshift):
+def get_file_date(filename, timeshift, round_secs=1):
     """
     Gets a time.struct_time from an image's EXIF, or None if not possible.
     """
@@ -573,7 +573,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
     # Edit the global variable for the date mask
     global EXIF_DATE_MASK
     EXIF_DATE_MASK = camera[FIELDS["filename_date_mask"]]
-    image_date = get_file_date(image, camera[FIELDS["interval"]] * 60, camera[FIELDS["timeshift"]])
+    image_date = get_file_date(image, camera[FIELDS["timeshift"]],  camera[FIELDS["interval"]] * 60)
     if not image_date:
         log.warn("Couldn't get date for image {}".format(image))
         raise SkipImage
@@ -678,7 +678,7 @@ def process_image(args):
     log.debug("Starting to process image")
     (image, camera, ext) = args
     EXIF_DATE_MASK = camera[FIELDS["filename_date_mask"]]
-    image_date = get_file_date(image, camera[FIELDS["interval"]] * 60, camera[FIELDS["timeshift"]])
+    image_date = get_file_date(image, camera[FIELDS["timeshift"]], camera[FIELDS["interval"]] * 60)
     if image_date < camera[FIELDS["expt_start"]] or \
             image_date > camera[FIELDS["expt_end"]]:
         log.debug("Skipping {}. Outside of date range {} to {}".format(
@@ -942,7 +942,7 @@ def main(opts):
                 while (i < 3):
                     try:
                         image_date = get_file_date(
-                            images[thumb_image[i]], camera[FIELDS["interval"]] * 60, camera[FIELDS["timeshift"]])
+                            images[thumb_image[i]],camera[FIELDS["timeshift"]],  camera[FIELDS["interval"]] * 60)
                         thumb_image[i] = make_timestream_name(
                             camera, 'fullres', 'orig').format(folder="original", res="fullres")
                         ts_image = get_new_file_name(image_date, thumb_image[i])
@@ -955,10 +955,10 @@ def main(opts):
                     except SkipImage:
                         thumb_image[i] = ''
                     i+=1
-            start_date = get_file_date(images[0], camera[FIELDS["interval"]]*60, camera[FIELDS["timeshift"]])
+            start_date = get_file_date(images[0], camera[FIELDS["timeshift"]], camera[FIELDS["interval"]]*60)
             if start_date is None:
                 start_date = camera[FIELDS["expt_start"]]
-            end_date = get_file_date(images[-1], camera[FIELDS["interval"]]*60, camera[FIELDS["timeshift"]])
+            end_date = get_file_date(images[-1], camera[FIELDS["timeshift"]], camera[FIELDS["interval"]]*60)
             if end_date is None:
                 end_date = camera[FIELDS["expt_end"]]
             if ((camera[FIELDS["orientation"]]=="90")or(camera[FIELDS["orientation"]]=="270")):
