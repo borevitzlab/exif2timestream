@@ -225,6 +225,11 @@ def validate_camera(camera):
     def remove_underscores(x):
         x = x.replace("_", "-")
         return x
+
+    def set_fn_mask(x):
+        global EXIF_DATE_MASK
+        EXIF_DATE_MASK = camera[FIELDS["filename_date_mask"]]]
+        return x
         
 
     class InList(object):
@@ -261,7 +266,7 @@ def validate_camera(camera):
         FIELDS["timezone"]: int_time_hr_min,
         FIELDS["project_owner"]: remove_underscores,
         FIELDS["ts_structure"]: str,
-        FIELDS["filename_date_mask"]: str,
+        FIELDS["filename_date_mask"]: set_fn_mask,
         FIELDS["orientation"]: str,
         FIELDS["fn_parse"]: str,
         FIELDS["fn_structure"]: str,
