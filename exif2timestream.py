@@ -625,7 +625,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
             log.debug("Resize failed due to io error")
             raise SkipImage
         except Exception as e:
-            print("Failed to resize, due to " + e)
+            print("Failed to resize, due to " + (str)(e))
             log.debug("Resize failed for unknown reason")
             raise SkipImage
 
