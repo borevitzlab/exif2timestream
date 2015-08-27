@@ -99,8 +99,8 @@ from struct import unpack, pack
 MAX_HEADER_SIZE = 64 * 1024
 DELIM = 0xff
 EOI = 0xd9
-SOI_MARKER = chr(DELIM) + '\xd8'
-EOI_MARKER = chr(DELIM) + '\xd9'
+SOI_MARKER = b'\xff\xd8'
+EOI_MARKER = b'\xff\xd9'
 
 TIFF_OFFSET = 6
 TIFF_TAG = 0x2a
@@ -858,7 +858,7 @@ class ExifSegment(DefaultSegment):
         """Overloads the DefaultSegment method to parse the data of
         this segment. Can raise InvalidFile if we don't get what we expect."""
         exif = unpack("6s", data[:6])[0]
-        exif = exif.strip('\0')
+        exif = exif.strip(b'\0')
 
         if (exif != "Exif"):
             raise self.InvalidSegment("Bad Exif Marker. Got <%s>, "

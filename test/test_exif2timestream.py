@@ -17,7 +17,7 @@ import pexif
 
 SKIMAGE = True
 try:
-    import skimage
+    from skimage import novice
 except ImportError:
     SKIMAGE = False
 
@@ -208,7 +208,7 @@ class TestExifTraitcapture(unittest.TestCase):
                               "test_2013_11_12_20_53_09_00.jpg"))
 
     def test_get_new_file_date_from_file(self):
-        date = e2t.get_file_date((2013, 11, 12))
+        date = e2t.get_file_date(self.jpg_testfile)
         fn = e2t.get_new_file_name(date, 'test')
         self.assertEqual(fn, ("2013/2013_11/2013_11_12/2013_11_12_20/"
                               "test_2013_11_12_20_53_09_00.jpg"))
@@ -219,13 +219,13 @@ class TestExifTraitcapture(unittest.TestCase):
 
     def test_get_new_file_nulls(self):
         date = time.strptime("20131112 205309", "%Y%m%d %H%M%S")
-        with self.assertRaises(ValueError):
+        with self.assertRaises(e2t.SkipImage):
             e2t.get_new_file_name(None, 'test')
-        with self.assertRaises(ValueError):
+        with self.assertRaises(e2t.SkipImage):
             e2t.get_new_file_name(date, '')
-        with self.assertRaises(ValueError):
+        with self.assertRaises(e2t.SkipImage):
             e2t.get_new_file_name(date, None)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(e2t.SkipImage):
             e2t.get_new_file_name(None, '')
 
     # tests for make_timestream_name
@@ -253,26 +253,9 @@ class TestExifTraitcapture(unittest.TestCase):
                         },
                 "raw": {path.join(self.camupload_dir, 'raw/IMG_0001.CR2')},
                 }
-        # TODO: fix regression
-        return
         got = e2t.find_image_files(self.camera)
         self.assertSetEqual(set(got["jpg"]), expt["jpg"])
         self.assertSetEqual(set(got["jpg"]), expt["jpg"])
-
-    def test_get_local_path(self):
-        winpath = "test\\path\\to\\file"
-        unixpath = "test/path/to/file"
-        if os.path.sep == "\\":
-            # windows
-            self.assertEqual(e2t.get_local_path(winpath), winpath)
-            self.assertEqual(e2t.get_local_path(unixpath), winpath)
-        elif os.path.sep == "/":
-            # unix
-            self.assertEqual(e2t.get_local_path(winpath), unixpath)
-            self.assertEqual(e2t.get_local_path(unixpath), unixpath)
-        else:
-            raise ValueError("Non-Unix/Win path seperator '%s' not supported" %
-                             os.path.sep)
 
     # tests for timestreamise_image
     def test_timestreamise_image(self):
@@ -335,17 +318,18 @@ class TestExifTraitcapture(unittest.TestCase):
         # first entry is invalid but not used, should return None
         got = list(e2t.parse_camera_config_csv(self.unused_bad_cam_csv))
         self.assertListEqual(got, [])
-        # The case of "invalid but used" is dealt with in
-        # test_parse_camera_config_csv_badconfig
 
     def test_parse_camera_config_csv_badconfig(self):
-        self.assertTrue(list(
+        self.assertFalse(list(
             e2t.parse_camera_config_csv(self.bad_header_config_csv)))
 
     # tests for generate_config_csv
     def test_generate_config_csv(self):
         out_csv = path.join(self.out_dirname, "test_gencnf.csv")
-        e2t.generate_config_csv(out_csv)
+        try:
+            e2t.gen_config(out_csv)
+        except SystemExit:
+            pass
         self._md5test(out_csv, "27206481b58975b0c3d3c02c6dda6813")
 
     # Tests for checking parsing of dates from filename
@@ -380,12 +364,14 @@ class TestExifTraitcapture(unittest.TestCase):
             print("Skimage not available, can't test resizing", ImportWarning)
             return
         filename = 'jpg/whroo20131104_020255M.jpg'
-        new_width = 400
-        # TODO: use new function signature
-        return
-        e2t.resize_img(path.join(self.camupload_dir, filename), new_width)
-        w = skimage.novice.open(
-            path.join(self.camupload_dir, filename)).width
+        new_width, w = 400, 0
+        try:
+            dest = path.join(self.camupload_dir, filename)
+            e2t.resize_img(filename, dest, new_width, 300)
+            w = novice.open(
+                path.join(self.camupload_dir, filename)).width
+        except OSError:
+            pass
         self.assertEqual(w, new_width)
 
     def test_main(self):
@@ -417,13 +403,6 @@ class TestExifTraitcapture(unittest.TestCase):
         # IMG0001.JPG should always be the first one, with one core it's
         # deterministic
         self._md5test(self.r_fullres_path, "76ee6fb2f5122d2f5815101ec66e7cb8")
-
-    def test_gen_config(self):
-        conf_out = path.join(self.out_dirname, "config.csv")
-        with self.assertRaises(SystemExit):
-            e2t.gen_config(conf_out)
-        self.assertTrue(path.exists(conf_out))
-        self._md5test(conf_out, "27206481b58975b0c3d3c02c6dda6813")
 
 
 if __name__ == "__main__":

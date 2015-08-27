@@ -23,6 +23,7 @@ import warnings
 import pexif
 import exifread
 import skimage
+from skimage import novice
 
 # global logger
 log = logging.getLogger("exif2timestream")
@@ -276,7 +277,7 @@ def parse_structures(camera):
             '-c' + camera.cam_num.replace("_", "-") +\
             '~{res}-orig'
     else:
-        for key, value in camera.items():
+        for key, value in camera.TS_CSV.items():
             camera.fn_structure = camera.fn_structure.replace(key.upper(),
                                                               str(value))
         camera.fn_structure = camera.fn_structure.replace("/", "")\
@@ -333,13 +334,13 @@ def resize_img(filename, destination, to_width, to_height):
     img = skimage.io.imread(filename)
     log.debug("Now resizing the image")
     img = skimage.transform.resize(img, (to_height, to_width))
-    exif_source = pexif.JpegFile.fromFile(filename)
     log.debug("Saving Image")
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         skimage.io.imsave(destination, img)
     # Write new exif data from old image
     try:
+        exif_source = pexif.JpegFile.fromFile(filename)
         exif_dest = pexif.JpegFile.fromFile(destination)
         exif_dest.exif.primary.ExtendedEXIF.DateTimeOriginal = \
             exif_source.exif.primary.ExtendedEXIF.DateTimeOriginal
@@ -347,7 +348,7 @@ def resize_img(filename, destination, to_width, to_height):
             exif_source.exif.primary.Orientation
         exif_dest.writeFile(destination)
         log.debug("Successfully copied exif data also")
-    except AttributeError:
+    except (AttributeError, pexif.JpegFile.InvalidFile):
         log.debug("Unable to copy over some exif data")
 
 
@@ -377,7 +378,7 @@ def write_exif_date(filename, date_time):
             EXIF_DATE_FMT, date_time)
         img.writeFile(filename)
         return True
-    except (IOError, pexif.InvalidFile):
+    except:
         return False
 
 
@@ -425,14 +426,8 @@ def get_new_file_name(date_tuple, ts_name, n=0, fmt=TS_FMT, ext="jpg"):
     Gives the new file name for an image within a timestream, based on
     datestamp, timestream name, sub-second series count and extension.
     """
-    if not date_tuple:
-        log.error("Must supply get_new_file_name with a valid date." +
-                  "Date is '{}'".format(d2s(date_tuple)))
-        raise SkipImage("Must supply get_new_file_name with a valid date.")
-    if not ts_name:
-        log.error("Must supply get_new_file_name with timestream name." +
-                  "TimeStream name is '{}'".format(ts_name))
-        raise SkipImage("Must supply get_new_file_name with timestream name.")
+    if not date_tuple and ts_name:
+        raise SkipImage
     date_formatted_name = strftime(fmt, date_tuple)
     name = date_formatted_name.format(tsname=ts_name, n=n, ext=ext)
     log.debug("New filename is '{}'".format(name))
@@ -673,7 +668,7 @@ def setup_logs(logdir, debug=False):
 def get_resolution(image, camera):
     """Return various resolution numbers for an image."""
     try:
-        image_resolution = skimage.novice.open(image).size
+        image_resolution = novice.open(image).size
     except IOError:
         image_resolution = (0, 0)
     folder, res, new_res = "original", 'fullres', image_resolution
@@ -716,7 +711,7 @@ def get_thumbnail_paths(camera, images):
 def process_camera(camera, ext, images, n_threads=1):
     """Process a set of images for one extension for a single camera."""
     res, new_res, image_resolution, folder = get_resolution(images[0], camera)
-    webrootaddr, thumb_image = get_thumbnail_paths(camera)
+    webrootaddr, thumb_image = get_thumbnail_paths(camera, images)
 
     # TODO: sort out the whole subsecond clusterfuck
     if n_threads == 1:
@@ -794,8 +789,9 @@ def gen_config(fname):
     if fname is None:
         return
     with open(fname, "w") as f:
-        f.write(",".join(b for a, b in CameraFields.ts_csv_fields) + "\n")
+        f.write(",".join(l[1] for l in CameraFields.ts_csv_fields) + "\n")
     sys.exit()
+
 
 if __name__ == "__main__":
     opts = cli_options()
