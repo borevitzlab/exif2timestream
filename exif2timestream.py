@@ -624,7 +624,8 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
         except IOError as e:
             log.debug("Resize failed due to io error")
             raise SkipImage
-        except:
+        except Exception as e:
+            print("Failed to resize, due to " + e)
             log.debug("Resize failed for unknown reason")
             raise SkipImage
 
@@ -945,7 +946,11 @@ def main(opts):
                         thumb_image[i] = ''
                     i+=1
             start_date = get_file_date(images[0], camera[FIELDS["interval"]]*60)
+            if start_date is None:
+                start_date = camera[FIELDS["start_date"]]
             end_date = get_file_date(images[-1], camera[FIELDS["interval"]]*60)
+            if end_date is None:
+                end_date = camera[FIELDS["end_date"]]
             if ((camera[FIELDS["orientation"]]=="90")or(camera[FIELDS["orientation"]]=="270")):
                     j_width_hires = str(image_resolution[1])
                     j_height_hires = str(image_resolution[0])
