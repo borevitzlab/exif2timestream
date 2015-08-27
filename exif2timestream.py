@@ -947,10 +947,10 @@ def main(opts):
                     i+=1
             start_date = get_file_date(images[0], camera[FIELDS["interval"]]*60)
             if start_date is None:
-                start_date = camera[FIELDS["start_date"]]
+                start_date = camera[FIELDS["expt_start"]]
             end_date = get_file_date(images[-1], camera[FIELDS["interval"]]*60)
             if end_date is None:
-                end_date = camera[FIELDS["end_date"]]
+                end_date = camera[FIELDS["expt_end"]]
             if ((camera[FIELDS["orientation"]]=="90")or(camera[FIELDS["orientation"]]=="270")):
                     j_width_hires = str(image_resolution[1])
                     j_height_hires = str(image_resolution[0])
