@@ -23,13 +23,6 @@ import warnings
 import pexif
 import exifread
 import skimage
-# import skimage.io
-# import skimage.novice
-
-# versioneer
-from ._version import get_versions
-__version__ = get_versions()['version']
-del get_versions
 
 # global logger
 log = logging.getLogger("exif2timestream")
@@ -82,6 +75,7 @@ def date(x):
     except:
         raise ValueError
 
+
 def bool_str(x):
     """Converts a string to a boolean, even yes/no/true/false."""
     if isinstance(x, bool):
@@ -93,17 +87,20 @@ def bool_str(x):
         return x in {"t", "true", "y", "yes"}
     return bool(int(x))
 
+
 def int_time_hr_min(x):
     """Validator for time field."""
     if isinstance(x, tuple):
         return x
     return (int(x) // 100, int(x) % 100)
 
+
 def path_exists(x):
     """Validator for path field."""
     if os.path.exists(x):
         return x
     raise ValueError("path '%s' doesn't exist" % x)
+
 
 def resolution_str(x):
     """Validator for resolution field."""
@@ -121,11 +118,13 @@ def resolution_str(x):
             res_list.append((int(res), None))
     return res_list
 
+
 def cam_pad_str(x):
     """Pads a numeric string to two digits."""
     if len(str(x)) == 1:
         return '0' + str(x)
     return x
+
 
 def image_type_str(x):
     """Validator for image type field."""
@@ -138,9 +137,11 @@ def image_type_str(x):
         raise ValueError
     return types
 
+
 def remove_underscores(x):
     """Replaces '_' with '-'."""
     return x.replace("_", "-")
+
 
 def method_list(x):
     """Ensure x is a vaild timestream method."""
@@ -148,11 +149,13 @@ def method_list(x):
         raise ValueError
     return x
 
+
 def mode_list(x):
     """Ensure x is a vaild timestream method."""
     if x not in {"batch", "watch"}:
         raise ValueError
     return x
+
 
 class CameraFields(object):
     """Validate input and translate between exif and config.csv fields."""
@@ -204,10 +207,12 @@ class CameraFields(object):
         # Ensure required properties are included, and no unknown attributes
         if not all(key in csv_config_dict for key in self.REQUIRED):
             raise ValueError('CSV config dict lacks required key/s.')
+# TODO: re-enable correctly, to catch illegal keys
 #        if any(key not in self.TS_CSV for key in csv_config_dict):
 #            raise ValueError('CSV config dict has unknown key/s.')
         # Converts dict keys and calls validation function on each value
-        csv_config_dict = {k: self.SCHEMA[k](v) for k, v in csv_config_dict.items()}
+        csv_config_dict = {k: self.SCHEMA[k](v)
+                           for k, v in csv_config_dict.items()}
         # Set object attributes from config
         for k, v in csv_config_dict.items():
             setattr(self, self.CSV_TS[k] if k in self.CSV_TS else k, v)
@@ -372,7 +377,7 @@ def write_exif_date(filename, date_time):
             EXIF_DATE_FMT, date_time)
         img.writeFile(filename)
         return True
-    except IOError:
+    except (IOError, pexif.InvalidFile):
         return False
 
 
@@ -420,14 +425,14 @@ def get_new_file_name(date_tuple, ts_name, n=0, fmt=TS_FMT, ext="jpg"):
     Gives the new file name for an image within a timestream, based on
     datestamp, timestream name, sub-second series count and extension.
     """
-    if date_tuple is None or not date_tuple:
+    if not date_tuple:
         log.error("Must supply get_new_file_name with a valid date." +
                   "Date is '{}'".format(d2s(date_tuple)))
-        raise SkipImage#("Must supply get_new_file_name with a valid date.")
+        raise SkipImage("Must supply get_new_file_name with a valid date.")
     if not ts_name:
         log.error("Must supply get_new_file_name with timestream name." +
                   "TimeStream name is '{}'".format(ts_name))
-        raise SkipImage#("Must supply get_new_file_name with timestream name.")
+        raise SkipImage("Must supply get_new_file_name with timestream name.")
     date_formatted_name = strftime(fmt, date_tuple)
     name = date_formatted_name.format(tsname=ts_name, n=n, ext=ext)
     log.debug("New filename is '{}'".format(name))
@@ -520,18 +525,18 @@ def _dont_clobber(fn, mode="append"):
     if os.path.exists(fn):
         # Deal with SkipImage or StopIteration exceptions, even uninstantiated
         if isinstance(mode, StopIteration):
-            log.debug("Path '{0}' exists, raising StopIteration".format(fn))
+            log.debug("Path '{}' exists, raising StopIteration".format(fn))
             raise mode
         elif inspect.isclass(mode) and issubclass(mode, StopIteration):
             log.debug("Path '{0}' exists, raising an Exception".format(fn))
             raise mode()
         # Otherwise, append something '_1' to the file name
         elif mode == "append":
-            log.debug("Path '{0}' exists, adding '_1' to its name".format(fn))
+            log.debug("Path '{}' exists, adding '_1' to its name".format(fn))
             base, ext = os.path.splitext(fn)
             return '{}_1.{}'.format(base, ext) if ext else '{}_1'.format(base)
         raise ValueError("Bad _dont_clobber mode: %r", mode)
-    log.debug("Path '{0}' doesn't exist. Returning it.".format(fn))
+    log.debug("Path '{}' doesn't exist. Returning it.".format(fn))
     return fn
 
 
@@ -637,7 +642,7 @@ def find_image_files(camera):
     return ext_files
 
 
-def setup_logs():
+def setup_logs(logdir, debug=False):
     """Sets up logging options."""
     NOW = strftime("%Y%m%dT%H%M%S", localtime())
     fmt = logging.Formatter(
@@ -648,15 +653,15 @@ def setup_logs():
     ch.setFormatter(fmt)
     log.addHandler(ch)
     # Warnings and Info are also logged to file
-    if opts.logdir is not None or opts.debug:
-        logdir = opts.logdir if os.path.exists(opts.logdir) else '.'
+    if logdir is not None or debug:
+        logdir = logdir if os.path.exists(logdir) else '.'
         log_fh = logging.FileHandler(
             os.path.join(logdir, "e2t_" + NOW + ".log"))
         log_fh.setLevel(logging.INFO)
         log_fh.setFormatter(fmt)
         log.addHandler(log_fh)
     # Debug is optionally logged to another file
-    if opts.debug:
+    if debug:
         debug_fh = logging.FileHandler(
             os.path.join(logdir, "e2t_" + NOW + ".debug"))
         debug_fh.setLevel(logging.DEBUG)
@@ -665,15 +670,13 @@ def setup_logs():
         log.setLevel(logging.DEBUG)
 
 
-def process_camera(camera, ext, images, json_dump):
-    """Process a set of images for one extension for a single camera."""
+def get_resolution(image, camera):
+    """Return various resolution numbers for an image."""
     try:
-        image_resolution = skimage.novice.open(images[0]).size
+        image_resolution = skimage.novice.open(image).size
     except IOError:
         image_resolution = (0, 0)
-    folder = "original"
-    res = 'fullres'
-    new_res = image_resolution
+    folder, res, new_res = "original", 'fullres', image_resolution
     if len(camera.resolutions) > 1:
         folder = "outputs"
         new_res = camera.resolutions[1]
@@ -682,39 +685,47 @@ def process_camera(camera, ext, images, json_dump):
             new_res = (camera.resolutions[1][0],
                        camera.resolutions[1][0] * x / y)
         res = new_res[0]
+    return res, new_res, image_resolution, folder
 
+
+def get_thumbnail_paths(camera, images):
+    """Return thumbnail paths, for the final resting place of the images."""
+    res, new_res, image_resolution, folder = get_resolution(images[0], camera)
     webrootaddr = None
     if "a_data" in camera.destination:
         webrootaddr = "http://phenocam.anu.edu.au/cloud/data{}{}/".format(
             camera.destination.split("a_data")[1],
             camera.ts_structure if camera.ts_structure else camera.location)
-
     thumb_image = []
     if len(images) > 4:
         thumb_image = [None, None, None]
         for i in range(3):
             image_date = get_file_date(images[len(images)//2 + i],
                                        camera.interval * 60)
-            ts_image = get_new_file_name(image_date, thumb_image[i])
+            ts_image = get_new_file_name(
+                image_date, make_timestream_name(camera, new_res[0], 'orig'))
             thumb_image[i] = os.path.join(
                 camera.destination, os.path.dirname(camera.ts_structure),
                 folder, '{}~{}-orig'.format(
                     os.path.basename(camera.ts_structure), res), ts_image)
     if thumb_image and "a_data" in thumb_image[0]:
         thumb_image = [webrootaddr + t.split("a_data")[1] for t in thumb_image]
+    return webrootaddr, thumb_image
 
-    j_width_hires, j_height_hires = image_resolution
-    if camera.orientation in ("1", "-1"):
-        j_width_hires, j_height_hires = j_height_hires, j_width_hires
+
+def process_camera(camera, ext, images, n_threads=1):
+    """Process a set of images for one extension for a single camera."""
+    res, new_res, image_resolution, folder = get_resolution(images[0], camera)
+    webrootaddr, thumb_image = get_thumbnail_paths(camera)
 
     # TODO: sort out the whole subsecond clusterfuck
-    if opts.threads == 1:
+    if n_threads == 1:
         log.info("Using 1 process - what is this? 1990?")
         for count, image in enumerate(images):
             print("Processed {:5d} Images".format(count), end='\r')
             process_image((image, camera, ext))
     else:
-        threads = max(1, min(opts.threads, multiprocessing.cpu_count() - 1))
+        threads = max(1, min(n_threads, multiprocessing.cpu_count() - 1))
         log.info("Using {0:d} processes".format(threads))
         # set the function's camera-wide arguments
         args = ((image, camera, ext) for image in images)
@@ -728,11 +739,11 @@ def process_camera(camera, ext, images, json_dump):
     jdump = dict(
         name='{}-{}'.format(camera.expt, camera.location),
         utc="false",
-        width_hires=j_width_hires,
+        width_hires=image_resolution[camera.orientation not in ("1", "-1")],
         ts_version='1',
         ts_end=calendar.timegm(camera.expt_end),
         image_type=CameraFields.TS_CSV["image_types"][0],
-        height_hires=j_height_hires,
+        height_hires=image_resolution[camera.orientation in ("1", "-1")],
         expt=camera.expt,
         width=new_res[0],
         webroot=webrootaddr,
@@ -743,17 +754,16 @@ def process_camera(camera, ext, images, json_dump):
         access='0',
         thumbnails=thumb_image
         )
-    json_dump.append({k: str(v) for k, v in jdump.items()})
-    return json_dump
+    return {k: str(v) for k, v in jdump.items()}
 
 
-def main():
+def main(configfile, n_threads=1, logdir=None, debug=False):
     """The main loop of the module, do the renaming in parallel etc."""
-    setup_logs()
+    setup_logs(logdir, debug)
     start_time = time()
     n_images = 0
     json_dump = []
-    for camera in parse_camera_config_csv(opts.config):
+    for camera in parse_camera_config_csv(configfile):
         log.info("Processing experiment {}, location {}".format(
             camera.expt, camera.location))
         log.info("Images are coming from {}, being put in {}".format(
@@ -762,7 +772,8 @@ def main():
             log.info("Have {0} {1} images from this camera".format(
                 len(images), ext))
             n_images += len(images)
-            json_dump = process_camera(camera, ext, sorted(images), json_dump)
+            json_dump.append(process_camera(camera, ext, sorted(images),
+                                            n_threads))
             jpath = os.path.join(camera.destination, os.path.dirname(
                 camera.ts_structure.format(folder='', res='', cam='')))
             try:
@@ -778,14 +789,19 @@ def main():
         n_images, secs_taken))
 
 
+def gen_config(fname):
+    """Write example config and exit if a filename is passed."""
+    if fname is None:
+        return
+    with open(fname, "w") as f:
+        f.write(",".join(b for a, b in CameraFields.ts_csv_fields) + "\n")
+    sys.exit()
+
 if __name__ == "__main__":
     opts = cli_options()
     if opts.version:
-        print("Version {}".format(__version__))
+        from ._version import get_versions
+        print("Version {}".format(get_versions()['version']))
         sys.exit(0)
-    if opts.generate:
-        # Make a config csv template
-        with open(opts.generate, "w") as f:
-            f.write(",".join(b for a, b in CameraFields.ts_csv_fields) + "\n")
-        sys.exit()
+    gen_config(opts.generate)
     main()
