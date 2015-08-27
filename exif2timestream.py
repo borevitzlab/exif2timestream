@@ -481,10 +481,10 @@ def get_file_date(filename, round_secs=1):
             if not(write_exif_date(filename, date)):
                 log.debug("Unable to write Exif Data")
                 return None
-            datetime = datetime.datetime.fromtimemstamp(time.mktime(date))
+            datetime_date = datetime.datetime.fromtimemstamp(time.mktime(date))
             minus = datetime.timedelta(hours=(int)(camera[FIELDS["timeshift"]]))
-            datetime = datetime + minus
-            return datetime.timetuple()
+            datetime_date = datetime_date + minus
+            return datetime_date.timetuple()
     # If its not a jpeg, we have to open with exif reader
     except pexif.JpegFile.InvalidFile:
         shortfilename = os.path.basename(filename)
@@ -500,10 +500,10 @@ def get_file_date(filename, round_secs=1):
     if round_secs > 1:
         date = round_struct_time(date, round_secs)
     log.debug("Date of '{0:s}' is '{1:s}'".format(filename, d2s(date)))
-    datetime = datetime.datetime.fromtimemstamp(time.mktime(date))
+    datetime_date = datetime.datetime.fromtimemstamp(time.mktime(date))
     minus = datetime.timedelta(hours=(int)(camera[FIELDS["timeshift"]]))
-    datetime = datetime + minus
-    return datetime.timetuple()
+    datetime_date = datetime_date + minus
+    return datetime_date.timetuple()
 
 
 def get_new_file_name(date_tuple, ts_name, n=0, fmt=TS_FMT, ext="jpg"):
