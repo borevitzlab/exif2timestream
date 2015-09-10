@@ -8,6 +8,7 @@ from __future__ import print_function
 import argparse
 import calendar
 import csv
+import datetime
 import inspect
 import json
 import logging
@@ -186,7 +187,8 @@ class CameraFields(object):
         ('filename_date_mask', 'FILENAME_DATE_MASK', str),
         ('orientation', 'ORIENTATION', str),
         ('fn_parse', 'FN_PARSE', str),
-        ('fn_structure', 'FN_STRUCTURE', str)
+        ('fn_structure', 'FN_STRUCTURE', str),
+        ('datasetID', 'DATASETID', cam_pad_str)
         )
 
     TS_CSV = dict((a, b) for a, b, c in ts_csv_fields)
@@ -275,6 +277,7 @@ def parse_structures(camera):
         camera.fn_structure = camera.expt.replace("_", "-") + \
             '-' + camera.location.replace("_", "-") + \
             '-c' + camera.cam_num.replace("_", "-") +\
+            '-' + camera.datasetID.replace("_", "-") + \
             '~{res}-orig'
     else:
         for key, value in camera.TS_CSV.items():
@@ -287,33 +290,25 @@ def parse_structures(camera):
 
 def resize_function(camera, image_date, dest):
     """Create a resized image in a new location."""
-    log.debug("Resize Function")
-    # Resize a single image, to its new location
     log.debug("Now checking if we have 1 or 2 resolution arguments on '{}'"
               .format(dest))
     if camera.resolutions[1][1] is None:
-        # Read in image dimensions
         img = skimage.io.imread(dest).shape
-        # Calculate the new image dimensions from the old one
-        new_res = camera.resolutions[1][
-            0], (img[0] * camera.resolutions[1][0]) / img[1]
+        new_res = (camera.resolutions[1][0],
+                   img[0] * camera.resolutions[1][0] / img[1])
         log.debug("One resolution arguments, '{0:d}'".format(new_res[0]))
     else:
         new_res = camera.resolutions[1]
         log.debug("Two resolution arguments, "
                   "'{:d}' x '{:d}'".format(new_res[0], new_res[1]))
     log.info("Now getting Timestream name")
-    # Get the timestream name to save the image as
     ts_name = make_timestream_name(camera, res=new_res[0], step="orig")
-    # Get the full output file name from the ts_name and the image date
     resizing_temp_outname = get_new_file_name(image_date, ts_name)
-    # Based on the value of ts_structure, combine to form a full image path
     resized_img = os.path.join(
         camera.destination,
         camera.ts_structure.format(folder='outputs', res=str(new_res[0]),
                                    cam=camera.cam_num, step='outputs'),
         resizing_temp_outname)
-    # If the resized image already exists, then just return
     if os.path.isfile(resized_img):
         return
     log.debug("Full resized filename for output is '{}'".format(resized_img))
@@ -366,8 +361,7 @@ def get_time_from_filename(filename, mask=None):
             datetime = strptime(match, mask)
             return datetime
         except ValueError:
-            continue
-    return None
+            pass
 
 
 def write_exif_date(filename, date_time):
@@ -382,7 +376,7 @@ def write_exif_date(filename, date_time):
         return False
 
 
-def get_file_date(filename, round_secs=1):
+def get_file_date(filename, timeshift, round_secs=1):
     """Gets a time.struct_time from an image's EXIF, or None if not possible.
     """
     try:
@@ -402,12 +396,16 @@ def get_file_date(filename, round_secs=1):
             if not write_exif_date(filename, date):
                 log.debug("Unable to write Exif Data")
                 return None
-            return date
+            datetime_date = datetime.datetime.fromtimestamp(mktime(date))
+            minus = datetime.timedelta(hours=(int)(timeshift))
+            datetime_date = datetime_date + minus
+            return datetime_date.timetuple()
+    # If its not a jpeg, we have to open with exif reader
     except pexif.JpegFile.InvalidFile:
         log.debug("Unable to Read file '{}', not a jpeg?".format(
             os.path.basename(filename)))
         with open(filename, "rb") as fh:
-            #TODO:  get this in some other way, removing exifread dependency
+            # TODO:  get this in some other way, removing exifread dependency?
             exif_tags = exifread.process_file(
                 fh, details=False, stop_tag=EXIF_DATE_TAG)
             try:
@@ -418,7 +416,10 @@ def get_file_date(filename, round_secs=1):
     if round_secs > 1:
         date = round_struct_time(date, round_secs)
     log.debug("Date of '{}' is '{}'".format(filename, d2s(date)))
-    return date
+    datetime_date = datetime.datetime.fromtimestamp(mktime(date))
+    minus = datetime.timedelta(hours=(int)(timeshift))
+    datetime_date = datetime_date + minus
+    return datetime_date.timetuple()
 
 
 def get_new_file_name(date_tuple, ts_name, n=0, fmt=TS_FMT, ext="jpg"):
@@ -471,7 +472,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
     # Edit the global variable for the date mask, used elsewhere
     global DATE_MASK
     DATE_MASK = camera.filename_date_mask
-    image_date = get_file_date(image, camera.interval * 60)
+    image_date = get_file_date(image, camera.timeshift, camera.interval * 60)
     if not image_date:
         log.warn("Couldn't get date for image {}".format(image))
         raise SkipImage
@@ -507,11 +508,26 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
         if camera.orientation in rotations:
             img = skimage.io.imread(dest)
             img = skimage.transform.rotate(
-                img, rotations[camera.orientation], resize=True)
-            skimage.io.imsave(dest, img)
+                img, int(camera.orientation), resize=True)
+            try:
+                # avoid trying to read before writing
+                time.sleep(0.1)
+                skimage.io.imsave(dest, img)
+            except IOError:
+                raise SkipImage
     if len(camera.resolutions) > 1:
         log.info("Going to resize image '{}'".format(dest))
-        resize_function(camera, image_date, dest)
+        try:
+            resize_function(camera, image_date, dest)
+        except IOError:
+            log.debug("Resize failed due to io error")
+            raise SkipImage
+        except SkipImage:
+            log.debug("Faied to resize due to skipimage being reported first")
+            raise SkipImage
+        except:
+            log.debug("Resize failed for unknown reason")
+            raise SkipImage
 
 
 def _dont_clobber(fn, mode="append"):
@@ -539,7 +555,7 @@ def process_image(args):
     """Do move and copy operations for a camera config and list of images."""
     log.debug("Starting to process image")
     image, camera, ext = args
-    image_date = get_file_date(image, camera.interval * 60)
+    image_date = get_file_date(image, camera.timeshift, camera.interval * 60)
     if camera.expt_start > image_date or image_date > camera.expt_end:
         log.debug("Skipping {}. Outside of date range {} to {}".format(
             image, d2s(camera.expt_start), d2s(camera.expt_end)))
@@ -731,24 +747,27 @@ def process_camera(camera, ext, images, n_threads=1):
         pool.join()
     print("Processed {:5d} Images. Finished this cam!".format(count))
 
-    jdump = dict(
-        name='{}-{}'.format(camera.expt, camera.location),
-        utc="false",
-        width_hires=image_resolution[camera.orientation not in ("1", "-1")],
-        ts_version='1',
-        ts_end=calendar.timegm(camera.expt_end),
-        image_type=CameraFields.TS_CSV["image_types"][0],
-        height_hires=image_resolution[camera.orientation in ("1", "-1")],
-        expt=camera.expt,
-        width=new_res[0],
-        webroot=webrootaddr,
-        period_in_minutes=camera.interval,
-        timezone=camera.timezone[0],
-        ts_start=calendar.timegm(camera.expt_start),
-        height=new_res[1],
-        access='0',
-        thumbnails=thumb_image
-        )
+    jdump = {
+        'access': '0',
+        'expt': camera.expt,
+        'height_hires': image_resolution[camera.orientation in ("1", "-1")],
+        'height': new_res[1],
+        'image_type': CameraFields.TS_CSV["image_types"][0],
+        'name': '-'.join([camera.expt, camera.location, camera.datasetID]),
+        'period_in_minutes': camera.interval,
+        'posix_end': str(get_file_date(images[-1], camera.interval * 60)),
+        'posix_start': str(get_file_date(images[0], camera.interval * 60)),
+        'thumbnails': thumb_image,
+        'timezone': camera.timezone[0],
+        'ts_end': calendar.timegm(camera.expt_end),
+        'ts_start': calendar.timegm(camera.expt_start),
+        'ts_version': '1',
+        'utc': "false",
+        'webroot': webrootaddr,
+        'width_hires': image_resolution[camera.orientation not in ("90",
+                                                                   "270")],
+        'width': new_res[0]
+        }
     return {k: str(v) for k, v in jdump.items()}
 
 
