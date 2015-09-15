@@ -12,7 +12,7 @@ import time
 import unittest
 
 # Module imports
-from .. import exif2timestream as e2t
+import exif2timestream as e2t
 import pexif
 
 SKIMAGE = True
