@@ -185,7 +185,7 @@ class CameraFields(object):
         ('project_owner', 'PROJECT_OWNER', remove_underscores),
         ('ts_structure', 'TS_STRUCTURE', str),
         ('filename_date_mask', 'FILENAME_DATE_MASK', str),
-        ('orientation', 'ORIENTATION', str),
+        ('orientation', 'ORIENTATION', int),
         ('fn_parse', 'FN_PARSE', str),
         ('fn_structure', 'FN_STRUCTURE', str),
         ('datasetID', 'DATASETID', cam_pad_str)
@@ -504,8 +504,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
         raise SkipImage
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        rotations = {'1': 270, '2': 180, '-1': 90}
-        if camera.orientation in rotations:
+        if camera.orientation and camera.orientation is not 0:
             img = skimage.io.imread(dest)
             img = skimage.transform.rotate(
                 img, int(camera.orientation), resize=True)

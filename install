@@ -1,11 +1,12 @@
 #!/bin/bash
 #Install the packages needed for Scimage
-sudo apt-get install -y python-dev
+sudo apt-get update
+sudo apt-get install -y python-dev python-pip
 sudo apt-get install -y gfortran libopenblas-dev liblapack-dev
-pip install numpy==1.9.2
-pip install scipy==0.15.1
-pip install -U setuptools==18.0.1
-pip install -U six==1.9.0
+sudo pip install numpy==1.9.2
+sudo pip install scipy==0.15.1
+sudo pip install -U setuptools==18.0.1
+sudo pip install -U six==1.9.0
 sudo apt-get install -y libpng-dev
-sudo apt-get install -y libfreetype6-dev
+sudo apt-get install -y libfreetype6-dev libxft-dev
 python setup.py install
