@@ -188,16 +188,16 @@ class TestExifTraitcapture(unittest.TestCase):
     # tests for get_file_date
     def test_get_file_date_jpg(self):
         actual = time.strptime("20131112 205309", "%Y%m%d %H%M%S")
-        jpg_date = e2t.get_file_date(self.jpg_testfile)
+        jpg_date = e2t.get_file_date(self.jpg_testfile, 0)
         self.assertEqual(jpg_date, actual)
 
     def test_get_file_date_raw(self):
         actual = time.strptime("20131112 205309", "%Y%m%d %H%M%S")
-        raw_date = e2t.get_file_date(self.raw_testfile)
+        raw_date = e2t.get_file_date(self.raw_testfile, 0)
         self.assertEqual(raw_date, actual)
 
     def test_get_file_date_noexif(self):
-        date = e2t.get_file_date(self.noexif_testfile)
+        date = e2t.get_file_date(self.noexif_testfile, 0)
         self.assertIsNone(date)
 
     # tests for get_new_file_name
@@ -208,11 +208,11 @@ class TestExifTraitcapture(unittest.TestCase):
                               "test_2013_11_12_20_53_09_00.jpg"))
 
     def test_get_new_file_date_from_file(self):
-        date = e2t.get_file_date(self.jpg_testfile)
+        date = e2t.get_file_date(self.jpg_testfile, 0)
         fn = e2t.get_new_file_name(date, 'test')
         self.assertEqual(fn, ("2013/2013_11/2013_11_12/2013_11_12_20/"
                               "test_2013_11_12_20_53_09_00.jpg"))
-        date = e2t.get_file_date(self.jpg_testfile, round_secs=5 * 60)
+        date = e2t.get_file_date(self.jpg_testfile, 0, round_secs=5 * 60)
         fn = e2t.get_new_file_name(date, 'test')
         self.assertEqual(fn, ("2013/2013_11/2013_11_12/2013_11_12_20/"
                               "test_2013_11_12_20_55_00_00.jpg"))
