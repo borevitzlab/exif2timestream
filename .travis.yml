@@ -13,7 +13,7 @@ before_install:
  - pip install coveralls
 
 install:
- - ./install
+ - travis_wait mvn ./install
 
 script:
  - ./run_tests
