@@ -1,6 +1,8 @@
 exif2timestream
 ===============
 
+[![Join the chat at https://gitter.im/borevitzlab/exif2timestream](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/borevitzlab/exif2timestream?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 [![Build Status](https://travis-ci.org/borevitzlab/exif2timestream.svg?branch=master)](https://travis-ci.org/borevitzlab/exif2timestream)
 [![Coverage Status](https://coveralls.io/repos/borevitzlab/exif2timestream/badge.png)](https://coveralls.io/r/borevitzlab/exif2timestream)
 
