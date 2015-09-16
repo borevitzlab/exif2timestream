@@ -185,7 +185,7 @@ class CameraFields(object):
         ('project_owner', 'PROJECT_OWNER', remove_underscores),
         ('ts_structure', 'TS_STRUCTURE', str),
         ('filename_date_mask', 'FILENAME_DATE_MASK', str),
-        ('orientation', 'ORIENTATION', int),
+        ('orientation', 'ORIENTATION', str),
         ('fn_parse', 'FN_PARSE', str),
         ('fn_structure', 'FN_STRUCTURE', str),
         ('datasetID', 'DATASETID', cam_pad_str)

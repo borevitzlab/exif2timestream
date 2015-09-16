@@ -12,7 +12,7 @@ import time
 import unittest
 
 # Module imports
-import exif2timestream as e2t
+from .. import exif2timestream as e2t
 import pexif
 
 SKIMAGE = True
@@ -367,7 +367,7 @@ class TestExifTraitcapture(unittest.TestCase):
         new_width, w = 400, 0
         try:
             dest = path.join(self.camupload_dir, filename)
-            e2t.resize_img(filename, dest, new_width, 300)
+            e2t.resize_img(path.join(self.camupload_dir, filename), dest, new_width, 300)
             w = novice.open(
                 path.join(self.camupload_dir, filename)).width
         except OSError:
