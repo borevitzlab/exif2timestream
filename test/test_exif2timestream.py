@@ -403,6 +403,14 @@ class TestExifTraitcapture(unittest.TestCase):
         # IMG0001.JPG should always be the first one, with one core it's
         # deterministic
         self._md5test(self.r_fullres_path, "76ee6fb2f5122d2f5815101ec66e7cb8")
+# TODO: Test the Following
+# Orientation
+# Timeshift
+# FN Parse
+# TS Format
+# FN Format
+# Dataset ID
+
 
 
 if __name__ == "__main__":
