@@ -17,7 +17,7 @@ import os
 import re
 import shutil
 import sys
-from time import strptime, strftime, mktime, localtime, struct_time, time
+from time import strptime, strftime, mktime, localtime, struct_time, time, sleep
 import warnings
 
 # Module imports
@@ -189,7 +189,8 @@ class CameraFields(object):
         ('fn_parse', 'FN_PARSE', str),
         ('fn_structure', 'FN_STRUCTURE', str),
         ('datasetID', 'DATASETID', cam_pad_str),
-        ('timeshift', 'TIMESHIFT', str)
+        ('timeshift', 'TIMESHIFT', str),
+        ('userfriendlyname', 'USERFRIENDLYNAME', str)
         )
 
     TS_CSV = dict((a, b) for a, b, c in ts_csv_fields)
@@ -249,6 +250,10 @@ def d2s(date):
 
 
 def parse_structures(camera):
+    # Sneaky check the friendly name, and replace it if its none
+    if not camera.userfriendlyname:
+        camera.userfriendlyname = '-'.join([camera.expt, camera.location, camera.datasetID])
+
     """Parse the file structure of the camera for conversion to timestream
     format."""
     if camera.ts_structure is None or len(camera.ts_structure) == 0:
@@ -417,8 +422,8 @@ def get_file_date(filename, timeshift, round_secs=1):
         date = round_struct_time(date, round_secs)
     log.debug("Date of '{}' is '{}'".format(filename, d2s(date)))
     datetime_date = datetime.datetime.fromtimestamp(mktime(date))
-    minus = datetime.timedelta(hours=(int)(timeshift))
-    datetime_date = datetime_date + minus
+    shift = datetime.timedelta(hours=(int)(timeshift))
+    datetime_date = datetime_date + shift
     return datetime_date.timetuple()
 
 
@@ -510,7 +515,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
                 img, int(camera.orientation), resize=True)
             try:
                 # avoid trying to read before writing
-                time.sleep(0.1)
+                sleep(0.1)
                 skimage.io.imsave(dest, img)
             except IOError:
                 raise SkipImage
@@ -783,7 +788,8 @@ def process_camera(camera, ext, images, n_threads=1):
         'height_hires': image_resolution[camera.orientation not in ("270", "90")],
         'height': new_res[1],
         'image_type': CameraFields.TS_CSV["image_types"][0],
-        'name': '-'.join([camera.expt, camera.location, camera.datasetID]),
+        'ts_id': '-'.join([camera.expt, camera.location, camera.datasetID]),
+        'name':camera.userfriendlyname,
         'period_in_minutes': camera.interval,
         'posix_end': mktime(p_end),
         'posix_start': mktime(p_start),
