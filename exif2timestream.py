@@ -697,8 +697,12 @@ def get_resolution(image, camera):
         new_res = camera.resolutions[1]
         if camera.resolutions[1][1] is None:
             x, y = image_resolution
-            new_res = (camera.resolutions[1][0],
+            if camera.orientation in ("90", "270"):
+                new_res = (camera.resolutions[1][0],
                        camera.resolutions[1][0] * x / y)
+            else:
+                new_res = ( camera.resolutions[1][0],
+                        camera.resolutions[1][0] * y / x)
         res = new_res[0]
     return res, new_res, image_resolution, folder
 
@@ -715,7 +719,7 @@ def get_thumbnail_paths(camera, images):
     if len(images) > 4:
         thumb_image = [None, None, None]
         for i in range(3):
-            image_date = get_file_date(images[len(images)//2 + i],
+            image_date = get_file_date(images[len(images)//2 + i], camera.timeshift,
                                        camera.interval * 60)
             ts_image = get_new_file_name(
                 image_date, make_timestream_name(camera, new_res[0], 'orig'))
@@ -726,13 +730,36 @@ def get_thumbnail_paths(camera, images):
         thumb_image = [webrootaddr + t.split("a_data")[1] for t in thumb_image]
     return webrootaddr, thumb_image
 
+def get_actual_start_end(camera, images):
+    earlier = True
+    j=0
+    while earlier and (j< len(images)-1):
+        date = get_file_date(images[j], camera.timeshift, camera.interval * 60)
+        if date >= camera.expt_start:
+            earlier = False
+        j+=1
+        if j is len(images) and earlier:
+            p_end = camera.expt_end
+    p_start = date
+    later = True
+    j = len(images)-1
+    while later and j>=0:
+        date = get_file_date(images[j], camera.timeshift, camera.interval * 60)
+        if date <= camera.expt_end:
+            later = False
+        j-=1
+        if j is -1 and later:
+            p_end = camera.expt_end
+    p_end = date
+    return p_start, p_end
 
 def process_camera(camera, ext, images, n_threads=1):
     """Process a set of images for one extension for a single camera."""
     res, new_res, image_resolution, folder = get_resolution(images[0], camera)
     webrootaddr, thumb_image = get_thumbnail_paths(camera, images)
-    p_end = str(get_file_date(images[-1], camera.interval * 60))
-    p_start = str(get_file_date(images[0], camera.interval * 60))
+
+    p_start, p_end = get_actual_start_end(camera, images)
+
     # TODO: sort out the whole subsecond clusterfuck
     if n_threads == 1:
         log.info("Using 1 process - what is this? 1990?")
@@ -750,25 +777,24 @@ def process_camera(camera, ext, images, n_threads=1):
         pool.close()
         pool.join()
     print("Processed {:5d} Images. Finished this cam!".format(count))
-
     jdump = {
         'access': '0',
         'expt': camera.expt,
-        'height_hires': image_resolution[camera.orientation in ("1", "-1")],
+        'height_hires': image_resolution[camera.orientation not in ("270", "90")],
         'height': new_res[1],
         'image_type': CameraFields.TS_CSV["image_types"][0],
         'name': '-'.join([camera.expt, camera.location, camera.datasetID]),
         'period_in_minutes': camera.interval,
-        'posix_end': p_end,
-        'posix_start': p_start,
+        'posix_end': mktime(p_end),
+        'posix_start': mktime(p_start),
         'thumbnails': thumb_image,
         'timezone': camera.timezone[0],
-        'ts_end': calendar.timegm(camera.expt_end),
-        'ts_start': calendar.timegm(camera.expt_start),
+        'ts_end': strftime(TS_DATE_FMT, p_end),
+        'ts_start': strftime(TS_DATE_FMT, p_start),
         'ts_version': '1',
         'utc': "false",
         'webroot': webrootaddr,
-        'width_hires': image_resolution[camera.orientation not in ("90",
+        'width_hires': image_resolution[camera.orientation in ("90",
                                                                    "270")],
         'width': new_res[0]
         }
