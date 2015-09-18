@@ -841,11 +841,17 @@ def main(configfile, n_threads=1, logdir=None, debug=False):
                 already_json.close
             except IOError:
                 pass
+        print("Processing experiment {}, location {}".format(
+            camera.expt, camera.location))
         log.info("Processing experiment {}, location {}".format(
             camera.expt, camera.location))
+        print("Images are coming from {}, being put in {}".format(
+            camera.source, camera.destination))
         log.info("Images are coming from {}, being put in {}".format(
             camera.source, camera.destination))
         for ext, images in find_image_files(camera).items():
+            print(("Have {0} {1} images from this camera".format(
+                len(images), ext)))
             log.info("Have {0} {1} images from this camera".format(
                 len(images), ext))
             n_images += len(images)
@@ -862,8 +868,8 @@ def main(configfile, n_threads=1, logdir=None, debug=False):
             with open(os.path.join(jpath, 'camera.json'), 'w') as fname:
                 json.dump(json_dump, fname)
         #remove any empty directories in source
-        empty = find_empty_dirs(camera.source)
-        print(empty)
+        if camera.method == "archive":
+            empty = find_empty_dirs(camera.source)
     secs_taken = time() - start_time
     print("\nProcessed a total of {0} images in {1:.2f} seconds".format(
         n_images, secs_taken))
