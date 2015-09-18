@@ -190,7 +190,8 @@ class CameraFields(object):
         ('fn_structure', 'FN_STRUCTURE', str),
         ('datasetID', 'DATASETID', cam_pad_str),
         ('timeshift', 'TIMESHIFT', str),
-        ('userfriendlyname', 'USERFRIENDLYNAME', str)
+        ('userfriendlyname', 'USERFRIENDLYNAME', str),
+        ('json_updates', 'JSON_UPDATES', str)
         )
 
     TS_CSV = dict((a, b) for a, b, c in ts_csv_fields)
@@ -255,7 +256,7 @@ def parse_structures(camera):
         camera.userfriendlyname = '-'.join([camera.expt, camera.location, camera.datasetID])
     else:
          for key, value in camera.__dict__.items():
-            camera.userfriendlyname = camera.ts_structure.replace(key.upper(),
+            camera.userfriendlyname = camera.userfriendlyname.replace(key.upper(),
                                                               str(value))
     """Parse the file structure of the camera for conversion to timestream
     format."""
@@ -709,8 +710,8 @@ def get_resolution(image, camera):
         if camera.resolutions[1][1] is None:
             x, y = image_resolution
             if camera.orientation in ("90", "270"):
-                new_res = (camera.resolutions[1][0],
-                       camera.resolutions[1][0] * x / y)
+                new_res = ( camera.resolutions[1][0],
+                        camera.resolutions[1][0] * y / x)
             else:
                 new_res = ( camera.resolutions[1][0],
                         camera.resolutions[1][0] * y / x)
@@ -798,7 +799,7 @@ def process_camera(camera, ext, images, n_threads=1):
         'access': '0',
         'expt': camera.expt,
         'height_hires': image_resolution[camera.orientation not in ("270", "90")],
-        'height': new_res[1],
+        'height': new_res[camera.orientation not in ("270", "90")],
         'image_type': CameraFields.TS_CSV["image_types"][0],
         'ts_id': '-'.join([camera.expt, camera.location, camera.datasetID]),
         'name':camera.userfriendlyname,
@@ -814,8 +815,15 @@ def process_camera(camera, ext, images, n_threads=1):
         'webroot': webrootaddr,
         'width_hires': image_resolution[camera.orientation in ("90",
                                                                    "270")],
-        'width': new_res[0]
+        'width': new_res[camera.orientation in ("90",
+                                                                   "270")]
         }
+    if (camera.json_updates):
+        for key, value in jdump.items():
+            if not (key.lower() in camera.json_updates.lower()):
+                if not (key.lower() in ('expt', 'ts_id')):
+                    jdump.pop(key, None)
+                    print (key, value)
     return {k: str(v) for k, v in jdump.items()}
 
 
@@ -826,6 +834,13 @@ def main(configfile, n_threads=1, logdir=None, debug=False):
     n_images = 0
     json_dump = []
     for camera in parse_camera_config_csv(configfile.config):
+        if (len(json_dump) is 0):
+            try:
+                already_json = open(os.path.join(camera.destination, 'camera.json'), 'r')
+                json_dump = json.load(already_json)
+                already_json.close
+            except IOError:
+                pass
         log.info("Processing experiment {}, location {}".format(
             camera.expt, camera.location))
         log.info("Images are coming from {}, being put in {}".format(
