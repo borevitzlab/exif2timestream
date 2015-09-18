@@ -253,7 +253,7 @@ def d2s(date):
 def parse_structures(camera):
     # Sneaky check the friendly name, and replace it if its none
     if not camera.userfriendlyname:
-        camera.userfriendlyname = '-'.join([camera.expt, camera.location, camera.datasetID])
+        camera.userfriendlyname = '{}-{}-C{}-F{}'.format(camera.expt, camera.location, camera.cam_num,camera.datasetID)
     else:
          for key, value in camera.__dict__.items():
             camera.userfriendlyname = camera.userfriendlyname.replace(key.upper(),
@@ -801,7 +801,7 @@ def process_camera(camera, ext, images, n_threads=1):
         'height_hires': image_resolution[camera.orientation not in ("270", "90")],
         'height': new_res[camera.orientation not in ("270", "90")],
         'image_type': CameraFields.TS_CSV["image_types"][0],
-        'ts_id': '-'.join([camera.expt, camera.location, camera.datasetID]),
+        'ts_id': '{}-{}-C{}-F{}'.format(camera.expt, camera.location, camera.cam_num,camera.datasetID),
         'name':camera.userfriendlyname,
         'period_in_minutes': camera.interval,
         'posix_end': mktime(p_end),
