@@ -253,7 +253,10 @@ def parse_structures(camera):
     # Sneaky check the friendly name, and replace it if its none
     if not camera.userfriendlyname:
         camera.userfriendlyname = '-'.join([camera.expt, camera.location, camera.datasetID])
-
+    else:
+         for key, value in camera.__dict__.items():
+            camera.userfriendlyname = camera.ts_structure.replace(key.upper(),
+                                                              str(value))
     """Parse the file structure of the camera for conversion to timestream
     format."""
     if camera.ts_structure is None or len(camera.ts_structure) == 0:
@@ -299,8 +302,12 @@ def resize_function(camera, image_date, dest):
               .format(dest))
     if camera.resolutions[1][1] is None:
         img = skimage.io.imread(dest).shape
-        new_res = (camera.resolutions[1][0],
+        if not camera.orientation in ("90", "270"):
+            new_res = (camera.resolutions[1][0],
                    img[0] * camera.resolutions[1][0] / img[1])
+        else:
+            new_res = (img[1] * camera.resolutions[1][0] / img[0],
+                       camera.resolutions[1][0])
         log.debug("One resolution arguments, '{0:d}'".format(new_res[0]))
     else:
         new_res = camera.resolutions[1]
@@ -575,10 +582,9 @@ def process_image(args):
         ts_name = make_timestream_name(camera, res="fullres")
         out_image = get_new_file_name(image_date, ts_name)
         archive_image = os.path.join(
-        camera.archive_dest,
-        camera.ts_structure.format(folder='original', res='fullres',
-                                   cam=camera.cam_num, step='orig'),
-        out_image)
+            camera.archive_dest,
+            os.path.basename(os.path.normpath(camera.source)),
+            image.split(camera.source + '/')[1])
         try:
             os.makedirs(os.path.dirname(archive_image))
             log.debug("Made archive dir {}".format(os.path.dirname(
@@ -758,6 +764,12 @@ def get_actual_start_end(camera, images):
     p_end = date
     return p_start, p_end
 
+def find_empty_dirs(root_dir):
+    for dirpath, dirs, files in os.walk(root_dir, topdown=False):
+        if not dirs and not files:
+            print ("removing empty dir " + dirpath)
+            os.rmdir(dirpath)
+
 def process_camera(camera, ext, images, n_threads=1):
     """Process a set of images for one extension for a single camera."""
     res, new_res, image_resolution, folder = get_resolution(images[0], camera)
@@ -834,6 +846,9 @@ def main(configfile, n_threads=1, logdir=None, debug=False):
                              .format(jpath))
             with open(os.path.join(jpath, 'camera.json'), 'w') as fname:
                 json.dump(json_dump, fname)
+        #remove any empty directories in source
+        empty = find_empty_dirs(camera.source)
+        print(empty)
     secs_taken = time() - start_time
     print("\nProcessed a total of {0} images in {1:.2f} seconds".format(
         n_images, secs_taken))
