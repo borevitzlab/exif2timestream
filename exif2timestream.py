@@ -823,7 +823,6 @@ def process_camera(camera, ext, images, n_threads=1):
             if not (key.lower() in camera.json_updates.lower()):
                 if not (key.lower() in ('expt', 'ts_id')):
                     jdump.pop(key, None)
-                    print (key, value)
     return {k: str(v) for k, v in jdump.items()}
 
 
