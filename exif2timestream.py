@@ -594,7 +594,7 @@ def process_image(args):
             if not os.path.exists(os.path.dirname(archive_image)):
                 raise exc
         archive_image = _dont_clobber(archive_image)
-        shutil.copy2(image, archive_image)
+        shutil.copyfile(image, archive_image)
         log.debug("Copied {} to {}".format(image, archive_image))
 
     try:
