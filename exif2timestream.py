@@ -258,14 +258,24 @@ def parse_structures(camera):
          for key, value in camera.__dict__.items():
             camera.userfriendlyname = camera.userfriendlyname.replace(key.upper(),
                                                               str(value))
+
     """Parse the file structure of the camera for conversion to timestream
     format."""
     if camera.ts_structure is None or len(camera.ts_structure) == 0:
         # If we dont have a ts_structure, then lets do the default one
         camera.ts_structure = os.path.join(
-            camera.expt.replace("_", "-"), "{folder}",
-            camera.expt.replace("_", "-") + '-' +
-            camera.location.replace("_", "-") + "-C{cam}-F{dataset}~{res}-orig")
+            camera.expt,
+            (camera.location + '-C' +
+            camera.cam_num + '-F' +
+            camera.datasetID),
+            '{folder}',
+
+
+            (camera.expt + '-' +
+            camera.location + "-C" +
+            camera.cam_num + "-F" +
+            camera.datasetID + "~{res}-orig" )).replace("_","-")
+
     else:
         # Replace the ts_structure with all the other stuff
         for key, value in camera.__dict__.items():
@@ -649,10 +659,10 @@ def find_image_files(camera):
                 break
         log.info("Walking from {} to find images".format(src))
         for cur_dir, dirs, files in os.walk(src):
-            for d in dirs:
-                if not (d.lower() in IMAGE_SUBFOLDERS or d.startswith("_")):
-                    if camera.method in ("resize", "json"):
-                        log.error("Source directory has too many subdirs.")
+            # for d in dirs:
+            #     if not (d.lower() in IMAGE_SUBFOLDERS or d.startswith("_")):
+            #         if not camera.method in ("resize", "json"):
+            #             #log.error("Source directory has too many subdirs.")
 
             for fle in files:
                 this_ext = os.path.splitext(fle)[-1].lower().strip(".")
