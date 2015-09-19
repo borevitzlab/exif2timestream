@@ -528,15 +528,18 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         if camera.orientation and camera.orientation is not 0:
-            img = skimage.io.imread(dest)
-            img = skimage.transform.rotate(
-                img, int(camera.orientation), resize=True)
             try:
-                # avoid trying to read before writing
-                sleep(0.1)
-                skimage.io.imsave(dest, img)
+                img = skimage.io.imread(dest)
+                img = skimage.transform.rotate(
+                        img, int(camera.orientation), resize=True)
+                try:
+                    # avoid trying to read before writing
+                    sleep(0.1)
+                    skimage.io.imsave(dest, img)
+                except IOError:
+                    raise SkipImage
             except IOError:
-                raise SkipImage
+                print ("Can't Rotate Non JPEG Images")
     if len(camera.resolutions) > 1:
         log.info("Going to resize image '{}'".format(dest))
         try:
@@ -710,13 +713,29 @@ def setup_logs(logdir, debug=False):
 def get_resolution(image, camera):
     """Return various resolution numbers for an image."""
     try:
-        image_resolution = novice.open(image).size
+        if "raw" in camera.image_types:
+            with open(image, "rb") as fh:
+                exif_tags = exifread.process_file(
+                    fh, details=False)
+            try:
+                width = exif_tags["Image ImageWidth"].values[0]
+                height = exif_tags["Image ImageLength"].values[0]
+                if ("rotated 90" in str(exif_tags["Image Orientation"]).lower()):
+                    temp = height
+                    height = width
+                    width = temp
+                image_resolution = (width, height)
+            except KeyError:
+                return None
+        else:
+            image_resolution = novice.open(image).size
     except IOError:
         image_resolution = (0, 0)
     folder, res, new_res = "original", 'fullres', image_resolution
     if len(camera.resolutions) > 1:
         folder = "outputs"
         new_res = camera.resolutions[1]
+
         if camera.resolutions[1][1] is None:
             x, y = image_resolution
             if camera.orientation in ("90", "270"):
@@ -755,7 +774,7 @@ def get_thumbnail_paths(camera, images):
 def get_actual_start_end(camera, images):
     earlier = True
     j=0
-    while earlier and (j< len(images)-1):
+    while earlier and (j<= len(images)-1):
         date = get_file_date(images[j], camera.timeshift, camera.interval * 60)
         if date >= camera.expt_start:
             earlier = False
@@ -810,7 +829,7 @@ def process_camera(camera, ext, images, n_threads=1):
         'expt': camera.expt,
         'height_hires': image_resolution[camera.orientation not in ("270", "90")],
         'height': new_res[camera.orientation not in ("270", "90")],
-        'image_type': CameraFields.TS_CSV["image_types"][0],
+        'image_type': camera.image_types[0],
         'ts_id': '{}-{}-C{}-F{}'.format(camera.expt, camera.location, camera.cam_num,camera.datasetID),
         'name':camera.userfriendlyname,
         'period_in_minutes': camera.interval,
