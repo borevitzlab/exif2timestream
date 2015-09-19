@@ -32,7 +32,7 @@ log = logging.getLogger("exif2timestream")
 # Constants
 EXIF_DATE_TAG = "Image DateTime"
 EXIF_DATE_FMT = "%Y:%m:%d %H:%M:%S"
-DATE_MASK = EXIF_DATE_FMT
+DATE_MASK = "%Y%m%d_%H%M%S"
 TS_V1_FMT = ("%Y/%Y_%m/%Y_%m_%d/%Y_%m_%d_%H/"
              "{tsname}_%Y_%m_%d_%H_%M_%S_{n:02d}.{ext}")
 TS_V2_FMT = ("%Y/%Y_%m/%Y_%m_%d/%Y_%m_%d_%H/"
@@ -374,17 +374,17 @@ def get_time_from_filename(filename, mask=None):
     """Replaces time placeholders with the regex equivalent to parse."""
     if mask is None:
         mask = DATE_MASK
-    mask = r"\.*" + mask.replace("%Y", r"\d{4}") + r"\.*"
+    mask_r = r"\.*" + mask.replace("%Y", r"\d{4}") + r"\.*"
     for s in ('%m', '%d', '%H', '%M', '%S'):
-        mask = mask.replace(s, r'\d{2}')
-    date_reg_exp = re.compile(mask)
+        mask_r = mask_r.replace(s, r'\d{2}')
+    date_reg_exp = re.compile(mask_r)
     for match in date_reg_exp.findall(filename):
         # Attempt to parse each match into a datetime; return first success
         try:
             datetime = strptime(match, mask)
             return datetime
         except ValueError:
-            pass
+            continue
 
 
 def write_exif_date(filename, date_time):
@@ -419,10 +419,12 @@ def get_file_date(filename, timeshift, round_secs=1):
             if not write_exif_date(filename, date):
                 log.debug("Unable to write Exif Data")
                 return None
-            datetime_date = datetime.datetime.fromtimestamp(mktime(date))
-            minus = datetime.timedelta(hours=(int)(timeshift))
-            datetime_date = datetime_date + minus
-            return datetime_date.timetuple()
+            if (timeshift and (int)(timeshift)):
+                datetime_date = datetime.datetime.fromtimestamp(mktime(date))
+                minus = datetime.timedelta(hours=(int)(timeshift))
+                datetime_date = datetime_date + minus
+                date = datetime_date.timetuple()
+            return date
     # If its not a jpeg, we have to open with exif reader
     except pexif.JpegFile.InvalidFile:
         log.debug("Unable to Read file '{}', not a jpeg?".format(
@@ -438,11 +440,13 @@ def get_file_date(filename, timeshift, round_secs=1):
                 return None
     if round_secs > 1:
         date = round_struct_time(date, round_secs)
+    if (timeshift and (int)(timeshift)):
+        datetime_date = datetime.datetime.fromtimestamp(mktime(date))
+        shift = datetime.timedelta(hours=(int)(timeshift))
+        datetime_date = datetime_date + shift
+        date = datetime_date.timetuple()
     log.debug("Date of '{}' is '{}'".format(filename, d2s(date)))
-    datetime_date = datetime.datetime.fromtimestamp(mktime(date))
-    shift = datetime.timedelta(hours=(int)(timeshift))
-    datetime_date = datetime_date + shift
-    return datetime_date.timetuple()
+    return date
 
 
 def get_new_file_name(date_tuple, ts_name, n=0, fmt=TS_FMT, ext="jpg"):
@@ -450,7 +454,7 @@ def get_new_file_name(date_tuple, ts_name, n=0, fmt=TS_FMT, ext="jpg"):
     Gives the new file name for an image within a timestream, based on
     datestamp, timestream name, sub-second series count and extension.
     """
-    if not date_tuple and ts_name:
+    if not (date_tuple and ts_name):
         raise SkipImage
     date_formatted_name = strftime(fmt, date_tuple)
     name = date_formatted_name.format(tsname=ts_name, n=n, ext=ext)
@@ -726,7 +730,7 @@ def get_resolution(image, camera):
                     width = temp
                 image_resolution = (width, height)
             except KeyError:
-                return None
+                image_resolution=(0,0)
         else:
             image_resolution = novice.open(image).size
     except IOError:
@@ -760,13 +764,16 @@ def get_thumbnail_paths(camera, images):
     if len(images) > 4:
         thumb_image = [None, None, None]
         for i in range(3):
-            image_date = get_file_date(images[len(images)//2 + i], camera.timeshift,
-                                       camera.interval * 60)
-            ts_image = get_new_file_name(
-                image_date, make_timestream_name(camera, new_res[0], 'orig'))
-            thumb_image[i] = os.path.join(
-                camera.destination, os.path.dirname(camera.ts_structure).format(folder=folder),
-                    os.path.basename(camera.ts_structure).format(res=res), ts_image)
+            try:
+                image_date = get_file_date(images[len(images)//2 + i], camera.timeshift,
+                                           camera.interval * 60)
+                ts_image = get_new_file_name(
+                    image_date, make_timestream_name(camera, new_res[0], 'orig'))
+                thumb_image[i] = os.path.join(
+                    camera.destination, os.path.dirname(camera.ts_structure).format(folder=folder),
+                        os.path.basename(camera.ts_structure).format(res=res), ts_image)
+            except SkipImage:
+                pass
     if thumb_image and "a_data" in thumb_image[0]:
         thumb_image = [webrootaddr + t.split("a_data")[1] for t in thumb_image]
     return webrootaddr, thumb_image
@@ -780,7 +787,7 @@ def get_actual_start_end(camera, images):
             earlier = False
         j+=1
         if j is len(images) and earlier:
-            p_end = camera.expt_end
+            date = camera.expt_start
     p_start = date
     later = True
     j = len(images)-1
@@ -790,7 +797,7 @@ def get_actual_start_end(camera, images):
             later = False
         j-=1
         if j is -1 and later:
-            p_end = camera.expt_end
+            date = camera.expt_end
     p_end = date
     return p_start, p_end
 
@@ -861,7 +868,7 @@ def main(configfile, n_threads=1, logdir=None, debug=False):
     start_time = time()
     n_images = 0
     json_dump = []
-    for camera in parse_camera_config_csv(configfile.config):
+    for camera in parse_camera_config_csv(configfile):
         if (len(json_dump) is 0):
             try:
                 already_json = open(os.path.join(camera.destination, 'camera.json'), 'r')
@@ -918,4 +925,4 @@ if __name__ == "__main__":
         from ._version import get_versions
         print("Version {}".format(get_versions()['version']))
         sys.exit(0)
-    main(opts)
+    main(opts.config, debug=opts.debug, logdir='log', n_threads=opts.threads)

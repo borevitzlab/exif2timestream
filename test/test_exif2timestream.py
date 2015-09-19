@@ -54,13 +54,16 @@ class TestExifTraitcapture(unittest.TestCase):
         'camera_timezone': '1100',
         'USE': '1',
         'user': 'Glasshouses',
-        'TS_STRUCTURE': os.path.join(
-            'BVZ00000', '{folder}', 'BVZ00000-EUC-R01C01-C01~{res}-{step}'),
+        'TS_STRUCTURE': '',
         'FN_PARSE': '',
         'PROJECT_OWNER': '',
-        'FILENAME_DATE_MASK': ' ',
-        'FN_STRUCTURE': 'BVZ00000-EUC-R01C01-C01~{res}-{step}',
-        'ORIENTATION': ''
+        'FILENAME_DATE_MASK': '',
+        'FN_STRUCTURE': 'BVZ00000-EUC-R01C01-C01-F01~{res}-{step}',
+        'ORIENTATION': '',
+        'DATASETID':1,
+        'TIMESHIFT':0,
+        'USERFRIENDLYNAME':'',
+        'JSON_UPDATES':''
     }
     camera_unix = {
         'ARCHIVE_DEST': '/'.join([out_dirname, 'archive']),
@@ -81,28 +84,32 @@ class TestExifTraitcapture(unittest.TestCase):
         'camera_timezone': '1100',
         'USE': '1',
         'user': 'Glasshouses',
-        'TS_STRUCTURE': os.path.join(
-            'BVZ00000', '{folder}', 'BVZ00000-EUC-R01C01-C01~{res}-{step}'),
+        'TS_STRUCTURE': '',
         'FN_PARSE': '',
         'PROJECT_OWNER': '',
-        'FILENAME_DATE_MASK': " ",
-        'FN_STRUCTURE': 'BVZ00000-EUC-R01C01-C01~{res}-{step}',
-        'ORIENTATION': ''
+        'FILENAME_DATE_MASK': "",
+        'FN_STRUCTURE': 'BVZ00000-EUC-R01C01-C01-F01~{res}-{step}',
+        'ORIENTATION': '',
+        'DATASETID':1,
+        'TIMESHIFT':0,
+        'USERFRIENDLYNAME':'',
+        'JSON_UPDATES':''
 
     }
 
     r_fullres_path = path.join(
-        out_dirname, "timestreams", "BVZ00000", "original",
-        'BVZ00000-EUC-R01C01-C01~fullres-orig', '2013', '2013_11',
+        out_dirname, "timestreams", "BVZ00000", "EUC-R01C01-C01-F01",
+        "original",'BVZ00000-EUC-R01C01-C01-F01~fullres-orig', '2013', '2013_11',
         '2013_11_12', '2013_11_12_20',
-        'BVZ00000-EUC-R01C01-C01~fullres-orig_2013_11_12_20_55_00_00.JPG'
+        'BVZ00000-EUC-R01C01-C01-F01~fullres-orig_2013_11_12_20_55_00_00.JPG'
     )
 
     r_raw_path = path.join(
-        out_dirname, "timestreams", "BVZ00000", "original",
-        'BVZ00000-EUC-R01C01-C01~fullres-raw', '2013', '2013_11',
+        out_dirname, "timestreams", "BVZ00000", "EUC-R01C01-C01-F01",
+        "original",'BVZ00000-EUC-R01C01-C01-F01~fullres-orig', '2013', '2013_11',
         '2013_11_12', '2013_11_12_20',
-        'BVZ00000-EUC-R01C01-C01~fullres-raw_2013_11_12_20_55_00_00.CR2'
+        'BVZ00000-EUC-R01C01-C01-F01~fullres-orig_2013_11_12_20_55_00_00'
+        '.CR2'
     )
 
     maxDiff = None
@@ -135,6 +142,12 @@ class TestExifTraitcapture(unittest.TestCase):
         shutil.rmtree(img_dir)
         shutil.copytree("./test/unburnable", img_dir)
         self.camera = e2t.CameraFields(self.camera)
+
+    def test_main_expt_dates(self):
+        if path.exists(self.r_fullres_path):
+            os.remove(self.r_fullres_path)
+        e2t.main(self.test_config_dates_csv, logdir=self.out_dirname)
+        self.assertFalse(path.exists(self.r_fullres_path))
 
     # test for localise_cam_config
     def test_localise_cam_config(self):
@@ -231,15 +244,15 @@ class TestExifTraitcapture(unittest.TestCase):
     # tests for make_timestream_name
     def test_make_timestream_name_empty(self):
         name = e2t.make_timestream_name(self.camera)
-        exp = 'BVZ00000-EUC-R01C01-C01~fullres-orig'
+        exp = 'BVZ00000-EUC-R01C01-C01-F01~fullres-orig'
         self.assertEqual(name, exp)
 
     def test_make_timestream_name_params(self):
         name = e2t.make_timestream_name(
             self.camera,
-            res="1080x720",
+            res="1080",
             step="clean")
-        exp = 'BVZ00000-EUC-R01C01-C01~1080x720-clean'
+        exp = 'BVZ00000-EUC-R01C01-C01-F01~1080-clean'
         self.assertEqual(name, exp)
 
     # tests for find_image_files
@@ -282,37 +295,39 @@ class TestExifTraitcapture(unittest.TestCase):
     def test_parse_camera_config_csv(self):
         configs = [
             {
-                'ARCHIVE_DEST': './test/out/archive',
-                'camera_timezone': (11, 0),
-                'EXPT': 'BVZ00000',
-                'DESTINATION': './test/out/timestreams',
-                'CAM_NUM': '01',
-                'EXPT_END': time.strptime('2013_12_31', "%Y_%m_%d"),
-                'EXPT_START': time.strptime('2012_12_01', "%Y_%m_%d"),
-                'INTERVAL': 5,
-                'IMAGE_TYPES': ["jpg"],
-                'LOCATION': 'EUC-R01C01',
-                'METHOD': 'move',
+                'archive_dest': './test/out/archive',
+                'timezone': (11, 0),
+                'expt': 'BVZ00000',
+                'destination': './test/out/timestreams',
+                'cam_num': '01',
+                'expt_end': time.strptime('2013_12_31', "%Y_%m_%d"),
+                'expt_start': time.strptime('2012_12_01', "%Y_%m_%d"),
+                'interval': 5,
+                'image_types': ["jpg"],
+                'location': 'EUC-R01C01',
+                'method': 'move',
                 'mode': 'batch',
                 'resolutions': ['original'],
-                'SOURCE': './test/img/camupload',
+                'source': './test/img/camupload',
                 'sunrise': (5, 0),
                 'sunset': (22, 0),
-                'USE': True,
+                'use': True,
                 'user': 'Glasshouses',
-                'TS_STRUCTURE': ('BVZ00000/{folder}/BVZ00000'
-                                 '-EUC-R01C01-C{cam}~{res}-orig'),
-                'PROJECT_OWNER': '',
-                'FILENAME_DATE_MASK':'',
-                'FN_PARSE': '',
-                'FN_STRUCTURE': 'BVZ00000-EUC-R01C01-C01~{res}-orig',
-                'ORIENTATION': ''
-
+                'ts_structure': ('BVZ00000/EUC-R01C01-C01-F01/{folder}/BVZ00000-EUC-R01C01-C01-F01~{res}-orig'),
+                'project_owner': '',
+                'filename_date_mask':'',
+                'fn_parse': '',
+                'fn_structure': 'BVZ00000-EUC-R01C01-C01-F01~{res}-orig',
+                'orientation': '',
+                'timeshift':'',
+                'datasetID':'01',
+                'json_updates':'',
+                'userfriendlyname':'BVZ00000-EUC-R01C01-C01-F01'
             }
         ]
         result = e2t.parse_camera_config_csv(self.test_config_csv)
         for expt, got in zip(configs, result):
-            self.assertDictEqual(got, expt)
+            self.assertDictEqual(got.__dict__, expt)
 
     def test_unused_bad_camera(self):
         # first entry is invalid but not used, should return None
@@ -330,7 +345,7 @@ class TestExifTraitcapture(unittest.TestCase):
             e2t.gen_config(out_csv)
         except SystemExit:
             pass
-        self._md5test(out_csv, "27206481b58975b0c3d3c02c6dda6813")
+        self._md5test(out_csv, "c66e62b8158798c8447b782f190c65bf")
 
     # Tests for checking parsing of dates from filename
     def test_check_date_parse(self):
@@ -361,7 +376,9 @@ class TestExifTraitcapture(unittest.TestCase):
     # Tests for checking image resizing
     def test_check_resize_img(self):
         if not SKIMAGE:
-            print("Skimage not available, can't test resizing", ImportWarning)
+
+
+            ("Skimage not available, can't test resizing", ImportWarning)
             return
         filename = 'jpg/whroo20131104_020255M.jpg'
         new_width, w = 400, 0
@@ -374,18 +391,21 @@ class TestExifTraitcapture(unittest.TestCase):
             pass
         self.assertEqual(w, new_width)
 
+
+
     def test_main(self):
+        print(self.r_fullres_path)
         e2t.main(self.test_config_csv, logdir=self.out_dirname)
         self.assertTrue(path.exists(self.r_fullres_path))
+
+
 
     def test_main_raw(self):
         e2t.main(self.test_config_raw_csv, logdir=self.out_dirname)
         self.assertTrue(path.exists(self.r_fullres_path))
         self.assertTrue(path.exists(self.r_raw_path))
 
-    def test_main_expt_dates(self):
-        e2t.main(self.test_config_dates_csv, logdir=self.out_dirname)
-        self.assertFalse(path.exists(self.r_fullres_path))
+
 
     def test_main_threads(self):
         # with a good value for threads
