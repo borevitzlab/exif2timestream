@@ -585,7 +585,7 @@ def process_image(args):
         archive_image = os.path.join(
             camera.archive_dest,
             os.path.basename(os.path.normpath(camera.source)),
-            image.split(camera.source + '/')[1])
+            os.path.relpath(image, camera.source))
         try:
             os.makedirs(os.path.dirname(archive_image))
             log.debug("Made archive dir {}".format(os.path.dirname(
