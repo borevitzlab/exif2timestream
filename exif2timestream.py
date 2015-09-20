@@ -17,7 +17,7 @@ import os
 import re
 import shutil
 import sys
-from time import strptime, strftime, mktime, localtime, struct_time, time
+from time import strptime, strftime, mktime, localtime, struct_time, time, sleep
 import warnings
 
 # Module imports
@@ -32,7 +32,7 @@ log = logging.getLogger("exif2timestream")
 # Constants
 EXIF_DATE_TAG = "Image DateTime"
 EXIF_DATE_FMT = "%Y:%m:%d %H:%M:%S"
-DATE_MASK = EXIF_DATE_FMT
+DATE_MASK = "%Y%m%d_%H%M%S"
 TS_V1_FMT = ("%Y/%Y_%m/%Y_%m_%d/%Y_%m_%d_%H/"
              "{tsname}_%Y_%m_%d_%H_%M_%S_{n:02d}.{ext}")
 TS_V2_FMT = ("%Y/%Y_%m/%Y_%m_%d/%Y_%m_%d_%H/"
@@ -47,7 +47,7 @@ RAW_FORMATS = {"cr2", "nef", "tif", "tiff", "raw"}
 IMAGE_SUBFOLDERS = {"raw", "jpg", "png", "tiff", "nef", "cr2"}
 DATE_NOW_CONSTANTS = {"now", "current"}
 
-
+#TODO: JSON Options to reprint
 def cli_options():
     """Return CLI arguments with argparse."""
     parser = argparse.ArgumentParser()
@@ -185,10 +185,13 @@ class CameraFields(object):
         ('project_owner', 'PROJECT_OWNER', remove_underscores),
         ('ts_structure', 'TS_STRUCTURE', str),
         ('filename_date_mask', 'FILENAME_DATE_MASK', str),
-        ('orientation', 'ORIENTATION', int),
+        ('orientation', 'ORIENTATION', str),
         ('fn_parse', 'FN_PARSE', str),
         ('fn_structure', 'FN_STRUCTURE', str),
-        ('datasetID', 'DATASETID', cam_pad_str)
+        ('datasetID', 'DATASETID', cam_pad_str),
+        ('timeshift', 'TIMESHIFT', str),
+        ('userfriendlyname', 'USERFRIENDLYNAME', str),
+        ('json_updates', 'JSON_UPDATES', str)
         )
 
     TS_CSV = dict((a, b) for a, b, c in ts_csv_fields)
@@ -248,18 +251,35 @@ def d2s(date):
 
 
 def parse_structures(camera):
+    # Sneaky check the friendly name, and replace it if its none
+    print (camera)
+    if not camera.userfriendlyname:
+        camera.userfriendlyname = '{}-{}-C{}-F{}'.format(camera.expt, camera.location, camera.cam_num,camera.datasetID)
+    else:
+         for key, value in camera.__dict__.items():
+            camera.userfriendlyname = camera.userfriendlyname.replace(key.upper(),
+                                                              str(value))
+
     """Parse the file structure of the camera for conversion to timestream
     format."""
     if camera.ts_structure is None or len(camera.ts_structure) == 0:
         # If we dont have a ts_structure, then lets do the default one
         camera.ts_structure = os.path.join(
-            camera.expt.replace("_", "-"), "{folder}",
-            camera.expt.replace("_", "-") + '-' +
-            camera.location.replace("_", "-") + "-C{cam}~{res}-orig")
+            camera.expt,
+            (camera.location + '-C' +
+            camera.cam_num + '-F' +
+            camera.datasetID),
+            '{folder}',
+
+
+            (camera.expt + '-' +
+            camera.location + "-C" +
+            camera.cam_num + "-F" +
+            camera.datasetID + "~{res}-orig" )).replace("_","-")
+
     else:
         # Replace the ts_structure with all the other stuff
-
-        for key, value in camera.items():
+        for key, value in camera.__dict__.items():
             camera.ts_structure = camera.ts_structure.replace(key.upper(),
                                                               str(value))
         # If it starts with a /, then we need to get rid of that
@@ -273,14 +293,14 @@ def parse_structures(camera):
             "{folder}",
             (fname + "~" + "{res}" + "-orig")
             )
-    if not len(camera.fn_structure) and camera.fn_structure:
+    if not len(camera.fn_structure) and not camera.fn_structure:
         camera.fn_structure = camera.expt.replace("_", "-") + \
             '-' + camera.location.replace("_", "-") + \
-            '-c' + camera.cam_num.replace("_", "-") +\
-            '-' + camera.datasetID.replace("_", "-") + \
+            '-C' + camera.cam_num.replace("_", "-") +\
+            '-F' + camera.datasetID.replace("_", "-") + \
             '~{res}-orig'
     else:
-        for key, value in camera.TS_CSV.items():
+        for key, value in camera.__dict__.items():
             camera.fn_structure = camera.fn_structure.replace(key.upper(),
                                                               str(value))
         camera.fn_structure = camera.fn_structure.replace("/", "")\
@@ -294,8 +314,12 @@ def resize_function(camera, image_date, dest):
               .format(dest))
     if camera.resolutions[1][1] is None:
         img = skimage.io.imread(dest).shape
-        new_res = (camera.resolutions[1][0],
+        if not camera.orientation in ("90", "270"):
+            new_res = (camera.resolutions[1][0],
                    img[0] * camera.resolutions[1][0] / img[1])
+        else:
+            new_res = (img[1] * camera.resolutions[1][0] / img[0],
+                       camera.resolutions[1][0])
         log.debug("One resolution arguments, '{0:d}'".format(new_res[0]))
     else:
         new_res = camera.resolutions[1]
@@ -351,17 +375,17 @@ def get_time_from_filename(filename, mask=None):
     """Replaces time placeholders with the regex equivalent to parse."""
     if mask is None:
         mask = DATE_MASK
-    mask = r"\.*" + mask.replace("%Y", r"\d{4}") + r"\.*"
+    mask_r = r"\.*" + mask.replace("%Y", r"\d{4}") + r"\.*"
     for s in ('%m', '%d', '%H', '%M', '%S'):
-        mask = mask.replace(s, r'\d{2}')
-    date_reg_exp = re.compile(mask)
+        mask_r = mask_r.replace(s, r'\d{2}')
+    date_reg_exp = re.compile(mask_r)
     for match in date_reg_exp.findall(filename):
         # Attempt to parse each match into a datetime; return first success
         try:
             datetime = strptime(match, mask)
             return datetime
         except ValueError:
-            pass
+            continue
 
 
 def write_exif_date(filename, date_time):
@@ -396,10 +420,12 @@ def get_file_date(filename, timeshift, round_secs=1):
             if not write_exif_date(filename, date):
                 log.debug("Unable to write Exif Data")
                 return None
-            datetime_date = datetime.datetime.fromtimestamp(mktime(date))
-            minus = datetime.timedelta(hours=(int)(timeshift))
-            datetime_date = datetime_date + minus
-            return datetime_date.timetuple()
+            if (timeshift and (int)(timeshift)):
+                datetime_date = datetime.datetime.fromtimestamp(mktime(date))
+                minus = datetime.timedelta(hours=(int)(timeshift))
+                datetime_date = datetime_date + minus
+                date = datetime_date.timetuple()
+            return date
     # If its not a jpeg, we have to open with exif reader
     except pexif.JpegFile.InvalidFile:
         log.debug("Unable to Read file '{}', not a jpeg?".format(
@@ -415,11 +441,13 @@ def get_file_date(filename, timeshift, round_secs=1):
                 return None
     if round_secs > 1:
         date = round_struct_time(date, round_secs)
+    if (timeshift and (int)(timeshift)):
+        datetime_date = datetime.datetime.fromtimestamp(mktime(date))
+        shift = datetime.timedelta(hours=(int)(timeshift))
+        datetime_date = datetime_date + shift
+        date = datetime_date.timetuple()
     log.debug("Date of '{}' is '{}'".format(filename, d2s(date)))
-    datetime_date = datetime.datetime.fromtimestamp(mktime(date))
-    minus = datetime.timedelta(hours=(int)(timeshift))
-    datetime_date = datetime_date + minus
-    return datetime_date.timetuple()
+    return date
 
 
 def get_new_file_name(date_tuple, ts_name, n=0, fmt=TS_FMT, ext="jpg"):
@@ -427,7 +455,7 @@ def get_new_file_name(date_tuple, ts_name, n=0, fmt=TS_FMT, ext="jpg"):
     Gives the new file name for an image within a timestream, based on
     datestamp, timestream name, sub-second series count and extension.
     """
-    if not date_tuple and ts_name:
+    if not (date_tuple and ts_name):
         raise SkipImage
     date_formatted_name = strftime(fmt, date_tuple)
     name = date_formatted_name.format(tsname=ts_name, n=n, ext=ext)
@@ -505,15 +533,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         if camera.orientation and camera.orientation is not 0:
-            img = skimage.io.imread(dest)
-            img = skimage.transform.rotate(
-                img, int(camera.orientation), resize=True)
-            try:
-                # avoid trying to read before writing
-                time.sleep(0.1)
-                skimage.io.imsave(dest, img)
-            except IOError:
-                raise SkipImage
+            rotate_image(camera.orientation, dest)
     if len(camera.resolutions) > 1:
         log.info("Going to resize image '{}'".format(dest))
         try:
@@ -528,6 +548,19 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
             log.debug("Resize failed for unknown reason")
             raise SkipImage
 
+def rotate_image(rotation, dest):
+    try:
+        img = skimage.io.imread(dest)
+        img = skimage.transform.rotate(
+                img, int(rotation), resize=True)
+        try:
+            # avoid trying to read before writing
+            sleep(0.1)
+            skimage.io.imsave(dest, img)
+        except IOError:
+            raise SkipImage
+    except IOError:
+        print ("Can't Rotate Non JPEG Images")
 
 def _dont_clobber(fn, mode="append"):
     """Ensure we don't overwrite things, using a variety of methods"""
@@ -568,8 +601,11 @@ def process_image(args):
     if camera.method == "archive":
         log.debug("Will archive {}".format(image))
         ts_name = make_timestream_name(camera, res="fullres")
-        archive_image = os.path.join(camera.archive_dest, camera.expt, ext,
-                                     ts_name, os.path.basename(image))
+        out_image = get_new_file_name(image_date, ts_name)
+        archive_image = os.path.join(
+            camera.archive_dest,
+            os.path.basename(os.path.normpath(camera.source)),
+            os.path.relpath(image, camera.source))
         try:
             os.makedirs(os.path.dirname(archive_image))
             log.debug("Made archive dir {}".format(os.path.dirname(
@@ -578,7 +614,7 @@ def process_image(args):
             if not os.path.exists(os.path.dirname(archive_image)):
                 raise exc
         archive_image = _dont_clobber(archive_image)
-        shutil.copy2(image, archive_image)
+        shutil.copyfile(image, archive_image)
         log.debug("Copied {} to {}".format(image, archive_image))
 
     try:
@@ -623,6 +659,7 @@ def find_image_files(camera):
     ext_files = {}
     for ext in exts:
         src = camera.source
+
         lst = [x for x in os.listdir(src) if not x[0] in ('.', '_')]
         log.debug("List of src valid subdirs is {}".format(lst))
         for node in lst:
@@ -632,14 +669,14 @@ def find_image_files(camera):
                 break
         log.info("Walking from {} to find images".format(src))
         for cur_dir, dirs, files in os.walk(src):
-            for d in dirs:
-                if not (d.lower() in IMAGE_SUBFOLDERS or d.startswith("_")):
-                    if camera.method in ("resize", "json"):
-                        log.error("Source directory has too many subdirs.")
+            # for d in dirs:
+            #     if not (d.lower() in IMAGE_SUBFOLDERS or d.startswith("_")):
+            #         if not camera.method in ("resize", "json"):
+            #             #log.error("Source directory has too many subdirs.")
 
             for fle in files:
                 this_ext = os.path.splitext(fle)[-1].lower().strip(".")
-                if ext in (this_ext, "raw") and this_ext in RAW_FORMATS:
+                if ext in (this_ext, "raw"):
                     fle_path = os.path.join(cur_dir, fle)
                     if camera.fn_parse in fle_path:
                         try:
@@ -683,17 +720,37 @@ def setup_logs(logdir, debug=False):
 def get_resolution(image, camera):
     """Return various resolution numbers for an image."""
     try:
-        image_resolution = novice.open(image).size
+        if "raw" in camera.image_types:
+            with open(image, "rb") as fh:
+                exif_tags = exifread.process_file(
+                    fh, details=False)
+            try:
+                width = exif_tags["Image ImageWidth"].values[0]
+                height = exif_tags["Image ImageLength"].values[0]
+                if ("rotated 90" in str(exif_tags["Image Orientation"]).lower()):
+                    temp = height
+                    height = width
+                    width = temp
+                image_resolution = (width, height)
+            except KeyError:
+                image_resolution=(0,0)
+        else:
+            image_resolution = novice.open(image).size
     except IOError:
         image_resolution = (0, 0)
     folder, res, new_res = "original", 'fullres', image_resolution
     if len(camera.resolutions) > 1:
         folder = "outputs"
         new_res = camera.resolutions[1]
+
         if camera.resolutions[1][1] is None:
             x, y = image_resolution
-            new_res = (camera.resolutions[1][0],
-                       camera.resolutions[1][0] * x / y)
+            if camera.orientation in ("90", "270"):
+                new_res = ( camera.resolutions[1][0],
+                        camera.resolutions[1][0] * y / x)
+            else:
+                new_res = ( camera.resolutions[1][0],
+                        camera.resolutions[1][0] * y / x)
         res = new_res[0]
     return res, new_res, image_resolution, folder
 
@@ -710,23 +767,55 @@ def get_thumbnail_paths(camera, images):
     if len(images) > 4:
         thumb_image = [None, None, None]
         for i in range(3):
-            image_date = get_file_date(images[len(images)//2 + i],
-                                       camera.interval * 60)
-            ts_image = get_new_file_name(
-                image_date, make_timestream_name(camera, new_res[0], 'orig'))
-            thumb_image[i] = os.path.join(
-                camera.destination, os.path.dirname(camera.ts_structure),
-                folder, '{}~{}-orig'.format(
-                    os.path.basename(camera.ts_structure), res), ts_image)
+            try:
+                image_date = get_file_date(images[len(images)//2 + i], camera.timeshift,
+                                           camera.interval * 60)
+                ts_image = get_new_file_name(
+                    image_date, make_timestream_name(camera, new_res[0], 'orig'))
+                thumb_image[i] = os.path.join(
+                    camera.destination, os.path.dirname(camera.ts_structure).format(folder=folder),
+                        os.path.basename(camera.ts_structure).format(res=res), ts_image)
+            except SkipImage:
+                pass
     if thumb_image and "a_data" in thumb_image[0]:
         thumb_image = [webrootaddr + t.split("a_data")[1] for t in thumb_image]
     return webrootaddr, thumb_image
 
+def get_actual_start_end(camera, images):
+    earlier = True
+    j=0
+    while earlier and (j<= len(images)-1):
+        date = get_file_date(images[j], camera.timeshift, camera.interval * 60)
+        if date >= camera.expt_start:
+            earlier = False
+        j+=1
+        if j is len(images) and earlier:
+            date = camera.expt_start
+    p_start = date
+    later = True
+    j = len(images)-1
+    while later and j>=0:
+        date = get_file_date(images[j], camera.timeshift, camera.interval * 60)
+        if date <= camera.expt_end:
+            later = False
+        j-=1
+        if j is -1 and later:
+            date = camera.expt_end
+    p_end = date
+    return p_start, p_end
+
+def find_empty_dirs(root_dir):
+    for dirpath, dirs, files in os.walk(root_dir, topdown=False):
+        if not dirs and not files:
+            print ("removing empty dir " + dirpath)
+            os.rmdir(dirpath)
 
 def process_camera(camera, ext, images, n_threads=1):
     """Process a set of images for one extension for a single camera."""
     res, new_res, image_resolution, folder = get_resolution(images[0], camera)
     webrootaddr, thumb_image = get_thumbnail_paths(camera, images)
+
+    p_start, p_end = get_actual_start_end(camera, images)
 
     # TODO: sort out the whole subsecond clusterfuck
     if n_threads == 1:
@@ -745,28 +834,34 @@ def process_camera(camera, ext, images, n_threads=1):
         pool.close()
         pool.join()
     print("Processed {:5d} Images. Finished this cam!".format(count))
-
     jdump = {
         'access': '0',
         'expt': camera.expt,
-        'height_hires': image_resolution[camera.orientation in ("1", "-1")],
-        'height': new_res[1],
-        'image_type': CameraFields.TS_CSV["image_types"][0],
-        'name': '-'.join([camera.expt, camera.location, camera.datasetID]),
+        'height_hires': image_resolution[camera.orientation not in ("270", "90")],
+        'height': new_res[camera.orientation not in ("270", "90")],
+        'image_type': camera.image_types[0],
+        'ts_id': '{}-{}-C{}-F{}'.format(camera.expt, camera.location, camera.cam_num,camera.datasetID),
+        'name':camera.userfriendlyname,
         'period_in_minutes': camera.interval,
-        'posix_end': str(get_file_date(images[-1], camera.interval * 60)),
-        'posix_start': str(get_file_date(images[0], camera.interval * 60)),
+        'posix_end': mktime(p_end),
+        'posix_start': mktime(p_start),
         'thumbnails': thumb_image,
         'timezone': camera.timezone[0],
-        'ts_end': calendar.timegm(camera.expt_end),
-        'ts_start': calendar.timegm(camera.expt_start),
+        'ts_end': strftime(TS_DATE_FMT, p_end),
+        'ts_start': strftime(TS_DATE_FMT, p_start),
         'ts_version': '1',
         'utc': "false",
         'webroot': webrootaddr,
-        'width_hires': image_resolution[camera.orientation not in ("90",
+        'width_hires': image_resolution[camera.orientation in ("90",
                                                                    "270")],
-        'width': new_res[0]
+        'width': new_res[camera.orientation in ("90",
+                                                                   "270")]
         }
+    if (camera.json_updates):
+        for key, value in jdump.items():
+            if not (key.lower() in camera.json_updates.lower()):
+                if not (key.lower() in ('expt', 'ts_id')):
+                    jdump.pop(key, None)
     return {k: str(v) for k, v in jdump.items()}
 
 
@@ -777,18 +872,31 @@ def main(configfile, n_threads=1, logdir=None, debug=False):
     n_images = 0
     json_dump = []
     for camera in parse_camera_config_csv(configfile):
+        if (len(json_dump) is 0):
+            try:
+                already_json = open(os.path.join(camera.destination, 'camera.json'), 'r')
+                json_dump = json.load(already_json)
+                already_json.close
+            except IOError:
+                pass
+        print("Processing experiment {}, location {}".format(
+            camera.expt, camera.location))
         log.info("Processing experiment {}, location {}".format(
             camera.expt, camera.location))
+        print("Images are coming from {}, being put in {}".format(
+            camera.source, camera.destination))
         log.info("Images are coming from {}, being put in {}".format(
             camera.source, camera.destination))
         for ext, images in find_image_files(camera).items():
+            print(("Have {0} {1} images from this camera".format(
+                len(images), ext)))
             log.info("Have {0} {1} images from this camera".format(
                 len(images), ext))
             n_images += len(images)
             json_dump.append(process_camera(camera, ext, sorted(images),
                                             n_threads))
-            jpath = os.path.join(camera.destination, os.path.dirname(
-                camera.ts_structure.format(folder='', res='', cam='')))
+            jpath = os.path.join(camera.destination) #, os.path.dirname(
+                # camera.ts_structure.format(folder='', res='', cam=''))
             try:
                 os.makedirs(jpath)
             except OSError:
@@ -797,6 +905,9 @@ def main(configfile, n_threads=1, logdir=None, debug=False):
                              .format(jpath))
             with open(os.path.join(jpath, 'camera.json'), 'w') as fname:
                 json.dump(json_dump, fname)
+        #remove any empty directories in source
+        if camera.method == "archive":
+            empty = find_empty_dirs(camera.source)
     secs_taken = time() - start_time
     print("\nProcessed a total of {0} images in {1:.2f} seconds".format(
         n_images, secs_taken))
@@ -817,5 +928,4 @@ if __name__ == "__main__":
         from ._version import get_versions
         print("Version {}".format(get_versions()['version']))
         sys.exit(0)
-    gen_config(opts.generate)
-    main()
+    main(opts.config, debug=opts.debug, logdir='log', n_threads=opts.threads)
