@@ -10,7 +10,8 @@ import shutil
 import tempfile
 import time
 import unittest
-
+import datetime
+import warnings
 # Module imports
 from .. import exif2timestream as e2t
 import pexif
@@ -284,12 +285,12 @@ class TestExifTraitcapture(unittest.TestCase):
     def test_process_image(self):
         e2t.process_image((self.jpg_testfile, self.camera, "jpg"))
         self.assertTrue(path.exists(self.r_fullres_path))
-        self._md5test(self.r_fullres_path, "76ee6fb2f5122d2f5815101ec66e7cb8")
+        self._md5test(self.r_fullres_path, "50ff1638d37255efa8ef5267e3184799")
 
     def test_process_image_map(self):
         e2t.process_image((self.jpg_testfile, self.camera, "jpg"))
         self.assertTrue(path.exists(self.r_fullres_path))
-        self._md5test(self.r_fullres_path, "76ee6fb2f5122d2f5815101ec66e7cb8")
+        self._md5test(self.r_fullres_path, "50ff1638d37255efa8ef5267e3184799")
 
     # tests for parse_camera_config_csv
     def test_parse_camera_config_csv(self):
@@ -423,13 +424,138 @@ class TestExifTraitcapture(unittest.TestCase):
         # IMG0001.JPG should always be the first one, with one core it's
         # deterministic
         self._md5test(self.r_fullres_path, "76ee6fb2f5122d2f5815101ec66e7cb8")
-# TODO: Test the Following
-# Orientation
-# Timeshift
-# FN Parse
-# TS Format
-# FN Format
-# Dataset ID
+
+    def test_orientation(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            orig = novice.open(self.r_fullres_path).size
+            e2t.rotate_image(90, self.r_fullres_path)
+            after = novice.open(self.r_fullres_path).size
+            self.assertEqual(orig[0], after[1])
+            self.assertEqual(orig[1], after[0])
+            e2t.rotate_image(270, self.r_fullres_path)
+
+    def test_timeshift(self):
+        before = e2t.get_file_date(self.r_fullres_path, "", 60)
+        print (before)
+        after = e2t.get_file_date(self.r_fullres_path, "10", 60)
+        print(after)
+        self.assertNotEqual(before, after)
+        shift_to_equal = datetime.timedelta(hours=10)
+        before = (datetime.datetime.fromtimestamp(time.mktime(before))+shift_to_equal).timetuple()
+        self.assertEqual(before, after)
+
+    def test_filename_parse(self):
+        expt = {"jpg": {path.join(self.camupload_dir, x) for x in [
+                        'jpg/IMG_0001.JPG',
+                        'jpg/IMG_0002.JPG',
+                        'jpg/IMG_0630.JPG',
+                        'jpg/IMG_0633.JPG',]
+                        },
+                }
+        self.camera.fn_parse = "IMG_"
+        got = e2t.find_image_files(self.camera)
+        self.assertSetEqual(set(got["jpg"]), expt["jpg"])
+        self.assertSetEqual(set(got["jpg"]), expt["jpg"])
+
+    def test_structure_format_none(self):
+        ts_format_test = e2t.CameraFields({
+            'ARCHIVE_DEST': '/',
+            'EXPT': 'BVZ00000',
+            'DESTINATION': '/',
+            'CAM_NUM': 1,
+            'EXPT_END': '2013_12_31',
+            'EXPT_START': '2013_11_01',
+            'LOCATION': 'EUC-R01C01',
+            'METHOD': 'copy',
+            'INTERVAL': '5',
+            'IMAGE_TYPES': 'raw~jpg',
+            'mode': 'batch',
+            'resolutions': 'original',
+            'SOURCE': '/',
+            'sunrise': '500',
+            'sunset': '2200',
+            'camera_timezone': '1100',
+            'USE': '1',
+            'user': 'Glasshouses',
+            'TS_STRUCTURE': '',
+            'FN_PARSE': '',
+            'PROJECT_OWNER': '',
+            'FILENAME_DATE_MASK': "",
+            'FN_STRUCTURE': '',
+            'ORIENTATION': '',
+            'DATASETID':1,
+            'TIMESHIFT':0,
+            'USERFRIENDLYNAME':'',
+            'JSON_UPDATES':''
+
+        })
+        output= (e2t.parse_structures(ts_format_test))
+        self.assertEqual("BVZ00000/EUC-R01C01-C01-F01/{folder}/BVZ00000-EUC-R01C01-C01-F01~{res}-orig", output.ts_structure)
+        self.assertEqual("BVZ00000-EUC-R01C01-C01-F01~{res}-orig", output.fn_structure)
+        self.assertEqual('BVZ00000-EUC-R01C01-C01-F01', output.userfriendlyname)
+
+    def test_structure_format_all(self):
+        ts_format_test = e2t.CameraFields(
+        #     {
+        #     'EXPT': 'BVZ00000',
+        #     'CAM_NUM': 1,
+        #     'EXPT_END': '2013_12_31',
+        #     'EXPT_START': '2013_11_01',
+        #     'LOCATION': 'EUC-R01C01',
+        #     'sunrise': '500',
+        #     'sunset': '2200',
+        #     'camera_timezone': '1100',
+        #     'USE': '1',
+        #     'user': 'Glasshouses',
+        #     'ts_structure': 'EXPT/CAM_NUM-LOCATION-location/potato/',
+        #     'FN_PARSE': '',
+        #     'PROJECT_OWNER': '',
+        #     'FILENAME_DATE_MASK': "",
+        #     'fn_structure': 'LOCATION-location-dontreplace-USE/SUNSET',
+        #     'ORIENTATION': '',
+        #     'DATASETID':1,
+        #     'TIMESHIFT':0,
+        #     'userfriendlyname':'LOCATION-location-dontreplace-USE/SUNSET',
+        #     'JSON_UPDATES':''
+        # }
+         {
+            'ARCHIVE_DEST': '/',
+            'EXPT': 'BVZ00000',
+            'DESTINATION': '/',
+            'CAM_NUM': 1,
+            'EXPT_END': '2013_12_31',
+            'EXPT_START': '2013_11_01',
+            'LOCATION': 'EUC-R01C01',
+            'METHOD': 'copy',
+            'INTERVAL': '5',
+            'IMAGE_TYPES': 'raw~jpg',
+            'mode': 'batch',
+            'resolutions': 'original',
+            'SOURCE': '/',
+            'sunrise': '500',
+            'sunset': '2200',
+            'camera_timezone': '1100',
+            'USE': '1',
+            'user': 'Glasshouses',
+            'TS_STRUCTURE': 'EXPT/LOCATION-location/potato',
+            'FN_PARSE': '',
+            'PROJECT_OWNER': '',
+            'FILENAME_DATE_MASK': "",
+            'FN_STRUCTURE': 'EXPT/LOCATION-location/potato',
+            'ORIENTATION': '',
+            'DATASETID':1,
+            'TIMESHIFT':0,
+            'USERFRIENDLYNAME':'EXPT/LOCATION-location/potato',
+            'JSON_UPDATES':''
+
+        }
+        )
+        output= (e2t.parse_structures(ts_format_test))
+        self.assertEqual("BVZ00000/EUC-R01C01-location/{folder}/potato~{res}-orig", output.ts_structure)
+        self.assertEqual("BVZ00000EUC-R01C01-locationpotato~{res}-orig", output.fn_structure)
+        self.assertEqual('BVZ00000/EUC-R01C01-location/potato', output.userfriendlyname)
+
 
 
 
