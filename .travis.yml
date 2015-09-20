@@ -13,7 +13,7 @@ before_install:
  - pip install coverage>=3.6
  - pip install coveralls
  - pip install numpy==1.9.2
- - pip install scipy==0.15.1
+ - travis_wait pip install scipy==0.15.1
 install:
  - travis_wait ./install
 
