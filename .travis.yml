@@ -18,7 +18,7 @@ install:
  - travis_wait ./install
 
 script:
- - ./run_tests
+ - ./run_tests test/test_exif2timestream.py
  - ./run_from_cmdline
 
 after_success:

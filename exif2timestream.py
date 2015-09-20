@@ -252,6 +252,7 @@ def d2s(date):
 
 def parse_structures(camera):
     # Sneaky check the friendly name, and replace it if its none
+    print (camera)
     if not camera.userfriendlyname:
         camera.userfriendlyname = '{}-{}-C{}-F{}'.format(camera.expt, camera.location, camera.cam_num,camera.datasetID)
     else:
@@ -532,18 +533,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         if camera.orientation and camera.orientation is not 0:
-            try:
-                img = skimage.io.imread(dest)
-                img = skimage.transform.rotate(
-                        img, int(camera.orientation), resize=True)
-                try:
-                    # avoid trying to read before writing
-                    sleep(0.1)
-                    skimage.io.imsave(dest, img)
-                except IOError:
-                    raise SkipImage
-            except IOError:
-                print ("Can't Rotate Non JPEG Images")
+            rotate_image(camera.orientation, dest)
     if len(camera.resolutions) > 1:
         log.info("Going to resize image '{}'".format(dest))
         try:
@@ -558,6 +548,19 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
             log.debug("Resize failed for unknown reason")
             raise SkipImage
 
+def rotate_image(rotation, dest):
+    try:
+        img = skimage.io.imread(dest)
+        img = skimage.transform.rotate(
+                img, int(rotation), resize=True)
+        try:
+            # avoid trying to read before writing
+            sleep(0.1)
+            skimage.io.imsave(dest, img)
+        except IOError:
+            raise SkipImage
+    except IOError:
+        print ("Can't Rotate Non JPEG Images")
 
 def _dont_clobber(fn, mode="append"):
     """Ensure we don't overwrite things, using a variety of methods"""
