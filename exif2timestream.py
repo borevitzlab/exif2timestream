@@ -252,7 +252,6 @@ def d2s(date):
 
 def parse_structures(camera):
     # Sneaky check the friendly name, and replace it if its none
-    print (camera)
     if not camera.userfriendlyname:
         camera.userfriendlyname = '{}-{}-C{}-F{}'.format(camera.expt, camera.location, camera.cam_num,camera.datasetID)
     else:
@@ -787,22 +786,21 @@ def get_actual_start_end(camera, images):
     j=0
     while earlier and (j<= len(images)-1):
         date = get_file_date(images[j], camera.timeshift, camera.interval * 60)
-        if date >= camera.expt_start:
+        if (date >= camera.expt_start) and (date is not None):
             earlier = False
         j+=1
-        if j is len(images) and earlier:
-            date = camera.expt_start
+    if date is None:
+        date = camera.expt_start
     p_start = date
     later = True
     j = len(images)-1
     while later and j>=0:
         date = get_file_date(images[j], camera.timeshift, camera.interval * 60)
-        print(date)
-        if date <= camera.expt_end:
+        if (date <= camera.expt_end) and (date is not None):
             later = False
         j-=1
-        if j is -1 and later:
-            date = camera.expt_end
+    if date is None:
+        date = camera.expt_end
     p_end = date
     return p_start, p_end
 
