@@ -176,12 +176,12 @@ class CameraFields(object):
         ('interval', 'INTERVAL', int),
         ('image_types', 'IMAGE_TYPES', image_type_str),
         ('method', 'METHOD', method_list),
-        ('resolutions', 'resolutions', resolution_str),
-        ('sunrise', 'sunrise', int_time_hr_min),
-        ('sunset', 'sunset', int_time_hr_min),
-        ('timezone', 'camera_timezone', int_time_hr_min),
-        ('user', 'user', remove_underscores),
-        ('mode', 'mode', mode_list),
+        ('resolutions', 'RESOLUTIONS', resolution_str),
+        ('sunrise', 'SUNRISE', int_time_hr_min),
+        ('sunset', 'SUNSET', int_time_hr_min),
+        ('timezone', 'CAMERA_TIMEZONE', int_time_hr_min),
+        ('user', 'USER', remove_underscores),
+        ('mode', 'MODE', mode_list),
         ('project_owner', 'PROJECT_OWNER', remove_underscores),
         ('ts_structure', 'TS_STRUCTURE', str),
         ('filename_date_mask', 'FILENAME_DATE_MASK', str),
@@ -415,6 +415,7 @@ def get_file_date(filename, timeshift, round_secs=1):
         date = get_time_from_filename(filename)
         if date is None:
             log.debug("Unable to scrape date from '{}'".format(filename))
+            print("Unable to read Exif Data")
             return None
         else:
             if not write_exif_date(filename, date):
@@ -796,6 +797,7 @@ def get_actual_start_end(camera, images):
     j = len(images)-1
     while later and j>=0:
         date = get_file_date(images[j], camera.timeshift, camera.interval * 60)
+        print(date)
         if date <= camera.expt_end:
             later = False
         j-=1
@@ -806,7 +808,9 @@ def get_actual_start_end(camera, images):
 
 def find_empty_dirs(root_dir):
     for dirpath, dirs, files in os.walk(root_dir, topdown=False):
-        if not dirs and not files:
+        if(len(files) is 1 and "thumbs.db" in files):
+            os.remove(os.path.join(dirpath,"thumbs.db"))
+        if (not dirs and not files) :
             print ("removing empty dir " + dirpath)
             os.rmdir(dirpath)
 
