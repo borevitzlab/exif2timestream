@@ -735,11 +735,14 @@ def get_resolution(image, camera):
             except KeyError:
                 image_resolution=(0,0)
         else:
-            image_resolution = novice.open(image).size
+            try:
+                image_resolution = novice.open(image).size
+            except ValueError:
+                image_resolution=(0,0)
     except IOError:
         image_resolution = (0, 0)
     folder, res, new_res = "original", 'fullres', image_resolution
-    if len(camera.resolutions) > 1:
+    if (len(camera.resolutions) > 1)and (new_res != (0,0)):
         folder = "outputs"
         new_res = camera.resolutions[1]
 
