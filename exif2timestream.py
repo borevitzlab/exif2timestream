@@ -46,6 +46,7 @@ IMAGE_TYPE_CONSTANTS = {"raw", "jpg"}
 RAW_FORMATS = {"cr2", "nef", "tif", "tiff", "raw"}
 IMAGE_SUBFOLDERS = {"raw", "jpg", "png", "tiff", "nef", "cr2"}
 DATE_NOW_CONSTANTS = {"now", "current"}
+ongoing = False
 
 #TODO: JSON Options to reprint
 def cli_options():
@@ -77,6 +78,22 @@ def date(x):
     except:
         raise ValueError
 
+def date_end(x):
+    global ongoing
+    """Converter / validator for date field."""
+    if isinstance(x, struct_time):
+
+        ongoing = False
+        return x
+    if x.lower() in DATE_NOW_CONSTANTS:
+        ongoing = True
+        return localtime()
+    else:
+        ongoing = False
+    try:
+        return strptime(x, "%Y_%m_%d")
+    except:
+        raise ValueError
 
 def bool_str(x):
     """Converts a string to a boolean, even yes/no/true/false."""
@@ -171,7 +188,7 @@ class CameraFields(object):
         ('source', 'SOURCE', path_exists),
         ('destination', 'DESTINATION', path_exists),
         ('archive_dest', 'ARCHIVE_DEST', path_exists),
-        ('expt_end', 'EXPT_END', date),
+        ('expt_end', 'EXPT_END', date_end),
         ('expt_start', 'EXPT_START', date),
         ('interval', 'INTERVAL', int),
         ('image_types', 'IMAGE_TYPES', image_type_str),
@@ -636,6 +653,7 @@ def process_image(args):
 
 
 def parse_camera_config_csv(filename):
+
     """Parse a camera configuration, yielding localised and validated
     camera configuration objects."""
     if filename is None:
@@ -845,6 +863,10 @@ def process_camera(camera, ext, images, n_threads=1):
         pool.close()
         pool.join()
     print("Processed {:5d} Images. Finished this cam!".format(count))
+    if (ongoing):
+        ts_end_text = "now"
+    else:
+        ts_end_text = strftime(TS_DATE_FMT, p_end)
     jdump = {
         'access': '0',
         'expt': camera.expt,
@@ -858,7 +880,7 @@ def process_camera(camera, ext, images, n_threads=1):
         'posix_start': mktime(p_start),
         'thumbnails': thumb_image,
         'timezone': camera.timezone[0],
-        'ts_end': strftime(TS_DATE_FMT, p_end),
+        'ts_end': ts_end_text,
         'ts_start': strftime(TS_DATE_FMT, p_start),
         'ts_version': '1',
         'utc': "false",
@@ -877,6 +899,8 @@ def process_camera(camera, ext, images, n_threads=1):
     return {k: str(v) for k, v in jdump.items()}
 
 
+
+
 def main(configfile, n_threads=1, logdir=None, debug=False):
     """The main loop of the module, do the renaming in parallel etc."""
     setup_logs(logdir, debug)
@@ -884,6 +908,7 @@ def main(configfile, n_threads=1, logdir=None, debug=False):
     n_images = 0
     json_dump = []
     for camera in parse_camera_config_csv(configfile):
+        print ("It successfully parsed")
         if (len(json_dump) is 0):
             try:
                 already_json = open(os.path.join(camera.destination, 'camera.json'), 'r')
