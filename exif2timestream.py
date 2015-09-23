@@ -762,6 +762,7 @@ def get_thumbnail_paths(camera, images):
     """Return thumbnail paths, for the final resting place of the images."""
     res, new_res, image_resolution, folder = get_resolution(images[0], camera)
     webrootaddr = None
+    url = "http://phenocam.anu.edu.au/cloud/data"
     if "a_data" in camera.destination:
         webrootaddr = "http://phenocam.anu.edu.au/cloud/data{}{}/".format(
             camera.destination.split("a_data")[1],
@@ -781,7 +782,12 @@ def get_thumbnail_paths(camera, images):
             except SkipImage:
                 pass
     if thumb_image and "a_data" in thumb_image[0]:
-        thumb_image = [webrootaddr + t.split("a_data")[1] for t in thumb_image]
+        thumb_image = [url + t.split("a_data")[1] for t in thumb_image]
+    if len(camera.resolutions)>1:
+        thumb_image = [t.format(folder="outputs", res = camera.resolutions[1][0]) for t in thumb_image]
+    else:
+        thumb_image = [t.format(folder="original", res = "orig") for t in thumb_image]
+
     return webrootaddr, thumb_image
 
 def get_actual_start_end(camera, images):
@@ -856,7 +862,8 @@ def process_camera(camera, ext, images, n_threads=1):
         'ts_start': strftime(TS_DATE_FMT, p_start),
         'ts_version': '1',
         'utc': "false",
-        'webroot': webrootaddr,
+        'webroot_hires':webrootaddr.format(folder="original", res="fullres"),
+        'webroot':webrootaddr.format(folder="outputs", res=camera.resolutions[1][0]),
         'width_hires': image_resolution[camera.orientation in ("90",
                                                                    "270")],
         'width': new_res[camera.orientation in ("90",
