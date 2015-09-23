@@ -762,9 +762,9 @@ def get_thumbnail_paths(camera, images):
     """Return thumbnail paths, for the final resting place of the images."""
     res, new_res, image_resolution, folder = get_resolution(images[0], camera)
     webrootaddr = None
-    url = "http://phenocam.anu.edu.au/cloud/data"
+    url = "http://phenocam.anu.edu.au/cloud/a_data"
     if "a_data" in camera.destination:
-        webrootaddr = "http://phenocam.anu.edu.au/cloud/data{}{}/".format(
+        webrootaddr = "http://phenocam.anu.edu.au/cloud/a_data{}{}".format(
             camera.destination.split("a_data")[1],
             camera.ts_structure if camera.ts_structure else camera.location)
     thumb_image = []
@@ -850,7 +850,7 @@ def process_camera(camera, ext, images, n_threads=1):
         'expt': camera.expt,
         'height_hires': image_resolution[camera.orientation not in ("270", "90")],
         'height': new_res[camera.orientation not in ("270", "90")],
-        'image_type': camera.image_types[0],
+        'image_type': camera.image_types[0].upper(),
         'ts_id': '{}-{}-C{}-F{}'.format(camera.expt, camera.location, camera.cam_num,camera.datasetID),
         'name':camera.userfriendlyname,
         'period_in_minutes': camera.interval,
