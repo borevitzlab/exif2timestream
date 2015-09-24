@@ -424,25 +424,36 @@ def get_file_date(filename, timeshift, round_secs=1):
         str_date = exif_tags.exif.primary.ExtendedEXIF.DateTimeOriginal
         date = strptime(str_date, EXIF_DATE_FMT)
     except AttributeError:
+        try:
+            with open(filename, "rb") as fh:
+            # TODO:  get this in some other way, removing exifread dependency?
+                exif_tags = exifread.process_file(
+                    fh, details=False, stop_tag=EXIF_DATE_TAG)
+                try:
+                    str_date = exif_tags[EXIF_DATE_TAG].values
+                    date = strptime(str_date, EXIF_DATE_FMT)
+                except KeyError:
+                    return None
+        except AttributeError:
         # Try to get datetime from the filename, but not the directory
-        log.debug("No Exif data in '{}', reading from filename".format(
-            os.path.basename(filename)))
-        # Try and grab the date, we can put a custom mask in here if we want
-        date = get_time_from_filename(filename)
-        if date is None:
-            log.debug("Unable to scrape date from '{}'".format(filename))
-            print("Unable to read Exif Data")
-            return None
-        else:
-            if not write_exif_date(filename, date):
-                log.debug("Unable to write Exif Data")
+            log.debug("No Exif data in '{}', reading from filename".format(
+                os.path.basename(filename)))
+            # Try and grab the date, we can put a custom mask in here if we want
+            date = get_time_from_filename(filename)
+            if date is None:
+                log.debug("Unable to scrape date from '{}'".format(filename))
+                print("Unable to read Exif Data")
                 return None
-            if (timeshift and (int)(timeshift)):
-                datetime_date = datetime.datetime.fromtimestamp(mktime(date))
-                minus = datetime.timedelta(hours=(int)(timeshift))
-                datetime_date = datetime_date + minus
-                date = datetime_date.timetuple()
-            return date
+            else:
+                if not write_exif_date(filename, date):
+                    log.debug("Unable to write Exif Data")
+                    return None
+                if (timeshift and (int)(timeshift)):
+                    datetime_date = datetime.datetime.fromtimestamp(mktime(date))
+                    minus = datetime.timedelta(hours=(int)(timeshift))
+                    datetime_date = datetime_date + minus
+                    date = datetime_date.timetuple()
+                return date
     # If its not a jpeg, we have to open with exif reader
     except pexif.JpegFile.InvalidFile:
         log.debug("Unable to Read file '{}', not a jpeg?".format(
