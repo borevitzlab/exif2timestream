@@ -389,7 +389,8 @@ def resize_img(filename, destination, to_width, to_height):
 
 def get_time_from_filename(filename, mask=None):
     """Replaces time placeholders with the regex equivalent to parse."""
-    if mask is None:
+    global DATE_MASK
+    if len(mask) is 0:
         mask = DATE_MASK
     mask_r = r"\.*" + mask.replace("%Y", r"\d{4}") + r"\.*"
     for s in ('%m', '%d', '%H', '%M', '%S'):
@@ -439,7 +440,7 @@ def get_file_date(filename, timeshift, round_secs=1):
             log.debug("No Exif data in '{}', reading from filename".format(
                 os.path.basename(filename)))
             # Try and grab the date, we can put a custom mask in here if we want
-            date = get_time_from_filename(filename)
+            date = get_time_from_filename(filename,DATE_MASK)
             if date is None:
                 log.debug("Unable to scrape date from '{}'".format(filename))
                 print("Unable to read Exif Data")
@@ -466,7 +467,9 @@ def get_file_date(filename, timeshift, round_secs=1):
                 str_date = exif_tags[EXIF_DATE_TAG].values
                 date = strptime(str_date, EXIF_DATE_FMT)
             except KeyError:
-                return None
+                date = date = get_time_from_filename(filename, DATE_MASK)
+                if date == None:
+                    return None
     if round_secs > 1:
         date = round_struct_time(date, round_secs)
     if (timeshift and (int)(timeshift)):
@@ -644,7 +647,6 @@ def process_image(args):
         archive_image = _dont_clobber(archive_image)
         shutil.copyfile(image, archive_image)
         log.debug("Copied {} to {}".format(image, archive_image))
-
     try:
         # deal with original image (move/copy etc)
         timestreamise_image(
@@ -810,12 +812,13 @@ def get_thumbnail_paths(camera, images):
                         os.path.basename(camera.ts_structure).format(res=res), ts_image)
             except SkipImage:
                 pass
-    if thumb_image and "a_data" in thumb_image[0]:
-        thumb_image = [url + t.split("a_data")[1] for t in thumb_image]
-    if len(camera.resolutions)>1:
-        thumb_image = [t.format(folder="outputs", res = camera.resolutions[1][0]) for t in thumb_image]
-    else:
-        thumb_image = [t.format(folder="original", res = "orig") for t in thumb_image]
+    if thumb_image[0]:
+        if "a_data" in thumb_image[0]:
+            thumb_image = [url + t.split("a_data")[1] for t in thumb_image]
+        if len(camera.resolutions)>1:
+            thumb_image = [t.format(folder="outputs", res = camera.resolutions[1][0]) for t in thumb_image]
+        else:
+            thumb_image = [t.format(folder="original", res = "orig") for t in thumb_image]
 
     return webrootaddr, thumb_image
 
@@ -905,7 +908,7 @@ def process_camera(camera, ext, images, n_threads=1):
     if (camera.json_updates):
         for key, value in jdump.items():
             if not (key.lower() in camera.json_updates.lower()):
-                if not (key.lower() in ('expt', 'ts_id')):
+                if not (key.lower() in ('ts_name')):
                     jdump.pop(key, None)
     return {k: str(v) for k, v in jdump.items()}
 
@@ -919,7 +922,6 @@ def main(configfile, n_threads=1, logdir=None, debug=False):
     n_images = 0
     json_dump = []
     for camera in parse_camera_config_csv(configfile):
-        print ("It successfully parsed")
         if (len(json_dump) is 0):
             try:
                 already_json = open(os.path.join(camera.destination, 'camera.json'), 'r')
