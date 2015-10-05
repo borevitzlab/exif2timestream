@@ -266,6 +266,30 @@ def d2s(date):
     else:
         return date
 
+def create_small_json(res, camera, image_resolution, p_start, p_end, ts_end_text):
+    if (res == "fullres"):
+        folder = "original"
+    else:
+        folder = "outputs"
+    small_json = open(os.path.join(camera.destination, camera.ts_structure.format(folder=folder,
+        res=res), camera.userfriendlyname + '-ts-info.json'), 'wb+')
+    jdump = {
+        'expt': camera.expt,
+        'owner': camera.project_owner,
+        'height': image_resolution[camera.orientation not in ("270", "90")],
+        'image_type': camera.image_types[0].upper(),
+        'ts_id': '{}-{}-C{}-F{}'.format(camera.expt, camera.location, camera.cam_num,camera.datasetID),
+        'name':camera.userfriendlyname,
+        'period_in_minutes': camera.interval,
+        'posix_end': mktime(p_end),
+        'posix_start': mktime(p_start),
+        'timezone': camera.timezone[0],
+        'ts_end': ts_end_text,
+        'ts_start': strftime(TS_DATE_FMT, p_start),
+        'width': image_resolution[camera.orientation in ("90", "270")]
+        }
+    json.dump(jdump, small_json)
+    small_json.close()
 
 def parse_structures(camera):
     # Sneaky check the friendly name, and replace it if its none
@@ -417,7 +441,7 @@ def write_exif_date(filename, date_time):
         return False
 
 
-def get_file_date(filename, timeshift, round_secs=1):
+def get_file_date(filename, timeshift, round_secs=1, date_mask = DATE_MASK):
     """Gets a time.struct_time from an image's EXIF, or None if not possible.
     """
     try:
@@ -440,7 +464,7 @@ def get_file_date(filename, timeshift, round_secs=1):
             log.debug("No Exif data in '{}', reading from filename".format(
                 os.path.basename(filename)))
             # Try and grab the date, we can put a custom mask in here if we want
-            date = get_time_from_filename(filename,DATE_MASK)
+            date = get_time_from_filename(filename,date_mask)
             if date is None:
                 log.debug("Unable to scrape date from '{}'".format(filename))
                 print("Unable to read Exif Data")
@@ -467,7 +491,7 @@ def get_file_date(filename, timeshift, round_secs=1):
                 str_date = exif_tags[EXIF_DATE_TAG].values
                 date = strptime(str_date, EXIF_DATE_FMT)
             except KeyError:
-                date = date = get_time_from_filename(filename, DATE_MASK)
+                date = date = get_time_from_filename(filename, date_mask)
                 if date == None:
                     return None
     if round_secs > 1:
@@ -792,7 +816,7 @@ def get_resolution(image, camera):
 def get_thumbnail_paths(camera, images):
     """Return thumbnail paths, for the final resting place of the images."""
     res, new_res, image_resolution, folder = get_resolution(images[0], camera)
-    webrootaddr = None
+    webrootaddr = ""
     url = "http://phenocam.anu.edu.au/cloud/a_data"
     if "a_data" in camera.destination:
         webrootaddr = "http://phenocam.anu.edu.au/cloud/a_data{}{}".format(
@@ -849,9 +873,9 @@ def find_empty_dirs(root_dir):
     for dirpath, dirs, files in os.walk(root_dir, topdown=False):
         if(len(files) is 1 and "thumbs.db" in files):
             os.remove(os.path.join(dirpath,"thumbs.db"))
-        if (not dirs and not files) :
+        if (not dirs and not files) or len(os.listdir(dirpath))==0:
             print ("removing empty dir " + dirpath)
-            os.rmdir(dirpath)
+            # os.rmdir(dirpath)
 
 def process_camera(camera, ext, images, n_threads=1):
     """Process a set of images for one extension for a single camera."""
@@ -905,11 +929,15 @@ def process_camera(camera, ext, images, n_threads=1):
         'width': new_res[camera.orientation in ("90",
                                                                    "270")]
         }
+
     if (camera.json_updates):
         for key, value in jdump.items():
             if not (key.lower() in camera.json_updates.lower()):
                 if not (key.lower() in ('ts_name')):
                     jdump.pop(key, None)
+    create_small_json("fullres", camera,image_resolution, p_start, p_end, ts_end_text)
+    if len(image_resolution)>1:
+        create_small_json(new_res[camera.orientation in ("90", "270")], camera, new_res, p_start, p_end, ts_end_text)
     return {k: str(v) for k, v in jdump.items()}
 
 
