@@ -271,6 +271,11 @@ def create_small_json(res, camera, image_resolution, p_start, p_end, ts_end_text
         folder = "original"
     else:
         folder = "outputs"
+
+    if not os.path.exists(os.path.join(camera.destination, camera.ts_structure.format(folder=folder,
+        res=res))):
+        os.makedirs(os.path.join(camera.destination, camera.ts_structure.format(folder=folder,
+        res=res)))
     small_json = open(os.path.join(camera.destination, camera.ts_structure.format(folder=folder,
         res=res), camera.userfriendlyname + '-ts-info.json'), 'wb+')
     jdump = {
@@ -446,6 +451,7 @@ def get_file_date(filename, timeshift, round_secs=1, date_mask = DATE_MASK):
     """
     try:
         exif_tags = pexif.JpegFile.fromFile(filename)
+        print (exif_tags.__dict.items())
         str_date = exif_tags.exif.primary.ExtendedEXIF.DateTimeOriginal
         date = strptime(str_date, EXIF_DATE_FMT)
     except AttributeError:
@@ -458,6 +464,7 @@ def get_file_date(filename, timeshift, round_secs=1, date_mask = DATE_MASK):
                     str_date = exif_tags[EXIF_DATE_TAG].values
                     date = strptime(str_date, EXIF_DATE_FMT)
                 except KeyError:
+                    raise AttributeError
                     return None
         except AttributeError:
         # Try to get datetime from the filename, but not the directory
@@ -493,6 +500,7 @@ def get_file_date(filename, timeshift, round_secs=1, date_mask = DATE_MASK):
             except KeyError:
                 date = date = get_time_from_filename(filename, date_mask)
                 if date == None:
+                    print("Secondazry Key Error")
                     return None
     if round_secs > 1:
         date = round_struct_time(date, round_secs)
@@ -836,13 +844,15 @@ def get_thumbnail_paths(camera, images):
                         os.path.basename(camera.ts_structure).format(res=res), ts_image)
             except SkipImage:
                 pass
-    if thumb_image[0]:
-        if "a_data" in thumb_image[0]:
-            thumb_image = [url + t.split("a_data")[1] for t in thumb_image]
-        if len(camera.resolutions)>1:
-            thumb_image = [t.format(folder="outputs", res = camera.resolutions[1][0]) for t in thumb_image]
-        else:
-            thumb_image = [t.format(folder="original", res = "orig") for t in thumb_image]
+    for i in range (0, len(thumb_image)):
+        if thumb_image[i]:
+            print(thumb_image)
+            if "a_data" in thumb_image[i]:
+                thumb_image = url + thumb_image[i].split("a_data")[1]
+            if len(camera.resolutions)>1:
+                thumb_image[i] = thumb_image[i].format(folder="outputs", res = camera.resolutions[1][0])
+            else:
+                thumb_image[i] = thumb_image[i].format(folder="original", res = "orig")
 
     return webrootaddr, thumb_image
 
@@ -923,7 +933,8 @@ def process_camera(camera, ext, images, n_threads=1):
         'ts_version': '1',
         'utc': "false",
         'webroot_hires':webrootaddr.format(folder="original", res="fullres"),
-        'webroot':webrootaddr.format(folder="outputs", res=camera.resolutions[1][0]),
+        'webroot':webrootaddr.format(folder="outputs", res=new_res[camera.orientation in ("90",
+                                                                   "270")]),
         'width_hires': image_resolution[camera.orientation in ("90",
                                                                    "270")],
         'width': new_res[camera.orientation in ("90",
@@ -936,7 +947,7 @@ def process_camera(camera, ext, images, n_threads=1):
                 if not (key.lower() in ('ts_name')):
                     jdump.pop(key, None)
     create_small_json("fullres", camera,image_resolution, p_start, p_end, ts_end_text)
-    if len(image_resolution)>1:
+    if len(camera.resolutions)>1:
         create_small_json(new_res[camera.orientation in ("90", "270")], camera, new_res, p_start, p_end, ts_end_text)
     return {k: str(v) for k, v in jdump.items()}
 
