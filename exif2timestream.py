@@ -449,59 +449,36 @@ def write_exif_date(filename, date_time):
 def get_file_date(filename, timeshift, round_secs=1, date_mask = DATE_MASK):
     """Gets a time.struct_time from an image's EXIF, or None if not possible.
     """
+    date = None
     try:
         exif_tags = pexif.JpegFile.fromFile(filename)
-        print (exif_tags.__dict.items())
         str_date = exif_tags.exif.primary.ExtendedEXIF.DateTimeOriginal
         date = strptime(str_date, EXIF_DATE_FMT)
-    except AttributeError:
-        try:
-            with open(filename, "rb") as fh:
-            # TODO:  get this in some other way, removing exifread dependency?
-                exif_tags = exifread.process_file(
-                    fh, details=False, stop_tag=EXIF_DATE_TAG)
-                try:
-                    str_date = exif_tags[EXIF_DATE_TAG].values
-                    date = strptime(str_date, EXIF_DATE_FMT)
-                except KeyError:
-                    raise AttributeError
-                    return None
-        except AttributeError:
-        # Try to get datetime from the filename, but not the directory
-            log.debug("No Exif data in '{}', reading from filename".format(
-                os.path.basename(filename)))
-            # Try and grab the date, we can put a custom mask in here if we want
-            date = get_time_from_filename(filename,date_mask)
-            if date is None:
-                log.debug("Unable to scrape date from '{}'".format(filename))
-                print("Unable to read Exif Data")
-                return None
-            else:
-                if not write_exif_date(filename, date):
-                    log.debug("Unable to write Exif Data")
-                    return None
-                if (timeshift and (int)(timeshift)):
-                    datetime_date = datetime.datetime.fromtimestamp(mktime(date))
-                    minus = datetime.timedelta(hours=(int)(timeshift))
-                    datetime_date = datetime_date + minus
-                    date = datetime_date.timetuple()
-                return date
-    # If its not a jpeg, we have to open with exif reader
-    except pexif.JpegFile.InvalidFile:
-        log.debug("Unable to Read file '{}', not a jpeg?".format(
-            os.path.basename(filename)))
+    except (AttributeError, pexif.JpegFile.InvalidFile):
+        pass
+    if not date:
         with open(filename, "rb") as fh:
-            # TODO:  get this in some other way, removing exifread dependency?
+        # TODO:  get this in some other way, removing exifread dependency?
             exif_tags = exifread.process_file(
                 fh, details=False, stop_tag=EXIF_DATE_TAG)
             try:
                 str_date = exif_tags[EXIF_DATE_TAG].values
                 date = strptime(str_date, EXIF_DATE_FMT)
             except KeyError:
-                date = date = get_time_from_filename(filename, date_mask)
-                if date == None:
-                    print("Secondazry Key Error")
-                    return None
+                pass
+    if not date:
+    # Try to get datetime from the filename, but not the directory
+        log.debug("No Exif data in '{}', reading from filename".format(
+            os.path.basename(filename)))
+        # Try and grab the date, we can put a custom mask in here if we want
+        date = get_time_from_filename(filename,date_mask)
+        if date is None:
+            log.debug("Unable to scrape date from '{}'".format(filename))
+            print("Unable to read Exif Data")
+            return None
+        else:
+            if not write_exif_date(filename, date):
+                log.debug("Unable to write Exif Data")
     if round_secs > 1:
         date = round_struct_time(date, round_secs)
     if (timeshift and (int)(timeshift)):
@@ -597,6 +574,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
         warnings.simplefilter("ignore")
         if camera.orientation and camera.orientation is not 0:
             rotate_image(camera.orientation, dest)
+            write_exif_date(dest, image_date);
     if len(camera.resolutions) > 1:
         log.info("Going to resize image '{}'".format(dest))
         try:
@@ -616,12 +594,13 @@ def rotate_image(rotation, dest):
         img = skimage.io.imread(dest)
         img = skimage.transform.rotate(
                 img, int(rotation), resize=True)
-        try:
+        # try:
             # avoid trying to read before writing
-            sleep(0.1)
-            skimage.io.imsave(dest, img)
-        except IOError:
-            raise SkipImage
+            # sleep(0.1)
+        skimage.io.imsave(dest, img)
+        # except IOError:
+        #     print ("Got skip image for some reason")
+        #     raise SkipImage
     except IOError:
         print ("Can't Rotate Non JPEG Images")
 

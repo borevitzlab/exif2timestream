@@ -104,6 +104,12 @@ class TestExifTraitcapture(unittest.TestCase):
         '2013_11_12', '2013_11_12_20',
         'BVZ00000-EUC-R01C01-C01-F01~fullres-orig_2013_11_12_20_55_00_00.JPG'
     )
+    r_datetime_path = path.join(
+        out_dirname, "timestreams", "BVZ00000", "EUC-R01C01-C01-F01",
+        "original",'BVZ00000-EUC-R01C01-C01-F01~fullres-orig', '2013', '2013_11',
+        '2013_11_04', '2013_11_04_02',
+        'BVZ00000-EUC-R01C01-C01-F01~fullres-orig_2013_11_04_22_05_00_00.JPG'
+    )
 
     r_raw_path = path.join(
         out_dirname, "timestreams", "BVZ00000", "EUC-R01C01-C01-F01",
@@ -285,12 +291,12 @@ class TestExifTraitcapture(unittest.TestCase):
     def test_process_image(self):
         e2t.process_image((self.jpg_testfile, self.camera, "jpg"))
         self.assertTrue(path.exists(self.r_fullres_path))
-        self._md5test(self.r_fullres_path, "50ff1638d37255efa8ef5267e3184799")
+        self._md5test(self.r_fullres_path, "0cbe453def8b25df4015c4b66e822bd6")
 
     def test_process_image_map(self):
         e2t.process_image((self.jpg_testfile, self.camera, "jpg"))
         self.assertTrue(path.exists(self.r_fullres_path))
-        self._md5test(self.r_fullres_path, "50ff1638d37255efa8ef5267e3184799")
+        self._md5test(self.r_fullres_path, "0cbe453def8b25df4015c4b66e822bd6")
 
     # tests for parse_camera_config_csv
     def test_parse_camera_config_csv(self):
@@ -425,15 +431,22 @@ class TestExifTraitcapture(unittest.TestCase):
         # deterministic
         self._md5test(self.r_fullres_path, "76ee6fb2f5122d2f5815101ec66e7cb8")
 
+
+
     def test_orientation(self):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
+            image_date = e2t.get_file_date(self.r_fullres_path, 0, 60)
             orig = novice.open(self.r_fullres_path).size
             e2t.rotate_image(90, self.r_fullres_path)
             after = novice.open(self.r_fullres_path).size
             self.assertEqual(orig[0], after[1])
             self.assertEqual(orig[1], after[0])
             e2t.rotate_image(270, self.r_fullres_path)
+            print("ITS " + str(e2t.write_exif_date(self.r_fullres_path, image_date)) + "    " + str(image_date))
+            self.assertEqual(True, e2t.write_exif_date(self.r_fullres_path, image_date))
+            new_image_date = e2t.get_file_date(self.r_fullres_path, 0, 60)
+            self.assertEqual(image_date, new_image_date)
 
     def test_timeshift(self):
         before = e2t.get_file_date(self.r_fullres_path, "", 60)
