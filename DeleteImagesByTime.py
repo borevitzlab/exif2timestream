@@ -121,15 +121,17 @@ def process_image(args):
     if camera.expt_start > image_date or image_date > camera.expt_end:
         log.debug("Deleting {}. Outside of date range {} to {}".format(
             image, d2s(camera.expt_start), d2s(camera.expt_end)))
+        delete=True;
         # print("Deleting {}. Outside of date range {} to {}".format(
         #     image, d2s(camera.expt_start), d2s(camera.expt_end)))
     elif(camera.start_time > time_tuple or time_tuple > camera.end_time):
         log.debug("Deleting {}. Outside of Time range {} to {}".format(
             image, camera.start_time, camera.end_time))
+        delete=True;
         # print("Deleting {}. Outside of Time range {} to {}".format(
         #     image, camera.start_time, camera.end_time))
     else:
-        log.debug("Not touching image {} as it doesnt fall otuside time or date range").format(image)
+        log.debug("Not touching image {} as it doesnt fall otuside time or date range".format(image))
     if(delete):
         try:
             log.debug("Will move {}".format(image))

@@ -285,7 +285,7 @@ def create_small_json(res, camera, image_resolution, p_start, p_end, ts_end_text
         'image_type': camera.image_types[0].upper(),
         'ts_name': camera.ts_structure.format(folder = folder, res = res),
         'ts_id': '{}-{}-C{}-F{}'.format(camera.expt, camera.location, camera.cam_num,camera.datasetID),
-        'name':camera.userfri endlyname,
+        'name':camera.userfriendlyname,
         'period_in_minutes': camera.interval,
         'posix_end': mktime(p_end),
         'posix_start': mktime(p_start),
