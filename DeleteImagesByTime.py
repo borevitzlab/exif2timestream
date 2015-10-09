@@ -18,6 +18,7 @@ class CameraFields(object):
         ('timestream_name', 'TIMESTREAM_NAME', str),
         ('root_path', 'ROOT_PATH', path_exists),
         ('archive_dest', 'ARCHIVE_DEST', path_exists),
+        ('delete_dest', 'DELETE_DEST', path_exists),
         ('expt_end', 'EXPT_END', date_end),
         ('expt_start', 'EXPT_START', date),
         ('start_time', 'START_TIME', int_time_hr_min),
@@ -116,6 +117,7 @@ def process_image(args):
     image, camera, ext = args
     image_date = get_file_date(image, 0, round_secs=1,date_mask=camera.date_mask)
     time_tuple = (image_date.tm_hour, image_date.tm_min)
+    delete = False
     if camera.expt_start > image_date or image_date > camera.expt_end:
         log.debug("Deleting {}. Outside of date range {} to {}".format(
             image, d2s(camera.expt_start), d2s(camera.expt_end)))
@@ -127,25 +129,27 @@ def process_image(args):
         # print("Deleting {}. Outside of Time range {} to {}".format(
         #     image, camera.start_time, camera.end_time))
     else:
-        log.debug("Will archive {}".format(image))
-        archive_image = os.path.join(
-            camera.archive_dest,
-            os.path.basename(os.path.normpath(camera.root_path)),
-            os.path.relpath(image, camera.root_path))
+        log.debug("Not touching image {} as it doesnt fall otuside time or date range").format(image)
+    if(delete):
         try:
-            os.makedirs(os.path.dirname(archive_image))
-            log.debug("Made archive dir {}".format(os.path.dirname(
-                archive_image)))
-        except OSError as exc:
-            if not os.path.exists(os.path.dirname(archive_image)):
-                raise exc
-        archive_image = _dont_clobber(archive_image)
-        shutil.copyfile(image, archive_image)
-        log.debug("Copied {} to {}".format(image, archive_image))
-    try:
-        os.unlink(image)
-    except OSError:
-        log.error("Could not delete '{0}'".format(image))
+            log.debug("Will move {}".format(image))
+            archive_image = os.path.join(
+                camera.delete_dest,
+                os.path.basename(os.path.normpath(camera.root_path)),
+                os.path.relpath(image, camera.root_path))
+            try:
+                os.makedirs(os.path.dirname(archive_image))
+                log.debug("Made archive dir {}".format(os.path.dirname(
+                    archive_image)))
+            except OSError as exc:
+                if not os.path.exists(os.path.dirname(archive_image)):
+                    raise exc
+            archive_image = _dont_clobber(archive_image)
+            shutil.copyfile(image, archive_image)
+            log.debug("Copied {} to {}".format(image, archive_image))
+            os.unlink(image)
+        except OSError:
+            log.error("Could not delete '{0}'".format(image))
     log.debug("Deleted {}".format(image))
     find_empty_dirs(camera.root_path)
 
