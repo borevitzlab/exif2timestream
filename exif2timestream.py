@@ -865,7 +865,7 @@ def find_empty_dirs(root_dir):
             os.remove(os.path.join(dirpath,"thumbs.db"))
         if (not dirs and not files) or len(os.listdir(dirpath))==0:
             print ("removing empty dir " + dirpath)
-            # os.rmdir(dirpath)
+            os.rmdir(dirpath)
 
 def process_camera(camera, ext, images, n_threads=1):
     """Process a set of images for one extension for a single camera."""
