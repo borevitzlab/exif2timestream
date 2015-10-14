@@ -8,6 +8,7 @@ import logging
 import os
 import multiprocessing
 import shutil
+import struct
 log = logging.getLogger("exif2timestream")
 class CameraFields(object):
     """Validate input and translate between exif and config.csv fields."""
@@ -115,7 +116,10 @@ def find_image_files(camera):
 def process_image(args):
     log.debug("Starting to process image")
     image, camera, ext = args
-    image_date = get_file_date(image, 0, round_secs=1,date_mask=camera.date_mask)
+    try:
+        image_date = get_file_date(image, 0, round_secs=1,date_mask=camera.date_mask)
+    except struct.error:
+        pass
     delete = False
     try:
         time_tuple = (image_date.tm_hour, image_date.tm_min)
