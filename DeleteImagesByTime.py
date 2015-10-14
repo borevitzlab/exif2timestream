@@ -116,11 +116,10 @@ def process_image(args):
     log.debug("Starting to process image")
     image, camera, ext = args
     image_date = get_file_date(image, 0, round_secs=1,date_mask=camera.date_mask)
-    time_tuple = (image_date.tm_hour, image_date.tm_min)
     delete = False
     try:
-        if image_date is None:
-            pass
+        if image_date is not None:
+            time_tuple = (image_date.tm_hour, image_date.tm_min)
         elif camera.expt_start > image_date or image_date > camera.expt_end:
             log.debug("Deleting {}. Outside of date range {} to {}".format(
                 image, d2s(camera.expt_start), d2s(camera.expt_end)))
