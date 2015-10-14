@@ -143,7 +143,7 @@ def process_image(args):
             night_images[camera.timestream_name].append(image)
         log.debug("Deleted {}".format(image))
         find_empty_dirs(camera.root_path)
-    catch AttributeError:
+    except AttributeError:
         log.error ("Failed on this image", image)
 
     # if camera.start_time > image_date

@@ -1,10 +1,14 @@
 #!/bin/bash
 #Install the packages needed for Scimage
-sudo apt-get update
-sudo apt-get install -y python-dev python-pip
-sudo apt-get install -y gfortran libopenblas-dev liblapack-dev
-sudo -H pip install numpy==1.9.2
-sudo -H pip install scipy==0.15.1
-sudo apt-get install -y libpng-dev
-sudo apt-get install -y libfreetype6-dev libxft-dev
-python setup.py install
+elif [[ "$OSTYPE" == "msys"* ]]; then
+       echo "You are on a microsoft system. Please run the win_install.bat script instead"
+else
+	sudo apt-get update
+	sudo apt-get install -y python-dev python-pip
+	sudo apt-get install -y gfortran libopenblas-dev liblapack-dev
+	sudo -H pip install numpy==1.9.2
+	sudo -H pip install scipy==0.15.1
+	sudo apt-get install -y libpng-dev
+	sudo apt-get install -y libfreetype6-dev libxft-dev
+	python setup.py install
+fi
