@@ -155,10 +155,10 @@ def process_image(args):
                 os.unlink(image)
             except OSError:
                 log.error("Could not delete '{0}'".format(image))
+                log.debug("Deleted {}".format(image))
     except AttributeError:
-        log.error ("Failed on this image")
-    log.debug("Deleted {}".format(image))
-    find_empty_dirs(camera.root_path)
+        log.error ("Failed on this image", image)
+
 
     # if camera.start_time > image_date
 
@@ -179,6 +179,7 @@ def process_timestream(camera, ext, images, n_threads=1):
             print("Processed {:5d} Images".format(count), end='\r')
         pool.close()
         pool.join()
+    find_empty_dirs(camera.root_path)
     print("Processed {:5d} Images. Finished this cam!".format(count))
 
 
