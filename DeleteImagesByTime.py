@@ -118,42 +118,45 @@ def process_image(args):
     image_date = get_file_date(image, 0, round_secs=1,date_mask=camera.date_mask)
     time_tuple = (image_date.tm_hour, image_date.tm_min)
     delete = False
-    if image_date is None:
-        pass
-    elif camera.expt_start > image_date or image_date > camera.expt_end:
-        log.debug("Deleting {}. Outside of date range {} to {}".format(
-            image, d2s(camera.expt_start), d2s(camera.expt_end)))
-        delete=True;
-        # print("Deleting {}. Outside of date range {} to {}".format(
-        #     image, d2s(camera.expt_start), d2s(camera.expt_end)))
-    elif(camera.start_time > time_tuple or time_tuple > camera.end_time):
-        log.debug("Deleting {}. Outside of Time range {} to {}".format(
-            image, camera.start_time, camera.end_time))
-        delete=True;
-        # print("Deleting {}. Outside of Time range {} to {}".format(
-        #     image, camera.start_time, camera.end_time))
-    else:
-        log.debug("Not touching image {} as it doesnt fall otuside time or date range".format(image))
-    if(delete):
-        try:
-            log.debug("Will move {}".format(image))
-            archive_image = os.path.join(
-                camera.delete_dest,
-                os.path.basename(os.path.normpath(camera.root_path)),
-                os.path.relpath(image, camera.root_path))
+    try:
+        if image_date is None:
+            pass
+        elif camera.expt_start > image_date or image_date > camera.expt_end:
+            log.debug("Deleting {}. Outside of date range {} to {}".format(
+                image, d2s(camera.expt_start), d2s(camera.expt_end)))
+            delete=True;
+            # print("Deleting {}. Outside of date range {} to {}".format(
+            #     image, d2s(camera.expt_start), d2s(camera.expt_end)))
+        elif(camera.start_time > time_tuple or time_tuple > camera.end_time):
+            log.debug("Deleting {}. Outside of Time range {} to {}".format(
+                image, camera.start_time, camera.end_time))
+            delete=True;
+            # print("Deleting {}. Outside of Time range {} to {}".format(
+            #     image, camera.start_time, camera.end_time))
+        else:
+            log.debug("Not touching image {} as it doesnt fall otuside time or date range".format(image))
+        if(delete):
             try:
-                os.makedirs(os.path.dirname(archive_image))
-                log.debug("Made archive dir {}".format(os.path.dirname(
-                    archive_image)))
-            except OSError as exc:
-                if not os.path.exists(os.path.dirname(archive_image)):
-                    raise exc
-            archive_image = _dont_clobber(archive_image)
-            shutil.copyfile(image, archive_image)
-            log.debug("Copied {} to {}".format(image, archive_image))
-            os.unlink(image)
-        except OSError:
-            log.error("Could not delete '{0}'".format(image))
+                log.debug("Will move {}".format(image))
+                archive_image = os.path.join(
+                    camera.delete_dest,
+                    os.path.basename(os.path.normpath(camera.root_path)),
+                    os.path.relpath(image, camera.root_path))
+                try:
+                    os.makedirs(os.path.dirname(archive_image))
+                    log.debug("Made archive dir {}".format(os.path.dirname(
+                        archive_image)))
+                except OSError as exc:
+                    if not os.path.exists(os.path.dirname(archive_image)):
+                        raise exc
+                archive_image = _dont_clobber(archive_image)
+                shutil.copyfile(image, archive_image)
+                log.debug("Copied {} to {}".format(image, archive_image))
+                os.unlink(image)
+            except OSError:
+                log.error("Could not delete '{0}'".format(image))
+    except AttributeError:
+        log.error ("Failed on this image")
     log.debug("Deleted {}".format(image))
     find_empty_dirs(camera.root_path)
 
