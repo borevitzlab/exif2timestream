@@ -121,26 +121,30 @@ def process_image(args):
     image_date = get_file_date(image, 0, round_secs=1,date_mask=camera.date_mask)
     time_tuple = (image_date.tm_hour, image_date.tm_min)
     delete = False
-    if image_date is None:
-        pass
-    elif camera.expt_start > image_date or image_date > camera.expt_end:
-        log.debug("Deleting {}. Outside of date range {} to {}".format(
-            image, d2s(camera.expt_start), d2s(camera.expt_end)))
-        delete=True;
-        # print("Deleting {}. Outside of date range {} to {}".format(
-        #     image, d2s(camera.expt_start), d2s(camera.expt_end)))
-    elif(camera.start_time > time_tuple or time_tuple > camera.end_time):
-        log.debug("Deleting {}. Outside of Time range {} to {}".format(
-            image, camera.start_time, camera.end_time))
-        delete=True;
-        # print("Deleting {}. Outside of Time range {} to {}".format(
-        #     image, camera.start_time, camera.end_time))
-    else:
-        log.debug("Not touching image {} as it doesnt fall otuside time or date range".format(image))
-    if(delete):
-        night_images[camera.timestream_name].append(image)
-    log.debug("Deleted {}".format(image))
-    find_empty_dirs(camera.root_path)
+    try:
+        time_tuple = (image_date.tm_hour, image_date.tm_min)
+        if image_date is None:
+            pass
+        elif camera.expt_start > image_date or image_date > camera.expt_end:
+            log.debug("Deleting {}. Outside of date range {} to {}".format(
+                image, d2s(camera.expt_start), d2s(camera.expt_end)))
+            delete=True;
+            # print("Deleting {}. Outside of date range {} to {}".format(
+            #     image, d2s(camera.expt_start), d2s(camera.expt_end)))
+        elif(camera.start_time > time_tuple or time_tuple > camera.end_time):
+            log.debug("Deleting {}. Outside of Time range {} to {}".format(
+                image, camera.start_time, camera.end_time))
+            delete=True;
+            # print("Deleting {}. Outside of Time range {} to {}".format(
+            #     image, camera.start_time, camera.end_time))
+        else:
+            log.debug("Not touching image {} as it doesnt fall otuside time or date range".format(image))
+        if(delete):
+            night_images[camera.timestream_name].append(image)
+        log.debug("Deleted {}".format(image))
+        find_empty_dirs(camera.root_path)
+    except AttributeError:
+        log.error ("Failed on this image", image)
 
     # if camera.start_time > image_date
 
@@ -169,7 +173,10 @@ def process_timestream(camera, ext, images, n_threads=1):
         writer.writeheader()
 
         for night_pictures in night_images[camera.timestream_name]:
-            writer.writerow({'TIMESTREAM_NAME':camera.timestream_name, 'IMAGE':night_pictures})
+            filename = night_pictures
+            if ("TimeStreams" in filename):
+                filename = filename.split("Timestreams" + os.path.sep)[1]
+            writer.writerow({'TIMESTREAM_NAME':camera.timestream_name, 'IMAGE':filename})
 
 
 
