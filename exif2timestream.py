@@ -456,6 +456,7 @@ def get_file_date(filename, timeshift, round_secs=1, date_mask = DATE_MASK):
         str_date = exif_tags.exif.primary.ExtendedEXIF.DateTimeOriginal
         date = strptime(str_date, EXIF_DATE_FMT)
     except (AttributeError, pexif.JpegFile.InvalidFile):
+       # print ("failed pexif")
         pass
     if not date:
         with open(filename, "rb") as fh:
@@ -466,6 +467,7 @@ def get_file_date(filename, timeshift, round_secs=1, date_mask = DATE_MASK):
                 str_date = exif_tags[EXIF_DATE_TAG].values
                 date = strptime(str_date, EXIF_DATE_FMT)
             except KeyError:
+             #   print ("failed ExifRead")
                 pass
     if not date:
     # Try to get datetime from the filename, but not the directory
@@ -475,7 +477,7 @@ def get_file_date(filename, timeshift, round_secs=1, date_mask = DATE_MASK):
         date = get_time_from_filename(filename,date_mask)
         if date is None:
             log.debug("Unable to scrape date from '{}'".format(filename))
-            print("Unable to read Exif Data")
+          #  print("Unable to read Exif Data")
             return None
         else:
             if not write_exif_date(filename, date):
@@ -629,16 +631,20 @@ def _dont_clobber(fn, mode="append"):
 def process_image(args):
     """Do move and copy operations for a camera config and list of images."""
     log.debug("Starting to process image")
+
     image, camera, ext = args
     image_date = get_file_date(image, camera.timeshift, camera.interval * 60)
     if camera.expt_start > image_date or image_date > camera.expt_end:
         log.debug("Skipping {}. Outside of date range {} to {}".format(
             image, d2s(camera.expt_start), d2s(camera.expt_end)))
         return
-
+    my_ext = os.path.splitext(image)[-1].lower().strip(".")
+	
+    if not (my_ext == ext) and not ((my_ext in RAW_FORMATS) and (ext == "raw")):
+        return
     if camera.method == "json":
         return
-    if camera.method == "resize":
+    if camera.method == "resize" and (ext not in RAW_FORMATS):
         resize_function(camera, image_date, image)
         log.debug("Rezied Image {}".format(image))
     if camera.method == "archive":
@@ -763,7 +769,7 @@ def setup_logs(logdir, debug=False):
 def get_resolution(image, camera):
     """Return various resolution numbers for an image."""
     try:
-        if "raw" in camera.image_types:
+        if "raw" in camera.image_types and os.path.splitext(image)[-1].lower().strip(".") in RAW_FORMATS:
             with open(image, "rb") as fh:
                 exif_tags = exifread.process_file(
                     fh, details=False)
@@ -781,6 +787,7 @@ def get_resolution(image, camera):
             try:
                 image_resolution = novice.open(image).size
             except ValueError:
+                print("Value Error?")
                 image_resolution=(0,0)
     except IOError:
         image_resolution = (0, 0)
@@ -826,7 +833,6 @@ def get_thumbnail_paths(camera, images):
                 pass
     for i in range (0, len(thumb_image)):
         if thumb_image[i]:
-            print(thumb_image)
             if "a_data" in thumb_image[i]:
                 thumb_image = url + thumb_image[i].split("a_data")[1]
             if len(camera.resolutions)>1:
@@ -841,7 +847,11 @@ def get_actual_start_end(camera, images, ext):
     j=0
     my_ext_images = [];
     for image in images:
-        my_ext_images = os.path.splitext(image)[-1].lower().strip(".")
+        my_ext = os.path.splitext(image)[-1].lower().strip(".")
+        if (my_ext == ext):
+            my_ext_images.append(image);
+        elif (my_ext in RAW_FORMATS) and (ext == "raw"):
+            my_ext_images.append(image);	
     while earlier and (j<= len(my_ext_images)-1):
         date = get_file_date(my_ext_images[j], camera.timeshift, camera.interval * 60)
         if (date >= camera.expt_start) and (date is not None):
@@ -872,7 +882,12 @@ def find_empty_dirs(root_dir):
 
 def process_camera(camera, ext, images, n_threads=1):
     """Process a set of images for one extension for a single camera."""
-    res, new_res, image_resolution, folder = get_resolution(images[0], camera)
+    try:
+        my_image = (x for x in images if ((os.path.splitext(x)[-1].lower().strip(".") == ext) or (os.path.splitext(x)[-1].lower().strip(".") in RAW_FORMATS and ext == "raw"))).next()
+    except StopIteration:
+	    return
+    
+    res, new_res, image_resolution, folder = get_resolution(my_image, camera)
     webrootaddr, thumb_image = get_thumbnail_paths(camera, images)
 
     p_start, p_end = get_actual_start_end(camera, images, ext)
@@ -930,7 +945,7 @@ def process_camera(camera, ext, images, n_threads=1):
                 if not (key.lower() in ('ts_name')):
                     jdump.pop(key, None)
     create_small_json("fullres", camera,image_resolution, p_start, p_end, ts_end_text)
-    if len(camera.resolutions)>1:
+    if len(camera.resolutions)>1 and ext not in RAW_FORMATS:
         create_small_json(new_res[camera.orientation in ("90", "270")], camera, new_res, p_start, p_end, ts_end_text)
     return {k: str(v) for k, v in jdump.items()}
 
