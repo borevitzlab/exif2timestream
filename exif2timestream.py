@@ -836,11 +836,18 @@ def get_thumbnail_paths(camera, images):
 
     return webrootaddr, thumb_image
 
-def get_actual_start_end(camera, images):
+def get_actual_start_end(camera, images, ext):
     earlier = True
     j=0
     while earlier and (j<= len(images)-1):
-        date = get_file_date(images[j], camera.timeshift, camera.interval * 60)
+        my_ext_images = [];
+        for image in images:
+            image_ext = os.path.splitext(image)[-1].lower().strip(".")
+            if image_ext is ext:
+                my_ext_images.append(image)
+            elif image_ext in RAW_FORMATS and ext is "raw" :
+                my_ext_images.append(image)
+        date = get_file_date(my_ext_images[j], camera.timeshift, camera.interval * 60)
         if (date >= camera.expt_start) and (date is not None):
             earlier = False
         j+=1
@@ -848,9 +855,9 @@ def get_actual_start_end(camera, images):
         date = camera.expt_start
     p_start = date
     later = True
-    j = len(images)-1
+    j = len(my_ext_images)-1
     while later and j>=0:
-        date = get_file_date(images[j], camera.timeshift, camera.interval * 60)
+        date = get_file_date(my_ext_images[j], camera.timeshift, camera.interval * 60)
         if (date <= camera.expt_end) and (date is not None):
             later = False
         j-=1
@@ -872,7 +879,7 @@ def process_camera(camera, ext, images, n_threads=1):
     res, new_res, image_resolution, folder = get_resolution(images[0], camera)
     webrootaddr, thumb_image = get_thumbnail_paths(camera, images)
 
-    p_start, p_end = get_actual_start_end(camera, images)
+    p_start, p_end = get_actual_start_end(camera, images, ext)
 
     # TODO: sort out the whole subsecond clusterfuck
     if n_threads == 1:
