@@ -839,14 +839,10 @@ def get_thumbnail_paths(camera, images):
 def get_actual_start_end(camera, images, ext):
     earlier = True
     j=0
-    while earlier and (j<= len(images)-1):
-        my_ext_images = [];
-        for image in images:
-            image_ext = os.path.splitext(image)[-1].lower().strip(".")
-            if image_ext is ext:
-                my_ext_images.append(image)
-            elif image_ext in RAW_FORMATS and ext is "raw" :
-                my_ext_images.append(image)
+    my_ext_images = [];
+    for image in images:
+        my_ext_images = os.path.splitext(image)[-1].lower().strip(".")
+    while earlier and (j<= len(my_ext_images)-1):
         date = get_file_date(my_ext_images[j], camera.timeshift, camera.interval * 60)
         if (date >= camera.expt_start) and (date is not None):
             earlier = False
