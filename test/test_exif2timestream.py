@@ -100,7 +100,7 @@ class TestExifTraitcapture(unittest.TestCase):
 
     r_fullres_path = path.join(
         out_dirname, "timestreams", "BVZ00000", "EUC-R01C01-C01-F01",
-        "original",'BVZ00000-EUC-R01C01-C01-F01~fullres-orig', '2013', '2013_11',
+        'original', 'BVZ00000-EUC-R01C01-C01-F01~fullres-orig', '2013', '2013_11',
         '2013_11_12', '2013_11_12_20',
         'BVZ00000-EUC-R01C01-C01-F01~fullres-orig_2013_11_12_20_55_00_00.JPG'
     )
@@ -113,9 +113,9 @@ class TestExifTraitcapture(unittest.TestCase):
 
     r_raw_path = path.join(
         out_dirname, "timestreams", "BVZ00000", "EUC-R01C01-C01-F01",
-        "original",'BVZ00000-EUC-R01C01-C01-F01~fullres-orig', '2013', '2013_11',
+        "original",'BVZ00000-EUC-R01C01-C01-F01~fullres-raw', '2013', '2013_11',
         '2013_11_12', '2013_11_12_20',
-        'BVZ00000-EUC-R01C01-C01-F01~fullres-orig_2013_11_12_20_55_00_00'
+        'BVZ00000-EUC-R01C01-C01-F01~fullres-raw_2013_11_12_20_55_00_00'
         '.CR2'
     )
 
@@ -320,11 +320,11 @@ class TestExifTraitcapture(unittest.TestCase):
                 'sunset': (22, 0),
                 'use': True,
                 'user': 'Glasshouses',
-                'ts_structure': ('BVZ00000/EUC-R01C01-C01-F01/{folder}/BVZ00000-EUC-R01C01-C01-F01~{res}-orig'),
+                'ts_structure': ('BVZ00000/EUC-R01C01-C01-F01/{folder}/BVZ00000-EUC-R01C01-C01-F01~{res}-{step}'),
                 'project_owner': '',
                 'filename_date_mask':'',
                 'fn_parse': '',
-                'fn_structure': 'BVZ00000-EUC-R01C01-C01-F01~{res}-orig',
+                'fn_structure': 'BVZ00000-EUC-R01C01-C01-F01~{res}-{step}',
                 'orientation': '',
                 'timeshift':'',
                 'datasetID':'01',
@@ -504,34 +504,12 @@ class TestExifTraitcapture(unittest.TestCase):
 
         })
         output= (e2t.parse_structures(ts_format_test))
-        self.assertEqual("BVZ00000/EUC-R01C01-C01-F01/{folder}/BVZ00000-EUC-R01C01-C01-F01~{res}-orig", output.ts_structure)
-        self.assertEqual("BVZ00000-EUC-R01C01-C01-F01~{res}-orig", output.fn_structure)
+        self.assertEqual("BVZ00000/EUC-R01C01-C01-F01/{folder}/BVZ00000-EUC-R01C01-C01-F01~{res}-{step}", output.ts_structure)
+        self.assertEqual("BVZ00000-EUC-R01C01-C01-F01~{res}-{step}", output.fn_structure)
         self.assertEqual('BVZ00000-EUC-R01C01-C01-F01', output.userfriendlyname)
 
     def test_structure_format_all(self):
         ts_format_test = e2t.CameraFields(
-        #     {
-        #     'EXPT': 'BVZ00000',
-        #     'CAM_NUM': 1,
-        #     'EXPT_END': '2013_12_31',
-        #     'EXPT_START': '2013_11_01',
-        #     'LOCATION': 'EUC-R01C01',
-        #     'sunrise': '500',
-        #     'sunset': '2200',
-        #     'camera_timezone': '1100',
-        #     'USE': '1',
-        #     'user': 'Glasshouses',
-        #     'ts_structure': 'EXPT/CAM_NUM-LOCATION-location/potato/',
-        #     'FN_PARSE': '',
-        #     'PROJECT_OWNER': '',
-        #     'FILENAME_DATE_MASK': "",
-        #     'fn_structure': 'LOCATION-location-dontreplace-USE/SUNSET',
-        #     'ORIENTATION': '',
-        #     'DATASETID':1,
-        #     'TIMESHIFT':0,
-        #     'userfriendlyname':'LOCATION-location-dontreplace-USE/SUNSET',
-        #     'JSON_UPDATES':''
-        # }
          {
             'ARCHIVE_DEST': '/',
             'EXPT': 'BVZ00000',
@@ -565,8 +543,8 @@ class TestExifTraitcapture(unittest.TestCase):
         }
         )
         output= (e2t.parse_structures(ts_format_test))
-        self.assertEqual("BVZ00000/EUC-R01C01-location/{folder}/potato~{res}-orig", output.ts_structure)
-        self.assertEqual("BVZ00000EUC-R01C01-locationpotato~{res}-orig", output.fn_structure)
+        self.assertEqual("BVZ00000/EUC-R01C01-location/potato~{res}-{step}", output.ts_structure)
+        self.assertEqual("BVZ00000EUC-R01C01-locationpotato~{res}-{step}", output.fn_structure)
         self.assertEqual('BVZ00000/EUC-R01C01-location/potato', output.userfriendlyname)
 
 
