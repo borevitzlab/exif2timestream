@@ -343,7 +343,6 @@ def parse_structures(camera):
         direc, fname = os.path.split(camera.ts_structure)
         camera.ts_structure = os.path.join(
             direc,
-            "{folder}",
             (fname + "~" + "{res}" + "-{step}")
             )
     if not len(camera.fn_structure) and not camera.fn_structure:
@@ -1025,4 +1024,4 @@ if __name__ == "__main__":
         from ._version import get_versions
         print("Version {}".format(get_versions()['version']))
         sys.exit(0)
-    main(opts.config, debug=opts.debug, logdir='log', n_threads=opts.threads)
+    main(opts.config, debug=opts.debug, logdir=opts.logdir, n_threads=opts.threads)
