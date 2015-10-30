@@ -717,6 +717,7 @@ def find_image_files(camera):
     """
     exts = camera.image_types
     ext_files = {}
+    count_images = 0
     for ext in exts:
         src = camera.source
 
@@ -736,9 +737,11 @@ def find_image_files(camera):
 
             for fle in files:
                 this_ext = os.path.splitext(fle)[-1].lower().strip(".")
-                if ext in (this_ext, "raw"):
+                if ext in (this_ext) or (ext == "raw" and this_ext in RAW_FORMATS):
                     fle_path = os.path.join(cur_dir, fle)
                     if camera.fn_parse in fle_path:
+                        count_images+=1
+                        print("Found {:5d} Images".format(count_images), end='\r')
                         try:
                             ext_files[ext].append(fle_path)
                         except KeyError:
@@ -845,7 +848,7 @@ def get_thumbnail_paths(camera, images):
     for i in range (0, len(thumb_image)):
         if thumb_image[i]:
             if "a_data" in thumb_image[i]:
-                thumb_image = url + thumb_image[i].split("a_data")[1]
+                thumb_image[i] = url + thumb_image[i].split("a_data")[1]
             if len(camera.resolutions)>1:
                 thumb_image[i] = thumb_image[i].format(folder="outputs", res = camera.resolutions[1][0])
             else:
