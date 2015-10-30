@@ -547,6 +547,7 @@ def make_timestream_name(camera, res="fullres", step="orig",
 def timestreamise_image(image, camera, subsec=0, step="orig"):
     """Process a single image, mv/cp-ing it to its new location"""
     # Edit the global variable for the date mask, used elsewhere
+
     global DATE_MASK
     DATE_MASK = camera.filename_date_mask
     image_date = get_file_date(image, camera.timeshift, camera.interval * 60)
@@ -645,7 +646,8 @@ def process_image(args):
             image, d2s(camera.expt_start), d2s(camera.expt_end)))
         return
     my_ext = os.path.splitext(image)[-1].lower().strip(".")
-	
+    if "_last_image" in image:
+        return
     if not (my_ext == ext) and not ((my_ext in RAW_FORMATS) and (ext == "raw")):
         return
     if camera.method == "json":

@@ -186,10 +186,10 @@ def main(configfile, n_threads=1, logdir=None, debug=False):
     for camera in parse_camera_config_csv(configfile):
         print("Processing Timestream {}".format(
             camera.timestream_name))
-        print ("Archiving images between Times {}, {} and Dates {}, {}".format(camera.start_time, camera.end_time, time.strftime("%Y/%m/%d", camera.expt_start), time.strftime("%Y/%m/%d", camera.expt_end)))
+        print ("Listing images between Times {}, {} and Dates {}, {}".format(camera.start_time, camera.end_time, time.strftime("%Y/%m/%d", camera.expt_start), time.strftime("%Y/%m/%d", camera.expt_end)))
         log.info("Processing Timestream {}".format(
             camera.timestream_name))
-        log.info("Archiving images between Times {}, {} and Dates {}, {}".format(camera.start_time, camera.end_time, time.strftime("%Y/%m/%d", camera.expt_start), time.strftime("%Y/%m/%d", camera.expt_end)))
+        log.info("Listing images between Times {}, {} and Dates {}, {}".format(camera.start_time, camera.end_time, time.strftime("%Y/%m/%d", camera.expt_start), time.strftime("%Y/%m/%d", camera.expt_end)))
 
         print("Images are coming from {}, being put in {}".format(
             camera.root_path, camera.archive_dest))
@@ -212,4 +212,4 @@ if __name__ == "__main__":
         from ._version import get_versions
         print("Version {}".format(get_versions()['version']))
         sys.exit(0)
-    main(opts.config, debug=opts.debug, logdir='log', n_threads=opts.threads)
+    main(opts.config, debug=opts.debug, logdir=opts.logdir, n_threads=opts.threads)
