@@ -266,24 +266,28 @@ def d2s(date):
     else:
         return date
 
-def create_small_json(res, camera, image_resolution, p_start, p_end, ts_end_text):
+def create_small_json(res, camera, image_resolution, p_start, p_end, ts_end_text, ext):
     if (res == "fullres"):
         folder = "original"
     else:
         folder = "outputs"
 
+    if (ext in RAW_FORMATS):
+        step = "raw"
+    else:
+        step = 'orig'
     if not os.path.exists(os.path.join(camera.destination, camera.ts_structure.format(folder=folder,
-        res=res))):
+        res=res, step = step))):
         os.makedirs(os.path.join(camera.destination, camera.ts_structure.format(folder=folder,
-        res=res)))
+        res=res, step = step)))
     small_json = open(os.path.join(camera.destination, camera.ts_structure.format(folder=folder,
-        res=res), camera.userfriendlyname + '-ts-info.json'), 'wb+')
+        res=res, step = step), camera.userfriendlyname + '-ts-info.json'), 'wb+')
     jdump = {
         'expt': camera.expt,
         'owner': camera.project_owner,
         'height': image_resolution[camera.orientation not in ("270", "90")],
-        'image_type': camera.image_types[0].upper(),
-        'ts_name': camera.ts_structure.format(folder = folder, res = res),
+        'image_type': ext,
+        'ts_name': camera.ts_structure.format(folder = folder, res = res, step = step),
         'ts_id': '{}-{}-C{}-F{}'.format(camera.expt, camera.location, camera.cam_num,camera.datasetID),
         'name':camera.userfriendlyname,
         'period_in_minutes': camera.interval,
@@ -299,8 +303,13 @@ def create_small_json(res, camera, image_resolution, p_start, p_end, ts_end_text
 
 def parse_structures(camera):
     # Sneaky check the friendly name, and replace it if its none
+    if (camera.datasetID):
+        data_set_id = "-F" + camera.datasetID
+    else:
+        data_set_id = ""
+
     if not camera.userfriendlyname:
-        camera.userfriendlyname = '{}-{}-C{}-F{}'.format(camera.expt, camera.location, camera.cam_num,camera.datasetID)
+        camera.userfriendlyname = '{}-{}-C{}{}'.format(camera.expt, camera.location, camera.cam_num,data_set_id)
     else:
          for key, value in camera.__dict__.items():
             camera.userfriendlyname = camera.userfriendlyname.replace(key.upper(),
@@ -310,18 +319,16 @@ def parse_structures(camera):
     format."""
     if camera.ts_structure is None or len(camera.ts_structure) == 0:
         # If we dont have a ts_structure, then lets do the default one
+
         camera.ts_structure = os.path.join(
             camera.expt,
             (camera.location + '-C' +
-            camera.cam_num + '-F' +
-            camera.datasetID),
+            camera.cam_num + data_set_id),
             '{folder}',
-
-
             (camera.expt + '-' +
             camera.location + "-C" +
-            camera.cam_num + "-F" +
-            camera.datasetID + "~{res}-orig" )).replace("_","-")
+            camera.cam_num +
+            data_set_id + "~{res}-{step}" )).replace("_","-")
 
     else:
         # Replace the ts_structure with all the other stuff
@@ -337,20 +344,20 @@ def parse_structures(camera):
         camera.ts_structure = os.path.join(
             direc,
             "{folder}",
-            (fname + "~" + "{res}" + "-orig")
+            (fname + "~" + "{res}" + "-{step}")
             )
     if not len(camera.fn_structure) and not camera.fn_structure:
         camera.fn_structure = camera.expt.replace("_", "-") + \
             '-' + camera.location.replace("_", "-") + \
             '-C' + camera.cam_num.replace("_", "-") +\
-            '-F' + camera.datasetID.replace("_", "-") + \
-            '~{res}-orig'
+            data_set_id + \
+            '~{res}-{step}'
     else:
         for key, value in camera.__dict__.items():
             camera.fn_structure = camera.fn_structure.replace(key.upper(),
                                                               str(value))
         camera.fn_structure = camera.fn_structure.replace("/", "")\
-            .replace("_", "-") + '~{res}-orig'
+            .replace("_", "-") + '~{res}-{step}'
     return camera
 
 
@@ -377,7 +384,7 @@ def resize_function(camera, image_date, dest):
     resized_img = os.path.join(
         camera.destination,
         camera.ts_structure.format(folder='outputs', res=str(new_res[0]),
-                                   cam=camera.cam_num, step='outputs'),
+                                   cam=camera.cam_num, step='orig'),
         resizing_temp_outname)
     if os.path.isfile(resized_img):
         return
@@ -553,7 +560,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
     out_image = os.path.join(
         camera.destination,
         camera.ts_structure.format(folder='original', res='fullres',
-                                   cam=camera.cam_num, step='orig'),
+                                   cam=camera.cam_num, step=step),
         out_image)
     # make the target directory
     try:
@@ -643,6 +650,9 @@ def process_image(args):
     if not (my_ext == ext) and not ((my_ext in RAW_FORMATS) and (ext == "raw")):
         return
     if camera.method == "json":
+        return
+    if "last_image" in image.lower() :
+        log.debug ("Skipping file {}, assumed last image".format(image))
         return
     if camera.method == "resize" and (ext not in RAW_FORMATS):
         resize_function(camera, image_date, image)
@@ -828,7 +838,7 @@ def get_thumbnail_paths(camera, images):
                     image_date, make_timestream_name(camera, new_res[0], 'orig'))
                 thumb_image[i] = os.path.join(
                     camera.destination, os.path.dirname(camera.ts_structure).format(folder=folder),
-                        os.path.basename(camera.ts_structure).format(res=res), ts_image)
+                        os.path.basename(camera.ts_structure).format(res=res, step='orig'), ts_image)
             except SkipImage:
                 pass
     for i in range (0, len(thumb_image)):
@@ -944,9 +954,9 @@ def process_camera(camera, ext, images, n_threads=1):
             if not (key.lower() in camera.json_updates.lower()):
                 if not (key.lower() in ('ts_name')):
                     jdump.pop(key, None)
-    create_small_json("fullres", camera,image_resolution, p_start, p_end, ts_end_text)
+    create_small_json("fullres", camera,image_resolution, p_start, p_end, ts_end_text, ext)
     if len(camera.resolutions)>1 and ext not in RAW_FORMATS:
-        create_small_json(new_res[camera.orientation in ("90", "270")], camera, new_res, p_start, p_end, ts_end_text)
+        create_small_json(new_res[camera.orientation in ("90", "270")], camera, new_res, p_start, p_end, ts_end_text, ext)
     return {k: str(v) for k, v in jdump.items()}
 
 
