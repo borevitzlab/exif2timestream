@@ -141,8 +141,7 @@ def process_image(args):
             log.debug("Not touching image {} as it doesnt fall otuside time or date range".format(image))
         if(delete):
             night_images[camera.timestream_name].append(image)
-        log.debug("Deleted {}".format(image))
-        find_empty_dirs(camera.root_path)
+            log.debug("Deleted {}".format(image))
     except AttributeError:
         log.error ("Failed on this image", image)
 
