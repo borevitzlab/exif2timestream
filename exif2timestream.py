@@ -715,6 +715,7 @@ def find_image_files(camera):
     """Scrape a directory for image files, by extension.
     Possibly, in future, use file magic numbers, but a bad idea on windows.
     """
+    print("Finding Image Files in source Directory {}".format(camera.source))
     exts = camera.image_types
     ext_files = {}
     count_images = 0
@@ -944,9 +945,9 @@ def process_camera(camera, ext, images, n_threads=1):
         'ts_start': strftime(TS_DATE_FMT, p_start),
         'ts_version': '1',
         'utc': "false",
-        'webroot_hires':webrootaddr.format(folder="original", res="fullres"),
+        'webroot_hires':webrootaddr.format(folder="original", res="fullres", step="orig"),
         'webroot':webrootaddr.format(folder="outputs", res=new_res[camera.orientation in ("90",
-                                                                   "270")]),
+                                                                   "270")], step ="orig"),
         'width_hires': image_resolution[camera.orientation in ("90",
                                                                    "270")],
         'width': new_res[camera.orientation in ("90",
@@ -989,9 +990,9 @@ def main(configfile, n_threads=1, logdir=None, debug=False):
         log.info("Images are coming from {}, being put in {}".format(
             camera.source, camera.destination))
         for ext, images in find_image_files(camera).items():
-            print(("Have {0} {1} images from this camera".format(
+            print(("Have Found {0} {1} images from this camera".format(
                 len(images), ext)))
-            log.info("Have {0} {1} images from this camera".format(
+            log.info("Have Found {0} {1} images from this camera".format(
                 len(images), ext))
             n_images += len(images)
             json_dump.append(process_camera(camera, ext, sorted(images),
