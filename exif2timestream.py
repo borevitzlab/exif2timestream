@@ -19,6 +19,7 @@ import shutil
 import sys
 from time import strptime, strftime, mktime, localtime, struct_time, time, sleep
 import warnings
+import struct
 
 # Module imports
 import pexif
@@ -461,7 +462,7 @@ def get_file_date(filename, timeshift, round_secs=1, date_mask = DATE_MASK):
         exif_tags = pexif.JpegFile.fromFile(filename)
         str_date = exif_tags.exif.primary.ExtendedEXIF.DateTimeOriginal
         date = strptime(str_date, EXIF_DATE_FMT)
-    except (AttributeError, pexif.JpegFile.InvalidFile):
+    except (AttributeError, pexif.JpegFile.InvalidFile, struct.error):
        # print ("failed pexif")
         pass
     if not date:
@@ -715,7 +716,8 @@ def find_image_files(camera):
     """Scrape a directory for image files, by extension.
     Possibly, in future, use file magic numbers, but a bad idea on windows.
     """
-    print("Finding Image Files in source Directory {}".format(camera.source))
+    print("Finding Image Files in source Directory {}. ".format(camera.source))
+    print("Warning, this can take a while depending on number of images in the directory")
     exts = camera.image_types
     ext_files = {}
     count_images = 0
@@ -933,7 +935,7 @@ def process_camera(camera, ext, images, n_threads=1):
         'expt': camera.expt,
         'height_hires': image_resolution[camera.orientation not in ("270", "90")],
         'height': new_res[camera.orientation not in ("270", "90")],
-        'image_type': camera.image_types[0].upper(),
+        'image_type': ext,
         'ts_id': '{}-{}-C{}-F{}'.format(camera.expt, camera.location, camera.cam_num,camera.datasetID),
         'name':camera.userfriendlyname,
         'period_in_minutes': camera.interval,
