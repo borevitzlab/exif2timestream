@@ -49,7 +49,6 @@ IMAGE_SUBFOLDERS = {"raw", "jpg", "png", "tiff", "nef", "cr2"}
 DATE_NOW_CONSTANTS = {"now", "current"}
 ongoing = False
 
-#TODO: JSON Options to reprint
 def cli_options():
     """Return CLI arguments with argparse."""
     parser = argparse.ArgumentParser()
@@ -289,7 +288,7 @@ def create_small_json(res, camera, image_resolution, p_start, p_end, ts_end_text
         'height': image_resolution[camera.orientation not in ("270", "90")],
         'image_type': ext,
         'ts_name': camera.ts_structure.format(folder = folder, res = res, step = step),
-        'ts_id': '{}-{}-C{}-F{}'.format(camera.expt, camera.location, camera.cam_num,camera.datasetID),
+        'ts_id': '{}-{}-C{}'.format(camera.expt, camera.location, camera.cam_num) + str(camera.datasetID),
         'name':camera.userfriendlyname,
         'period_in_minutes': camera.interval,
         'posix_end': mktime(p_end),
@@ -467,7 +466,6 @@ def get_file_date(filename, timeshift, round_secs=1, date_mask = DATE_MASK):
         pass
     if not date:
         with open(filename, "rb") as fh:
-        # TODO:  get this in some other way, removing exifread dependency?
             exif_tags = exifread.process_file(
                 fh, details=False, stop_tag=EXIF_DATE_TAG)
             try:
@@ -665,7 +663,7 @@ def process_image(args):
         out_image = get_new_file_name(image_date, ts_name)
         archive_image = os.path.join(
             camera.archive_dest,
-            os.path.basename(os.path.normpath(camera.source)),
+            camera.ts_structure.format(folder="original", res="fullres", step="orig"),
             os.path.relpath(image, camera.source))
         try:
             os.makedirs(os.path.dirname(archive_image))
@@ -936,7 +934,7 @@ def process_camera(camera, ext, images, n_threads=1):
         'height_hires': image_resolution[camera.orientation not in ("270", "90")],
         'height': new_res[camera.orientation not in ("270", "90")],
         'image_type': ext,
-        'ts_id': '{}-{}-C{}-F{}'.format(camera.expt, camera.location, camera.cam_num,camera.datasetID),
+        'ts_id': '{}-{}-C{}'.format(camera.expt, camera.location, camera.cam_num ) + str(camera.datasetID),
         'name':camera.userfriendlyname,
         'period_in_minutes': camera.interval,
         'posix_end': mktime(p_end),
