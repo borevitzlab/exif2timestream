@@ -174,7 +174,9 @@ def process_timestream(camera, ext, images, n_threads=1):
         for night_pictures in night_images[camera.timestream_name]:
             filename = night_pictures
             if ("TimeStreams" in filename):
-                filename = filename.split("Timestreams" + os.path.sep)[1]
+                filename = filename.split("Timestreams")[1]
+                if filename[0] is os.path.sep:
+                    filename = filename[1:]
             writer.writerow({'TIMESTREAM_NAME':camera.timestream_name, 'IMAGE':filename})
 
 
