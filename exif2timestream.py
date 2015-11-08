@@ -270,7 +270,7 @@ def create_small_json(res, camera, image_resolution, p_start, p_end, ts_end_text
     if (res == "fullres"):
         folder = "original"
     else:
-        folder = "outputs"
+        folder = "output"
 
     if (ext in RAW_FORMATS):
         step = "raw"
@@ -382,7 +382,7 @@ def resize_function(camera, image_date, dest):
     resizing_temp_outname = get_new_file_name(image_date, ts_name)
     resized_img = os.path.join(
         camera.destination,
-        camera.ts_structure.format(folder='outputs', res=str(new_res[0]),
+        camera.ts_structure.format(folder='output', res=str(new_res[0]),
                                    cam=camera.cam_num, step='orig'),
         resizing_temp_outname)
     if os.path.isfile(resized_img):
@@ -808,7 +808,7 @@ def get_resolution(image, camera):
         image_resolution = (0, 0)
     folder, res, new_res = "original", 'fullres', image_resolution
     if (len(camera.resolutions) > 1)and (new_res != (0,0)):
-        folder = "outputs"
+        folder = "output"
         new_res = camera.resolutions[1]
 
         if camera.resolutions[1][1] is None:
@@ -851,7 +851,7 @@ def get_thumbnail_paths(camera, images):
             if "a_data" in thumb_image[i]:
                 thumb_image[i] = url + thumb_image[i].split("a_data")[1]
             if len(camera.resolutions)>1:
-                thumb_image[i] = thumb_image[i].format(folder="outputs", res = camera.resolutions[1][0])
+                thumb_image[i] = thumb_image[i].format(folder="output", res = camera.resolutions[1][0])
             else:
                 thumb_image[i] = thumb_image[i].format(folder="original", res = "orig")
 
@@ -946,7 +946,7 @@ def process_camera(camera, ext, images, n_threads=1):
         'ts_version': '1',
         'utc': "false",
         'webroot_hires':webrootaddr.format(folder="original", res="fullres", step="orig"),
-        'webroot':webrootaddr.format(folder="outputs", res=new_res[camera.orientation in ("90",
+        'webroot':webrootaddr.format(folder="output", res=new_res[camera.orientation in ("90",
                                                                    "270")], step ="orig"),
         'width_hires': image_resolution[camera.orientation in ("90",
                                                                    "270")],

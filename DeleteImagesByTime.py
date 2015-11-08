@@ -41,9 +41,6 @@ class CameraFields(object):
         if not all(key in csv_config_dict for key in self.REQUIRED):
             raise ValueError('CSV config dict lacks required key/s.' + str(csv_config_dict))
 
-# TODO: re-enable correctly, to catch illegal keys
-#        if any(key not in self.TS_CSV for key in csv_config_dict):
-#            raise ValueError('CSV config dict has unknown key/s.')
         # Converts dict keys and calls validation function on each value
         csv_config_dict = {k: self.SCHEMA[k](v)
                            for k, v in csv_config_dict.items()}
