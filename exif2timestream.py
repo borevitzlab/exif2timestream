@@ -364,40 +364,41 @@ def resize_function(camera, image_date, dest):
     """Create a resized image in a new location."""
     log.debug("Now checking if we have 1 or 2 resolution arguments on '{}'"
               .format(dest))
-    if camera.resolutions[1][1] is None:
-        img = skimage.io.imread(dest).shape
-        if not camera.orientation in ("90", "270"):
-            new_res = (camera.resolutions[1][0],
-                   img[0] * camera.resolutions[1][0] / img[1])
+    for resize_resolution in camera.resolutions[1:]:
+        if resize_resolution[1] is None:
+            img = skimage.io.imread(dest).shape
+            if not camera.orientation in ("90", "270"):
+                new_res = (resize_resolution[0],
+                       img[0] * resize_resolution[0] / img[1])
+            else:
+                new_res = (img[1] * resize_resolution[0] / img[0],
+                           resize_resolution[0])
+            log.debug("One resolution arguments, '{0:d}'".format(new_res[0]))
         else:
-            new_res = (img[1] * camera.resolutions[1][0] / img[0],
-                       camera.resolutions[1][0])
-        log.debug("One resolution arguments, '{0:d}'".format(new_res[0]))
-    else:
-        new_res = camera.resolutions[1]
-        log.debug("Two resolution arguments, "
-                  "'{:d}' x '{:d}'".format(new_res[0], new_res[1]))
-    log.info("Now getting Timestream name")
-    ts_name = make_timestream_name(camera, res=new_res[0], step="orig")
-    resizing_temp_outname = get_new_file_name(image_date, ts_name)
-    resized_img = os.path.join(
-        camera.destination,
-        camera.ts_structure.format(folder='output', res=str(new_res[0]),
-                                   cam=camera.cam_num, step='orig'),
-        resizing_temp_outname)
-    if os.path.isfile(resized_img):
-        return
-    log.debug("Full resized filename for output is '{}'".format(resized_img))
-    resized_img_path = os.path.dirname(resized_img)
-    if not os.path.exists(resized_img_path):
-        try:
-            os.makedirs(resized_img_path)
-        except OSError:
-            log.warn("Could not make dir '{}', skipping image '{}'"
-                     .format(resized_img_path, resized_img))
-            raise SkipImage
-    log.debug("Now actually resizing image to '{}'".format(dest))
-    resize_img(dest, resized_img, new_res[0], new_res[1])
+            new_res = resize_resolution
+            log.debug("Two resolution arguments, "
+                      "'{:d}' x '{:d}'".format(new_res[0], new_res[1]))
+        log.info("Now getting Timestream name")
+        ts_name = make_timestream_name(camera, res=new_res[0], step="orig")
+        resizing_temp_outname = get_new_file_name(image_date, ts_name)
+        resized_img = os.path.join(
+            camera.destination,
+            camera.ts_structure.format(folder='output', res=str(new_res[0]),
+                                       cam=camera.cam_num, step='orig'),
+            resizing_temp_outname)
+        if os.path.isfile(resized_img):
+            return
+        log.debug("Full resized filename for output is '{}'".format(resized_img))
+        resized_img_path = os.path.dirname(resized_img)
+        if not os.path.exists(resized_img_path):
+            try:
+                os.makedirs(resized_img_path)
+            except OSError:
+                log.warn("Could not make dir '{}', skipping image '{}'"
+                         .format(resized_img_path, resized_img))
+                # raise SkipImage
+        log.debug("Now actually resizing image to '{}'".format(dest))
+        resize_img(dest, resized_img, new_res[0], new_res[1])
 
 
 def resize_img(filename, destination, to_width, to_height):
@@ -594,7 +595,9 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
         except SkipImage:
             log.debug("Faied to resize due to skipimage being reported first")
             raise SkipImage
-        except:
+        except Exception as e:
+            print(e)
+            print("We FAILED")
             log.debug("Resize failed for unknown reason")
             raise SkipImage
 
