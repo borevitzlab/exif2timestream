@@ -119,7 +119,6 @@ def process_image(args):
     log.debug("Starting to process image")
     image, camera, ext = args
     image_date = get_file_date(image, 0, round_secs=1,date_mask=camera.date_mask)
-    time_tuple = (image_date.tm_hour, image_date.tm_min)
     delete = False
     try:
         time_tuple = (image_date.tm_hour, image_date.tm_min)
