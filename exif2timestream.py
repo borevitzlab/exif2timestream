@@ -661,9 +661,17 @@ def process_image(args):
         log.debug("Will archive {}".format(image))
         ts_name = make_timestream_name(camera, res="fullres")
         out_image = get_new_file_name(image_date, ts_name)
+        if (camera.datasetID):
+            data_set_id = "-F" + camera.datasetID
+        else:
+            data_set_id = ""
         archive_image = os.path.join(
             camera.archive_dest,
-            camera.ts_structure.format(folder="original", res="fullres", step="orig"),
+            camera.expt,
+            (camera.expt + '-' +
+                camera.location + "-C" +
+                camera.cam_num +
+                data_set_id + "~fullres-" + (ext if ext in RAW_FORMATS else "orig")).replace("_","-"),
             os.path.relpath(image, camera.source))
         try:
             os.makedirs(os.path.dirname(archive_image))
