@@ -6,7 +6,6 @@ from __future__ import print_function
 
 # Standard library imports
 import argparse
-import calendar
 import csv
 import datetime
 import inspect
@@ -20,12 +19,12 @@ import sys
 from time import strptime, strftime, mktime, localtime, struct_time, time, sleep
 import warnings
 import struct
-import urllib
 # Module imports
 import pexif
 import exifread
 import skimage
 from skimage import novice
+from PIL import Image
 
 # global logger
 log = logging.getLogger("exif2timestream")
@@ -617,25 +616,16 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
             log.debug("Faied to resize due to skipimage being reported first")
             raise SkipImage
         except Exception as e:
-            print(e)
-            print("We FAILED")
             log.debug("Resize failed for unknown reason")
             raise SkipImage
 
 def rotate_image(rotation, dest):
     try:
-        img = skimage.io.imread(dest)
-        img = skimage.transform.rotate(
-                img, int(rotation), resize=True)
-        # try:
-            # avoid trying to read before writing
-            # sleep(0.1)
-        skimage.io.imsave(dest, img)
-        # except IOError:
-        #     print ("Got skip image for some reason")
-        #     raise SkipImage
+        img = Image.open(dest)
+        img = img.rotate(float(rotation), expand =1)
+        img.save(dest)
     except IOError:
-        print ("Can't Rotate Non JPEG Images")
+        log.debug("Can't Rotate Non JPEG Images {}".format(dest))
 
 def _dont_clobber(fn, mode="append"):
     """Ensure we don't overwrite things, using a variety of methods"""
@@ -985,7 +975,9 @@ def process_camera(camera, ext, images, n_threads=1):
     if ext not in RAW_FORMATS:
         for resize_res in camera.resolutions[1:]:
             new_res = resize_res
-            create_small_json(new_res[camera.orientation in ("90", "270")], camera, new_res, p_start, p_end, ts_end_text, ext, webrootaddr)
+            if (camera.orientation in ("90", "270")):
+                new_res= (new_res[1], new_res[0])
+            create_small_json(new_res[0], camera, new_res, p_start, p_end, ts_end_text, ext, webrootaddr)
     if ext != 'raw':
         return {k: str(v) for k, v in jdump.items()}
     else:
