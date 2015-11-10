@@ -136,6 +136,15 @@ def resolution_str(x):
             res_list.append((int(res), None))
     return res_list
 
+def dataset(x):
+    "If it exists, appends all neccesary items"
+    if (x):
+        if len(str(x)) ==1:
+            return '-F0' + str(x)
+        else:
+            return '-F' + str(x)
+    else:
+        return ''
 
 def cam_pad_str(x):
     """Pads a numeric string to two digits."""
@@ -204,7 +213,7 @@ class CameraFields(object):
         ('orientation', 'ORIENTATION', str),
         ('fn_parse', 'FN_PARSE', str),
         ('fn_structure', 'FN_STRUCTURE', str),
-        ('datasetID', 'DATASETID', cam_pad_str),
+        ('datasetID', 'DATASETID', dataset),
         ('timeshift', 'TIMESHIFT', str),
         ('userfriendlyname', 'USERFRIENDLYNAME', str),
         ('json_updates', 'JSON_UPDATES', str)
@@ -267,16 +276,19 @@ def d2s(date):
 
 def resolution_calc(camera, image):
     x=1
+
     for resize_resolution in camera.resolutions:
         if resize_resolution[1] is None:
             try:
                 img = skimage.io.imread(image).shape
-                if not camera.orientation in ("90", "270"):
-                    new_res = (resize_resolution[0],
-                           img[0] * resize_resolution[0] / img[1])
-                else:
+                if camera.orientation in ("90", "270"):
+                    img = (img[1], img[0])
                     new_res = (img[1] * resize_resolution[0] / img[0],
-                               resize_resolution[0])
+                                   resize_resolution[0])
+                else:
+                    new_res = (resize_resolution[0],
+                                img[0] * resize_resolution[0] / img[1])
+                print(new_res)
                 log.debug("One resolution arguments, '{0:d}'".format(new_res[0]))
                 camera.resolutions[x] = new_res
             except Exception as e:
@@ -299,13 +311,13 @@ def create_small_json(res, camera, image_resolution, p_start, p_end, ts_end_text
         os.makedirs(os.path.join(camera.destination, camera.ts_structure.format(folder=folder,
         res=res, step = step)))
     small_json = open(os.path.join(camera.destination, camera.ts_structure.format(folder=folder,
-        res=res, step = step), camera.userfriendlyname + '-ts-info.json'), 'wb+')
+        res=res, step = step), '{}-{}-C{}'.format(camera.expt, camera.location, camera.cam_num) + str(camera.datasetID) + '-ts-info.json'), 'wb+')
     jdump = {
         'expt': camera.expt,
         'owner': camera.project_owner,
-        'height': image_resolution[camera.orientation not in ("270", "90")],
+        'height': image_resolution[1],
         'image_type': ext,
-        'ts_name': camera.ts_structure.format(folder = folder, res = res, step = step),
+        'ts_name': camera.ts_structure.format(folder = folder, res = res, step = step).replace("\\","/"),
         'ts_id': '{}-{}-C{}'.format(camera.expt, camera.location, camera.cam_num) + str(camera.datasetID),
         'name':camera.userfriendlyname,
         'period_in_minutes': camera.interval,
@@ -314,22 +326,15 @@ def create_small_json(res, camera, image_resolution, p_start, p_end, ts_end_text
         'timezone': camera.timezone[0],
         'ts_end': ts_end_text,
         'ts_start': strftime(TS_DATE_FMT, p_start),
-        'width': image_resolution[camera.orientation in ("90", "270")],
-        'webroot':webrootaddr.format(folder="output", res=image_resolution[camera.orientation in ("90",
-                                                                   "270")], step ="orig")
+        'width': image_resolution[0],
+        'webroot':webrootaddr.format(folder="output", res=res, step ="orig")
         }
     json.dump(jdump, small_json)
     small_json.close()
 
 def parse_structures(camera):
-    # Sneaky check the friendly name, and replace it if its none
-    if (camera.datasetID):
-        data_set_id = "-F" + camera.datasetID
-    else:
-        data_set_id = ""
-
     if not camera.userfriendlyname:
-        camera.userfriendlyname = '{}-{}-C{}{}'.format(camera.expt, camera.location, camera.cam_num,data_set_id)
+        camera.userfriendlyname = '{}-{}-C{}{}'.format(camera.expt, camera.location, camera.cam_num,camera.datasetID)
     else:
          for key, value in camera.__dict__.items():
             camera.userfriendlyname = camera.userfriendlyname.replace(key.upper(),
@@ -343,12 +348,12 @@ def parse_structures(camera):
         camera.ts_structure = os.path.join(
             camera.expt,
             (camera.location + '-C' +
-            camera.cam_num + data_set_id),
+            camera.cam_num + camera.datasetID),
             '{folder}',
             (camera.expt + '-' +
             camera.location + "-C" +
             camera.cam_num +
-            data_set_id + "~{res}-{step}" )).replace("_","-")
+            camera.datasetID + "~{res}-{step}" )).replace("_","-")
 
     else:
         # Replace the ts_structure with all the other stuff
@@ -369,7 +374,7 @@ def parse_structures(camera):
         camera.fn_structure = camera.expt.replace("_", "-") + \
             '-' + camera.location.replace("_", "-") + \
             '-C' + camera.cam_num.replace("_", "-") +\
-            data_set_id + \
+            camera.datasetID + \
             '~{res}-{step}'
     else:
         for key, value in camera.__dict__.items():
@@ -385,25 +390,15 @@ def resize_function(camera, image_date, dest):
     log.debug("Now checking if we have 1 or 2 resolution arguments on '{}'"
               .format(dest))
     for resize_resolution in camera.resolutions[1:]:
-        if resize_resolution[1] is None:
-            img = skimage.io.imread(dest).shape
-            if not camera.orientation in ("90", "270"):
-                new_res = (resize_resolution[0],
-                       img[0] * resize_resolution[0] / img[1])
-            else:
-                new_res = (img[1] * resize_resolution[0] / img[0],
-                           resize_resolution[0])
-            log.debug("One resolution arguments, '{0:d}'".format(new_res[0]))
-        else:
-            new_res = resize_resolution
-            log.debug("Two resolution arguments, "
-                      "'{:d}' x '{:d}'".format(new_res[0], new_res[1]))
+        new_res = resize_resolution
+        log.debug("Two resolution arguments, "
+                  "'{:d}' x '{:d}'".format(new_res[0], new_res[1]))
         log.info("Now getting Timestream name")
-        ts_name = make_timestream_name(camera, res=new_res[0], step="orig")
+        ts_name = make_timestream_name(camera, res=new_res[camera.orientation in ("90", "270")], step="orig")
         resizing_temp_outname = get_new_file_name(image_date, ts_name)
         resized_img = os.path.join(
             camera.destination,
-            camera.ts_structure.format(folder='output', res=str(new_res[0]),
+            camera.ts_structure.format(folder='output', res=str(new_res[camera.orientation in ("90", "270")]),
                                        cam=camera.cam_num, step='orig'),
             resizing_temp_outname)
         if os.path.isfile(resized_img):
@@ -675,17 +670,13 @@ def process_image(args):
         log.debug("Will archive {}".format(image))
         ts_name = make_timestream_name(camera, res="fullres")
         out_image = get_new_file_name(image_date, ts_name)
-        if (camera.datasetID):
-            data_set_id = "-F" + camera.datasetID
-        else:
-            data_set_id = ""
         archive_image = os.path.join(
             camera.archive_dest,
             camera.expt,
             (camera.expt + '-' +
                 camera.location + "-C" +
                 camera.cam_num +
-                data_set_id + "~fullres-" + (ext if ext in RAW_FORMATS else "orig")).replace("_","-"),
+                camera.datasetID + "~fullres-" + (ext if ext in RAW_FORMATS else "orig")).replace("_","-"),
             os.path.relpath(image, camera.source))
         try:
             os.makedirs(os.path.dirname(archive_image))
@@ -975,9 +966,7 @@ def process_camera(camera, ext, images, n_threads=1):
     if ext not in RAW_FORMATS:
         for resize_res in camera.resolutions[1:]:
             new_res = resize_res
-            if (camera.orientation in ("90", "270")):
-                new_res= (new_res[1], new_res[0])
-            create_small_json(new_res[0], camera, new_res, p_start, p_end, ts_end_text, ext, webrootaddr)
+            create_small_json(new_res[camera.orientation in ("90", "270")], camera, new_res, p_start, p_end, ts_end_text, ext, webrootaddr)
     if ext != 'raw':
         return {k: str(v) for k, v in jdump.items()}
     else:
