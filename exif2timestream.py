@@ -361,8 +361,9 @@ def parse_structures(camera):
             camera.ts_structure = camera.ts_structure.replace(key.upper(),
                                                               str(value))
         # If it starts with a /, then we need to get rid of that
-        if camera.ts_structure[0] == '/':
+        if camera.ts_structure[0] == os.path.sep:
             camera.ts_structure = camera.ts_structure[1:]
+        print ("asdlfkjhasdjkfhasdf" + camera.ts_structure)
         # Split it up so we can add the "~orig~res" part
         camera.ts_structure = camera.ts_structure.replace("_", "-")
         direc, fname = os.path.split(camera.ts_structure)
@@ -380,7 +381,7 @@ def parse_structures(camera):
         for key, value in camera.__dict__.items():
             camera.fn_structure = camera.fn_structure.replace(key.upper(),
                                                               str(value))
-        camera.fn_structure = camera.fn_structure.replace("/", "")\
+        camera.fn_structure = camera.fn_structure.replace(os.path.sep, "")\
             .replace("_", "-") + '~{res}-{step}'
     return camera
 

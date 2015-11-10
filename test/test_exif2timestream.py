@@ -300,7 +300,8 @@ class TestExifTraitcapture(unittest.TestCase):
 
     # tests for parse_camera_config_csv
     def test_parse_camera_config_csv(self):
-        configs = [
+
+        configs_unix = [
             {
                 'archive_dest': './test/out/archive',
                 'timezone': (11, 0),
@@ -327,11 +328,44 @@ class TestExifTraitcapture(unittest.TestCase):
                 'fn_structure': 'BVZ00000-EUC-R01C01-C01-F01~{res}-{step}',
                 'orientation': '',
                 'timeshift':'',
-                'datasetID':'01',
+                'datasetID':'-F01',
                 'json_updates':'',
                 'userfriendlyname':'BVZ00000-EUC-R01C01-C01-F01'
             }
         ]
+        configs_win32 = [
+            {
+                'archive_dest': '.\\test\\out\\archive',
+                'timezone': (11, 0),
+                'expt': 'BVZ00000',
+                'destination': '.\\test\\out\\timestreams',
+                'cam_num': '01',
+                'expt_end': time.strptime('2013_12_31', "%Y_%m_%d"),
+                'expt_start': time.strptime('2012_12_01', "%Y_%m_%d"),
+                'interval': 5,
+                'image_types': ["jpg"],
+                'location': 'EUC-R01C01',
+                'method': 'move',
+                'mode': 'batch',
+                'resolutions': ['original'],
+                'source': '.\\test\\img\\camupload',
+                'sunrise': (5, 0),
+                'sunset': (22, 0),
+                'use': True,
+                'user': 'Glasshouses',
+                'ts_structure': ('BVZ00000\\EUC-R01C01-C01-F01\\{folder}\\BVZ00000-EUC-R01C01-C01-F01~{res}-{step}'),
+                'project_owner': '',
+                'filename_date_mask':'',
+                'fn_parse': '',
+                'fn_structure': 'BVZ00000-EUC-R01C01-C01-F01~{res}-{step}',
+                'orientation': '',
+                'timeshift':'',
+                'datasetID':'-F01',
+                'json_updates':'',
+                'userfriendlyname':'BVZ00000-EUC-R01C01-C01-F01'
+            }
+        ]
+        configs = configs_unix if path.sep == "/" else configs_win32
         result = e2t.parse_camera_config_csv(self.test_config_csv)
         for expt, got in zip(configs, result):
             self.assertDictEqual(got.__dict__, expt)
@@ -504,7 +538,7 @@ class TestExifTraitcapture(unittest.TestCase):
 
         })
         output= (e2t.parse_structures(ts_format_test))
-        self.assertEqual("BVZ00000/EUC-R01C01-C01-F01/{folder}/BVZ00000-EUC-R01C01-C01-F01~{res}-{step}", output.ts_structure)
+        self.assertEqual(os.path.join("BVZ00000", "EUC-R01C01-C01-F01", "{folder}", "BVZ00000-EUC-R01C01-C01-F01~{res}-{step}"), output.ts_structure)
         self.assertEqual("BVZ00000-EUC-R01C01-C01-F01~{res}-{step}", output.fn_structure)
         self.assertEqual('BVZ00000-EUC-R01C01-C01-F01', output.userfriendlyname)
 
@@ -543,9 +577,9 @@ class TestExifTraitcapture(unittest.TestCase):
         }
         )
         output= (e2t.parse_structures(ts_format_test))
-        self.assertEqual("BVZ00000/EUC-R01C01-location/potato~{res}-{step}", output.ts_structure)
-        self.assertEqual("BVZ00000EUC-R01C01-locationpotato~{res}-{step}", output.fn_structure)
-        self.assertEqual('BVZ00000/EUC-R01C01-location/potato', output.userfriendlyname)
+        self.assertEqual(os.path.join("BVZ00000", "EUC-R01C01-location", "potato~{res}-{step}"), output.ts_structure)
+        self.assertEqual(os.path.join("BVZ00000EUC", "R01C01-locationpotato~{res}-{step}"), output.fn_structure)
+        self.assertEqual(os.path.join("BVZ00000", "EUC-R01C01-location", "potato"), output.userfriendlyname)
 
 
 
