@@ -900,18 +900,21 @@ def find_empty_dirs(root_dir):
 
 def process_camera(camera, ext, images, n_threads=1):
     """Process a set of images for one extension for a single camera."""
+
     if (camera.method == 'json'):
         new_images = []
         for image in images:
             if ("fullres" in image):
                 new_images.append(image)
         images = new_images
+    p_start, p_end = get_actual_start_end(camera, images, ext)
     try:
         my_image = (x for x in images if ((os.path.splitext(x)[-1].lower().strip(".") == ext) or (os.path.splitext(x)[-1].lower().strip(".") in RAW_FORMATS and ext == "raw"))).next()
+        if camera.method == 'json':
+            images = [my_image]
     except StopIteration:
 	    return
     camera = resolution_calc(camera, my_image)
-    p_start, p_end = get_actual_start_end(camera, images, ext)
     res, image_resolution, folder = get_resolution(my_image, camera)
     webrootaddr, thumb_image = get_thumbnail_paths(camera, images, res, image_resolution, folder)
     webrootaddr = webrootaddr.replace("\\","/")
@@ -921,6 +924,7 @@ def process_camera(camera, ext, images, n_threads=1):
         log.info("Using 1 process - what is this? 1990?")
         for count, image in enumerate(images):
             print("Processed {:5d} Images".format(count), end='\r')
+
             process_image((image, camera, ext))
     else:
         threads = max(1, min(n_threads, multiprocessing.cpu_count() - 1))
