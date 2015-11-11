@@ -476,16 +476,13 @@ class TestExifTraitcapture(unittest.TestCase):
             self.assertGreater(2, abs(orig[0]- after[1]))
             self.assertGreater(2, abs(orig[1]- after[0]))
             e2t.rotate_image(270, self.r_fullres_path)
-            print("ITS " + str(e2t.write_exif_date(self.r_fullres_path, image_date)) + "    " + str(image_date))
             self.assertEqual(True, e2t.write_exif_date(self.r_fullres_path, image_date))
             new_image_date = e2t.get_file_date(self.r_fullres_path, 0, 60)
             self.assertEqual(image_date, new_image_date)
 
     def test_timeshift(self):
         before = e2t.get_file_date(self.r_fullres_path, "", 60)
-        print (before)
         after = e2t.get_file_date(self.r_fullres_path, "10", 60)
-        print(after)
         self.assertNotEqual(before, after)
         shift_to_equal = datetime.timedelta(hours=10)
         before = (datetime.datetime.fromtimestamp(time.mktime(before))+shift_to_equal).timetuple()

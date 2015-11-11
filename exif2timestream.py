@@ -900,6 +900,12 @@ def find_empty_dirs(root_dir):
 
 def process_camera(camera, ext, images, n_threads=1):
     """Process a set of images for one extension for a single camera."""
+    if (camera.method == 'json'):
+        new_images = []
+        for image in images:
+            if ("fullres" in image):
+                new_images.append(image)
+        images = new_images
     try:
         my_image = (x for x in images if ((os.path.splitext(x)[-1].lower().strip(".") == ext) or (os.path.splitext(x)[-1].lower().strip(".") in RAW_FORMATS and ext == "raw"))).next()
     except StopIteration:
