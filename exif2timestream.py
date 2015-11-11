@@ -288,7 +288,6 @@ def resolution_calc(camera, image):
                 else:
                     new_res = (resize_resolution[0],
                                 img[0] * resize_resolution[0] / img[1])
-                print(new_res)
                 log.debug("One resolution arguments, '{0:d}'".format(new_res[0]))
                 camera.resolutions[x] = new_res
             except Exception as e:
@@ -363,7 +362,6 @@ def parse_structures(camera):
         # If it starts with a /, then we need to get rid of that
         if camera.ts_structure[0] == os.path.sep:
             camera.ts_structure = camera.ts_structure[1:]
-        print ("asdlfkjhasdjkfhasdf" + camera.ts_structure)
         # Split it up so we can add the "~orig~res" part
         camera.ts_structure = camera.ts_structure.replace("_", "-")
         direc, fname = os.path.split(camera.ts_structure)
@@ -386,14 +384,14 @@ def parse_structures(camera):
     return camera
 
 
-def resize_function(camera, image_date, dest):
+def resize_function(camera, image_date, dest, img_array):
     """Create a resized image in a new location."""
     log.debug("Now checking if we have 1 or 2 resolution arguments on '{}'"
               .format(dest))
     for resize_resolution in camera.resolutions[1:]:
         new_res = resize_resolution
         log.debug("Two resolution arguments, "
-                  "'{:d}' x '{:d}'".format(new_res[0], new_res[1]))
+                  "'{}' x '{}'".format(new_res[0], new_res[1]))
         log.info("Now getting Timestream name")
         ts_name = make_timestream_name(camera, res=new_res[camera.orientation in ("90", "270")], step="orig")
         resizing_temp_outname = get_new_file_name(image_date, ts_name)
@@ -413,19 +411,18 @@ def resize_function(camera, image_date, dest):
                 log.warn("Could not make dir '{}', skipping image '{}'"
                          .format(resized_img_path, resized_img))
                 # raise SkipImage
-        log.debug("Now actually resizing image to '{}'".format(dest))
-        resize_img(dest, resized_img, new_res[0], new_res[1])
+        log.debug("Now actually resizing image to '{}'".format(resized_img))
+        resize_img(dest, resized_img, new_res[0], new_res[1], img_array)
 
 
-def resize_img(filename, destination, to_width, to_height):
+def resize_img(filename, destination, to_width, to_height, img_array):
     """Actually resizes the image."""
-    img = skimage.io.imread(filename)
+    img = img_array.resize((to_width, to_height))
     log.debug("Now resizing the image")
-    img = skimage.transform.resize(img, (to_height, to_width))
     log.debug("Saving Image")
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        skimage.io.imsave(destination, img)
+        img.save(destination)
     # Write new exif data from old image
     try:
         exif_source = pexif.JpegFile.fromFile(filename)
@@ -598,13 +595,15 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
         raise SkipImage
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        if camera.orientation and camera.orientation is not 0:
-            rotate_image(camera.orientation, dest)
+        if camera.orientation and camera.orientation is not 0 and step != "raw":
+            img_array = rotate_image(camera.orientation, dest)
             write_exif_date(dest, image_date);
-    if len(camera.resolutions) > 1:
+        elif (len(camera.resolutions)>1) and step != "raw":
+            img_array = Image.open(dest)
+    if len(camera.resolutions) > 1 and step != "raw":
         log.info("Going to resize image '{}'".format(dest))
         try:
-            resize_function(camera, image_date, dest)
+            resize_function(camera, image_date, dest, img_array)
         except IOError:
             log.debug("Resize failed due to io error")
             raise SkipImage
@@ -612,6 +611,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
             log.debug("Faied to resize due to skipimage being reported first")
             raise SkipImage
         except Exception as e:
+            log.debug(e)
             log.debug("Resize failed for unknown reason")
             raise SkipImage
 
@@ -620,6 +620,7 @@ def rotate_image(rotation, dest):
         img = Image.open(dest)
         img = img.rotate(float(rotation), expand =1)
         img.save(dest)
+        return img
     except IOError:
         log.debug("Can't Rotate Non JPEG Images {}".format(dest))
 
@@ -655,8 +656,6 @@ def process_image(args):
             image, d2s(camera.expt_start), d2s(camera.expt_end)))
         return
     my_ext = os.path.splitext(image)[-1].lower().strip(".")
-    if "_last_image" in image:
-        return
     if not (my_ext == ext) and not ((my_ext in RAW_FORMATS) and (ext == "raw")):
         return
     if camera.method == "json":
