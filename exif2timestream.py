@@ -22,8 +22,6 @@ import struct
 # Module imports
 import pexif
 import exifread
-import skimage
-from skimage import novice
 from PIL import Image
 
 # global logger
@@ -815,7 +813,7 @@ def get_resolution(image, camera):
                 image_resolution=(0,0)
         else:
             try:
-                image_resolution = novice.open(image).size
+                image_resolution = Image.open(image).size
             except ValueError:
                 print("Value Error?")
                 image_resolution=(0,0)
@@ -830,7 +828,7 @@ def get_thumbnail_paths(camera, images, res, image_resolution, folder):
     webrootaddr = ""
     url = "http://phenocam.anu.edu.au/cloud/a_data"
     if "a_data" in camera.destination:
-        webrootaddr = "http://phenocam.anu.edu.au/cloud/a_data/{}{}".format(
+        webrootaddr = "http://phenocam.anu.edu.au/cloud/a_data{}/{}".format(
             camera.destination.split("a_data")[1],
             camera.ts_structure if camera.ts_structure else camera.location).replace("\\","/")
     thumb_image = []
