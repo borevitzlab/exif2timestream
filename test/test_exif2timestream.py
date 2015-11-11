@@ -16,11 +16,11 @@ import warnings
 from .. import exif2timestream as e2t
 import pexif
 
-SKIMAGE = True
+PIL= True
 try:
-    from skimage import novice
+    from PIL import Image
 except ImportError:
-    SKIMAGE = False
+    PIL = False
 
 
 class TestExifTraitcapture(unittest.TestCase):
@@ -55,7 +55,7 @@ class TestExifTraitcapture(unittest.TestCase):
         'CAMERA_TIMEZONE': '1100',
         'USE': '1',
         'USER': 'Glasshouses',
-        'TS_STRUCTURE': '',
+        'TS_STRUCTURE': os.path.join('BVZ00000',"EUC-R01C01-C01-F01", "{folder}", 'BVZ00000-EUC-R01C01-C01-F01~fullres-orig'),
         'FN_PARSE': '',
         'PROJECT_OWNER': '',
         'FILENAME_DATE_MASK': '',
@@ -85,7 +85,7 @@ class TestExifTraitcapture(unittest.TestCase):
         'CAMERA_TIMEZONE': '1100',
         'USE': '1',
         'USER': 'Glasshouses',
-        'TS_STRUCTURE': '',
+        'TS_STRUCTURE': os.path.join('BVZ00000',"EUC-R01C01-C01-F01", "{folder}", 'BVZ00000-EUC-R01C01-C01-F01~fullres-orig'),
         'FN_PARSE': '',
         'PROJECT_OWNER': '',
         'FILENAME_DATE_MASK': "",
@@ -98,20 +98,20 @@ class TestExifTraitcapture(unittest.TestCase):
 
     }
 
-    r_fullres_path = path.join(
+    r_fullres_path = os.path.join(
         out_dirname, "timestreams", "BVZ00000", "EUC-R01C01-C01-F01",
         'original', 'BVZ00000-EUC-R01C01-C01-F01~fullres-orig', '2013', '2013_11',
         '2013_11_12', '2013_11_12_20',
         'BVZ00000-EUC-R01C01-C01-F01~fullres-orig_2013_11_12_20_55_00_00.JPG'
     )
-    r_datetime_path = path.join(
+    r_datetime_path = os.path.join(
         out_dirname, "timestreams", "BVZ00000", "EUC-R01C01-C01-F01",
         "original",'BVZ00000-EUC-R01C01-C01-F01~fullres-orig', '2013', '2013_11',
         '2013_11_04', '2013_11_04_02',
         'BVZ00000-EUC-R01C01-C01-F01~fullres-orig_2013_11_04_22_05_00_00.JPG'
     )
 
-    r_raw_path = path.join(
+    r_raw_path = os.path.join(
         out_dirname, "timestreams", "BVZ00000", "EUC-R01C01-C01-F01",
         "original",'BVZ00000-EUC-R01C01-C01-F01~fullres-raw', '2013', '2013_11',
         '2013_11_12', '2013_11_12_20',
@@ -265,13 +265,13 @@ class TestExifTraitcapture(unittest.TestCase):
     # tests for find_image_files
     def test_find_image_files(self):
         expt = {"jpg": {path.join(self.camupload_dir, x) for x in [
-                        'jpg/IMG_0001.JPG',
-                        'jpg/IMG_0002.JPG',
-                        'jpg/IMG_0630.JPG',
-                        'jpg/IMG_0633.JPG',
-                        'jpg/whroo20131104_020255M.jpg']
+                        os.path.join('jpg', 'IMG_0001.JPG'),
+                        os.path.join('jpg', 'IMG_0002.JPG'),
+                        os.path.join('jpg', 'IMG_0630.JPG'),
+                        os.path.join('jpg', 'IMG_0633.JPG'),
+                        os.path.join('jpg', 'whroo20131104_020255M.jpg')]
                         },
-                "raw": {path.join(self.camupload_dir, 'raw/IMG_0001.CR2')},
+                "raw": {path.join(self.camupload_dir, os.path.join('raw', 'IMG_0001.CR2'))},
                 }
         got = e2t.find_image_files(self.camera)
         self.assertSetEqual(set(got["jpg"]), expt["jpg"])
@@ -291,12 +291,12 @@ class TestExifTraitcapture(unittest.TestCase):
     def test_process_image(self):
         e2t.process_image((self.jpg_testfile, self.camera, "jpg"))
         self.assertTrue(path.exists(self.r_fullres_path))
-        self._md5test(self.r_fullres_path, "0cbe453def8b25df4015c4b66e822bd6")
+        self._md5test(self.r_fullres_path, "e570294e9ca282b521ad533ace71c973")
 
     def test_process_image_map(self):
         e2t.process_image((self.jpg_testfile, self.camera, "jpg"))
         self.assertTrue(path.exists(self.r_fullres_path))
-        self._md5test(self.r_fullres_path, "0cbe453def8b25df4015c4b66e822bd6")
+        self._md5test(self.r_fullres_path, "e570294e9ca282b521ad533ace71c973")
 
     # tests for parse_camera_config_csv
     def test_parse_camera_config_csv(self):
@@ -386,7 +386,7 @@ class TestExifTraitcapture(unittest.TestCase):
             e2t.gen_config(out_csv)
         except SystemExit:
             pass
-        self._md5test(out_csv, "67d3f92633d53b66168c0970ce613948")
+        self._md5test(out_csv, "254e83083890df30e68938813a7d3830")
 
     # Tests for checking parsing of dates from filename
     def test_check_date_parse(self):
@@ -416,17 +416,16 @@ class TestExifTraitcapture(unittest.TestCase):
 
     # Tests for checking image resizing
     def test_check_resize_img(self):
-        if not SKIMAGE:
-
-
-            ("Skimage not available, can't test resizing", ImportWarning)
+        if not PIL:
+            ("PIL not available, can't test resizing", ImportWarning)
             return
         filename = 'jpg/whroo20131104_020255M.jpg'
         new_width, w = 400, 0
         try:
             dest = path.join(self.camupload_dir, filename)
-            e2t.resize_img(path.join(self.camupload_dir, filename), dest, new_width, 300)
-            w = novice.open(
+            img_array = Image.open(dest)
+            e2t.resize_img(path.join(self.camupload_dir, filename), dest, new_width, 300, img_array)
+            w = Image.open(
                 path.join(self.camupload_dir, filename)).width
         except OSError:
             pass
@@ -471,11 +470,11 @@ class TestExifTraitcapture(unittest.TestCase):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             image_date = e2t.get_file_date(self.r_fullres_path, 0, 60)
-            orig = novice.open(self.r_fullres_path).size
+            orig = Image.open(self.r_fullres_path).size
             e2t.rotate_image(90, self.r_fullres_path)
-            after = novice.open(self.r_fullres_path).size
-            self.assertEqual(orig[0], after[1])
-            self.assertEqual(orig[1], after[0])
+            after = Image.open(self.r_fullres_path).size
+            self.assertGreater(2, abs(orig[0]- after[1]))
+            self.assertGreater(2, abs(orig[1]- after[0]))
             e2t.rotate_image(270, self.r_fullres_path)
             print("ITS " + str(e2t.write_exif_date(self.r_fullres_path, image_date)) + "    " + str(image_date))
             self.assertEqual(True, e2t.write_exif_date(self.r_fullres_path, image_date))
@@ -494,10 +493,10 @@ class TestExifTraitcapture(unittest.TestCase):
 
     def test_filename_parse(self):
         expt = {"jpg": {path.join(self.camupload_dir, x) for x in [
-                        'jpg/IMG_0001.JPG',
-                        'jpg/IMG_0002.JPG',
-                        'jpg/IMG_0630.JPG',
-                        'jpg/IMG_0633.JPG',]
+                        os.path.join('jpg', 'IMG_0001.JPG'),
+                        os.path.join('jpg', 'IMG_0002.JPG'),
+                        os.path.join('jpg', 'IMG_0630.JPG'),
+                        os.path.join('jpg', 'IMG_0633.JPG'),]
                         },
                 }
         self.camera.fn_parse = "IMG_"
@@ -563,23 +562,22 @@ class TestExifTraitcapture(unittest.TestCase):
             'CAMERA_TIMEZONE': '1100',
             'USE': '1',
             'USER': 'Glasshouses',
-            'TS_STRUCTURE': 'EXPT/LOCATION-location/potato',
+            'TS_STRUCTURE': os.path.join('EXPT','LOCATION-location','potato'),
             'FN_PARSE': '',
             'PROJECT_OWNER': '',
             'FILENAME_DATE_MASK': "",
-            'FN_STRUCTURE': 'EXPT/LOCATION-location/potato',
+            'FN_STRUCTURE': os.path.join('EXPT', 'LOCATION-location' ,'potato'),
             'ORIENTATION': '',
             'DATASETID':1,
             'TIMESHIFT':0,
-            'USERFRIENDLYNAME':'EXPT/LOCATION-location/potato',
+            'USERFRIENDLYNAME': os.path.join('EXPT','LOCATION-location','potato'),
             'JSON_UPDATES':''
-
         }
         )
         output= (e2t.parse_structures(ts_format_test))
         self.assertEqual(os.path.join("BVZ00000", "EUC-R01C01-location", "potato~{res}-{step}"), output.ts_structure)
-        self.assertEqual(os.path.join("BVZ00000EUC", "R01C01-locationpotato~{res}-{step}"), output.fn_structure)
-        self.assertEqual(os.path.join("BVZ00000", "EUC-R01C01-location", "potato"), output.userfriendlyname)
+        self.assertEqual(''.join(["BVZ00000", "EUC-R01C01-location", "potato~{res}-{step}"]), output.fn_structure)
+        self.assertEqual(''.join(["BVZ00000", "EUC-R01C01-location", "potato"]), output.userfriendlyname)
 
 
 

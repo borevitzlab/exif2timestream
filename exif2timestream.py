@@ -338,6 +338,7 @@ def parse_structures(camera):
          for key, value in camera.__dict__.items():
             camera.userfriendlyname = camera.userfriendlyname.replace(key.upper(),
                                                               str(value))
+         camera.userfriendlyname = camera.userfriendlyname.replace(os.path.sep, '')
 
     """Parse the file structure of the camera for conversion to timestream
     format."""
@@ -664,7 +665,8 @@ def process_image(args):
         log.debug ("Skipping file {}, assumed last image".format(image))
         return
     if camera.method == "resize" and (ext not in RAW_FORMATS):
-        resize_function(camera, image_date, image)
+        img_array = Image.open(image)
+        resize_function(camera, image_date, image, img_array)
         log.debug("Rezied Image {}".format(image))
     if camera.method == "archive":
         log.debug("Will archive {}".format(image))
@@ -832,12 +834,11 @@ def get_thumbnail_paths(camera, images, res, image_resolution, folder):
             camera.destination.split("a_data")[1],
             camera.ts_structure if camera.ts_structure else camera.location).replace("\\","/")
     thumb_image = []
-    if len(images) > 4:
+    if len(images) > 4 and len(camera.resolutions) != 1:
         thumb_image = [None, None, None]
         sep = '/'
         for i in range(3):
             try:
-
                 image_date = get_file_date(images[len(images)//2 + i], camera.timeshift,
                                            camera.interval * 60)
                 ts_image = get_new_file_name(
@@ -846,7 +847,7 @@ def get_thumbnail_paths(camera, images, res, image_resolution, folder):
                 thumb_image[i] = sep.join([
                     camera.destination, os.path.dirname(camera.ts_structure).format(folder=folder),
                         os.path.basename(camera.ts_structure).format(res=res, step='orig'), ts_image]).replace("\\","/")
-            except SkipImage:
+            except (SkipImage):
                 pass
     for i in range (0, len(thumb_image)):
         if thumb_image[i]:
@@ -930,7 +931,10 @@ def process_camera(camera, ext, images, n_threads=1):
         ts_end_text = "now"
     else:
         ts_end_text = strftime(TS_DATE_FMT, p_end)
-    new_res = camera.resolutions[1]
+    if len(camera.resolutions) >1:
+        new_res = camera.resolutions[1]
+    else:
+        new_res = res
     jdump = {
         'access': '0',
         'expt': camera.expt,
