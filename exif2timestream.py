@@ -167,6 +167,12 @@ def remove_underscores(x):
     """Replaces '_' with '-'."""
     return x.replace("_", "-")
 
+def large_json(x):
+    if x in {"true", "True", "yes", "Yes", "1"}:
+        return 1
+    else:
+        return 0
+
 
 def method_list(x):
     """Ensure x is a vaild timestream method."""
@@ -214,6 +220,7 @@ class CameraFields(object):
         ('datasetID', 'DATASETID', dataset),
         ('timeshift', 'TIMESHIFT', str),
         ('userfriendlyname', 'USERFRIENDLYNAME', str),
+        ('large_json', 'LARGE_JSON', large_json),
         ('json_updates', 'JSON_UPDATES', str)
         )
 
@@ -278,7 +285,7 @@ def resolution_calc(camera, image):
     for resize_resolution in camera.resolutions:
         if resize_resolution[1] is None:
             try:
-                img = skimage.io.imread(image).shape
+                img = Image.open(image).size
                 if camera.orientation in ("90", "270"):
                     img = (img[1], img[0])
                     new_res = (img[1] * resize_resolution[0] / img[0],
@@ -293,7 +300,7 @@ def resolution_calc(camera, image):
             x=x+1
     return camera
 
-def create_small_json(res, camera, image_resolution, p_start, p_end, ts_end_text, ext, webrootaddr):
+def create_small_json(res, camera, image_resolution, full_res, p_start, p_end, ts_end_text, ext, webrootaddr):
     if (res == "fullres"):
         folder = "original"
     else:
@@ -308,11 +315,13 @@ def create_small_json(res, camera, image_resolution, p_start, p_end, ts_end_text
         os.makedirs(os.path.join(camera.destination, camera.ts_structure.format(folder=folder,
         res=res, step = step)))
     small_json = open(os.path.join(camera.destination, camera.ts_structure.format(folder=folder,
-        res=res, step = step), '{}-{}-C{}'.format(camera.expt, camera.location, camera.cam_num) + str(camera.datasetID) + '-ts-info.json'), 'wb+')
+        res=res, step = step), '{}-{}-C{}'.format(camera.expt, camera.location, camera.cam_num) +
+                                   str(camera.datasetID) + '-ts-info.json'), 'wb+')
     jdump = {
         'expt': camera.expt,
         'owner': camera.project_owner,
         'height': image_resolution[1],
+        'height_hires': full_res[camera.orientation not in ("270", "90")],
         'image_type': ext,
         'ts_name': camera.ts_structure.format(folder = folder, res = res, step = step).replace("\\","/"),
         'ts_id': '{}-{}-C{}'.format(camera.expt, camera.location, camera.cam_num) + str(camera.datasetID),
@@ -324,7 +333,9 @@ def create_small_json(res, camera, image_resolution, p_start, p_end, ts_end_text
         'ts_end': ts_end_text,
         'ts_start': strftime(TS_DATE_FMT, p_start),
         'width': image_resolution[0],
-        'webroot':webrootaddr.format(folder="output", res=res, step ="orig")
+        'width_hires': full_res[camera.orientation in ("90", "270")],
+        'webroot':webrootaddr.format(folder="output", res=res, step ="orig"),
+        'webroot_hires':(webrootaddr.format(folder="original", res="fullres", step="orig"))
         }
     json.dump(jdump, small_json)
     small_json.close()
@@ -610,6 +621,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
             log.debug("Faied to resize due to skipimage being reported first")
             raise SkipImage
         except Exception as e:
+            print(e)
             log.debug(e)
             log.debug("Resize failed for unknown reason")
             raise SkipImage
@@ -969,17 +981,17 @@ def process_camera(camera, ext, images, n_threads=1):
                                                                    "270")]
         }
 
-    if (camera.json_updates) and ext != "raw":
+    if (camera.json_updates) and ext != "raw" and camera.large_json:
         for key, value in jdump.items():
             if not (key.lower() in camera.json_updates.lower()):
                 if not (key.lower() in ('ts_name')):
                     jdump.pop(key, None)
-    create_small_json("fullres", camera,image_resolution, p_start, p_end, ts_end_text, ext, webrootaddr)
+    create_small_json("fullres", camera,image_resolution, image_resolution, p_start, p_end, ts_end_text, ext, webrootaddr)
     if ext not in RAW_FORMATS:
         for resize_res in camera.resolutions[1:]:
             new_res = resize_res
-            create_small_json(new_res[camera.orientation in ("90", "270")], camera, new_res, p_start, p_end, ts_end_text, ext, webrootaddr)
-    if ext != 'raw':
+            create_small_json(new_res[camera.orientation in ("90", "270")], camera, new_res, image_resolution, p_start, p_end, ts_end_text, ext, webrootaddr)
+    if ext != 'raw' and camera.large_json:
         return {k: str(v) for k, v in jdump.items()}
     else:
         return False
@@ -994,9 +1006,9 @@ def main(configfile, n_threads=1, logdir=None, debug=False):
     n_images = 0
     json_dump = []
     for camera in parse_camera_config_csv(configfile):
-        if (len(json_dump) is 0):
+        if (len(json_dump) is 0) and camera.large_json:
             try:
-                already_json = open(os.path.join(camera.destination, 'camera.json'), 'r')
+                already_json = open(os.path.join(camera.destination, 'all_cameras.json'), 'r')
                 json_dump = json.load(already_json)
                 already_json.close
             except IOError:
@@ -1018,6 +1030,7 @@ def main(configfile, n_threads=1, logdir=None, debug=False):
             n_images += len(images)
             j_dump = process_camera(camera, ext, sorted(images),
                                             n_threads)
+            # if (camera.large_json):
             if (j_dump):
                 json_dump.append(j_dump)
             jpath = os.path.join(camera.destination) #, os.path.dirname(
@@ -1028,7 +1041,7 @@ def main(configfile, n_threads=1, logdir=None, debug=False):
                 if not os.path.exists(jpath):
                     log.warn("Could not make dir '{}', skipping images"
                              .format(jpath))
-            with open(os.path.join(jpath, 'camera.json'), 'w') as fname:
+            with open(os.path.join(jpath, 'all_cameras.json'), 'w') as fname:
                 json.dump(json_dump, fname)
         #remove any empty directories in source
         if camera.method == "archive":
