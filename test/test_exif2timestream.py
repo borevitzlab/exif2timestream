@@ -37,9 +37,9 @@ class TestExifTraitcapture(unittest.TestCase):
     jpg_testfile = path.join(camupload_dir, "jpg", "IMG_0001.JPG")
     raw_testfile = path.join(camupload_dir, "raw", "IMG_0001.CR2")
     camera_win32 = {
-        'ARCHIVE_DEST': '\\'.join([out_dirname, 'archive']),
+        'ARCHIVE_DEST': os.path.sep.join([out_dirname, 'archive']),
         'EXPT': 'BVZ00000',
-        'DESTINATION': '\\'.join([out_dirname, 'timestreams']),
+        'DESTINATION': os.path.sep.join([out_dirname, 'timestreams']),
         'CAM_NUM': 1,
         'EXPT_END': '2013_12_31',
         'EXPT_START': '2013_11_01',
@@ -49,7 +49,7 @@ class TestExifTraitcapture(unittest.TestCase):
         'INTERVAL': '5',
         'MODE': 'batch',
         'RESOLUTIONS': 'original',
-        'SOURCE': '\\'.join([dirname, "img", "camupload"]),
+        'SOURCE': os.path.sep.join([dirname, "img", "camupload"]),
         'SUNRISE': '500',
         'SUNSET': '2200',
         'CAMERA_TIMEZONE': '1100',
@@ -67,9 +67,9 @@ class TestExifTraitcapture(unittest.TestCase):
         'JSON_UPDATES':''
     }
     camera_unix = {
-        'ARCHIVE_DEST': '/'.join([out_dirname, 'archive']),
+        'ARCHIVE_DEST': os.path.sep.join([out_dirname, 'archive']),
         'EXPT': 'BVZ00000',
-        'DESTINATION': '/'.join([out_dirname, 'timestreams']),
+        'DESTINATION': os.path.sep.join([out_dirname, 'timestreams']),
         'CAM_NUM': 1,
         'EXPT_END': '2013_12_31',
         'EXPT_START': '2013_11_01',
@@ -79,7 +79,7 @@ class TestExifTraitcapture(unittest.TestCase):
         'IMAGE_TYPES': 'raw~jpg',
         'MODE': 'batch',
         'RESOLUTIONS': 'original',
-        'SOURCE': '/'.join([dirname, "img", "camupload"]),
+        'SOURCE': os.path.sep.join([dirname, "img", "camupload"]),
         'SUNRISE': '500',
         'SUNSET': '2200',
         'CAMERA_TIMEZONE': '1100',
