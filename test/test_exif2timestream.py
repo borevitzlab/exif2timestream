@@ -330,6 +330,7 @@ class TestExifTraitcapture(unittest.TestCase):
                 'timeshift':'',
                 'datasetID':'-F01',
                 'json_updates':'',
+                'large_json':0,
                 'userfriendlyname':'BVZ00000-EUC-R01C01-C01-F01'
             }
         ]
@@ -362,6 +363,7 @@ class TestExifTraitcapture(unittest.TestCase):
                 'timeshift':'',
                 'datasetID':'-F01',
                 'json_updates':'',
+                'large_json':0,
                 'userfriendlyname':'BVZ00000-EUC-R01C01-C01-F01'
             }
         ]
@@ -386,7 +388,7 @@ class TestExifTraitcapture(unittest.TestCase):
             e2t.gen_config(out_csv)
         except SystemExit:
             pass
-        self._md5test(out_csv, "254e83083890df30e68938813a7d3830")
+        self._md5test(out_csv, "8fd8fa30986a8aa510599584ab9a38f5")
 
     # Tests for checking parsing of dates from filename
     def test_check_date_parse(self):

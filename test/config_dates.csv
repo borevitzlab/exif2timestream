@@ -1,5 +1,5 @@
-USE,LOCATION,USER,MODE,METHOD,SOURCE,DESTINATION,ARCHIVE_DEST,INTERVAL,SUNRISE,SUNSET,EXPT,CAM_NUM,EXPT_START,EXPT_END,CAMERA_TIMEZONE,RESOLUTIONS,IMAGE_TYPES,TS_STRUCTURE,PROJECT_OWNER,FILENAME_DATE_MASK,ORIENTATION,FN_PARSE,FN_STRUCTURE,DATASETID,TIMESHIFT,USERFRIENDLYNAME,JSON_UPDATES
-1,EUC-R01C01,Glasshouses,batch,move,./test/img/camupload,./test/out/timestreams,./test/out/archive,5,500,2200,BVZ00000,1,2011_12_01,2011_12_31,1100,original,jpg,,,,,,,1,,,
-1,EUC-R01C01,Glasshouses,batch,copy,./test/img/camupload,./test/out/timestreams,./test/out/archive,5,500,2200,BVZ00000,2,2014_12_01,2014_12_31,1100,original,jpg,,,,,,,1,,,
-1,EUC-R01C01,Glasshouses,batch,copy,./test/img/camupload,./test/out/timestreams,./test/out/archive,5,500,2200,BVZ00000,3,2014_12_01,now,1100,original,jpg,,,,,,,1,,,
-1,EUC-R01C01,Glasshouses,batch,copy,./test/img/camupload,./test/out/timestreams,./test/out/archive,5,500,2200,BVZ00000,4,2014_12_01,NOW,1100,original,jpg,,,,,,,1,,,
+USE,LOCATION,USER,MODE,METHOD,SOURCE,DESTINATION,ARCHIVE_DEST,INTERVAL,SUNRISE,SUNSET,EXPT,CAM_NUM,EXPT_START,EXPT_END,CAMERA_TIMEZONE,RESOLUTIONS,IMAGE_TYPES,TS_STRUCTURE,PROJECT_OWNER,FILENAME_DATE_MASK,ORIENTATION,FN_PARSE,FN_STRUCTURE,DATASETID,TIMESHIFT,USERFRIENDLYNAME,JSON_UPDATES,LARGE_JSON
+1,EUC-R01C01,Glasshouses,batch,move,./test/img/camupload,./test/out/timestreams,./test/out/archive,5,500,2200,BVZ00000,1,2011_12_01,2011_12_31,1100,original,jpg,,,,,,,1,,,,
+1,EUC-R01C01,Glasshouses,batch,copy,./test/img/camupload,./test/out/timestreams,./test/out/archive,5,500,2200,BVZ00000,2,2014_12_01,2014_12_31,1100,original,jpg,,,,,,,1,,,,
+1,EUC-R01C01,Glasshouses,batch,copy,./test/img/camupload,./test/out/timestreams,./test/out/archive,5,500,2200,BVZ00000,3,2014_12_01,now,1100,original,jpg,,,,,,,1,,,,
+1,EUC-R01C01,Glasshouses,batch,copy,./test/img/camupload,./test/out/timestreams,./test/out/archive,5,500,2200,BVZ00000,4,2014_12_01,NOW,1100,original,jpg,,,,,,,1,,,,
