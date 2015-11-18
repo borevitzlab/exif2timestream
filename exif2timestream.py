@@ -891,6 +891,7 @@ def get_actual_start_end(camera, images, ext):
     p_start = date
     later = True
     j = len(my_ext_images)-1
+    date = None
     while later and j>=0:
         date = get_file_date(my_ext_images[j], camera.timeshift, camera.interval * 60)
         if (date <= camera.expt_end) and (date is not None):

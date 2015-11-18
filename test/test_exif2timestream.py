@@ -595,6 +595,64 @@ class TestExifTraitcapture(unittest.TestCase):
         self.assertEqual(new[1], 1920)
         self.assertEqual(new[0], 1280)
 
+    def test_start_end(self):
+        start_end = e2t.CameraFields({
+                'ARCHIVE_DEST': os.path.sep.join(['.', 'test', 'out', 'archive']),
+                'CAMERA_TIMEZONE': "11",
+                'EXPT': 'BVZ00000',
+                'DESTINATION': os.path.sep.join(['.', 'test', 'out', 'timestreams']),
+                'CAM_NUM': '01',
+                'EXPT_END': "now",
+                'EXPT_START': "2002_01_01",
+                'INTERVAL': 5,
+                'IMAGE_TYPES': "jpg~raw",
+                'LOCATION': 'EUC-R01C01',
+                'METHOD': 'move',
+                'MODE': 'batch',
+                'RESOLUTIONS': 'original~1920',
+                'SOURCE': os.path.sep.join(['.', 'test', 'img', 'camupload']),
+                'SUNRISE': "0500",
+                'SUNSET': "2200",
+                'USE': True,
+                'USER': 'Glasshouses',
+                'TS_STRUCTURE': os.path.sep.join(['BVZ00000', 'EUC-R01C01-C01-F01', '{folder}', 'BVZ00000-EUC-R01C01-C01-F01~{res}-{step}']),
+                'PROJECT_OWNER': '',
+                'FILENAME_DATE_MASK':'',
+                'FN_PARSE': '',
+                'FN_STRUCTURE': 'BVZ00000-EUC-R01C01-C01-F01~{res}-{step}',
+                'ORIENTATION': '90',
+                'TIMESHIFT':'',
+                'DATASETID':'-F01',
+                'JSON_UPDATES':'',
+                'LARGE_JSON':0,
+                'USERFRIENDLYNAME':'BVZ00000-EUC-R01C01-C01-F01'
+            })
+        # Check Jpeg
+        images_both = e2t.find_image_files(start_end)
+        images = images_both['jpg']
+        images = sorted(images)
+        start, end = e2t.get_actual_start_end(start_end, images, 'jpg')
+        start_actual_jpg = time.strptime("20131112_205500", "%Y%m%d_%H%M%S")
+        end_actual_jpg = time.strptime("20131104_020500", "%Y%m%d_%H%M%S")
+        self.assertEqual(start_actual_jpg, start)
+        self.assertEqual(end_actual_jpg, end)
+
+        # Check Raw
+        images = images_both['raw']
+        print(images)
+        images = sorted(images)
+        start, end = e2t.get_actual_start_end(start_end, images, 'raw')
+        start_actual_raw = time.strptime("20131112_205500", "%Y%m%d_%H%M%S")
+        end_actual_raw = time.strptime("20131112_205500", "%Y%m%d_%H%M%S")
+        self.assertEqual(start_actual_raw, start)
+        self.assertEqual(end_actual_raw, end)
+
+        # Check Null
+        images = []
+        start, end = e2t.get_actual_start_end(start_end, images, 'jpg')
+        self.assertEqual(start, start_end.expt_start)
+        self.assertEqual(end, start_end.expt_end)
+
 
     def test_timeshift(self):
         before = e2t.get_file_date(self.r_fullres_path, "", 60)
