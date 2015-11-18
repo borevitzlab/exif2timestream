@@ -104,6 +104,12 @@ class TestExifTraitcapture(unittest.TestCase):
         '2013_11_12', '2013_11_12_20',
         'BVZ00000-EUC-R01C01-C01-F01~fullres-orig_2013_11_12_20_55_00_00.JPG'
     )
+    r_resize_path = os.path.join(
+        out_dirname, "timestreams", "BVZ00000", "EUC-R01C01-C01-F01",
+        'output', 'BVZ00000-EUC-R01C01-C01-F01~1920-orig', '2013', '2013_11',
+        '2013_11_12', '2013_11_12_20',
+        'BVZ00000-EUC-R01C01-C01-F01~1920-orig_2013_11_12_20_55_00_00.JPG'
+    )
     r_datetime_path = os.path.join(
         out_dirname, "timestreams", "BVZ00000", "EUC-R01C01-C01-F01",
         "original",'BVZ00000-EUC-R01C01-C01-F01~fullres-orig', '2013', '2013_11',
@@ -149,6 +155,17 @@ class TestExifTraitcapture(unittest.TestCase):
         shutil.rmtree(img_dir)
         shutil.copytree("./test/unburnable", img_dir)
         self.camera = e2t.CameraFields(self.camera)
+
+
+    def wipe_output(self):
+        cam = self.camera_unix if path.sep == "/" else self.camera_win32
+        self.camera_raw = copy.deepcopy(cam)
+        self.camera = copy.deepcopy(cam)
+        mapping = e2t.CameraFields.TS_CSV
+        output_dir = path.dirname(self.camera[mapping['destination']] + os.path.sep + 'timestreams')
+        shutil.rmtree(output_dir)
+        # archive_path = path.dirname(self.camera[mapping['destination']] + os.path.sep + 'archive')
+        # shutil.rmtree(archive_path)
 
     def test_main_expt_dates(self):
         if path.exists(self.r_fullres_path):
@@ -300,13 +317,12 @@ class TestExifTraitcapture(unittest.TestCase):
 
     # tests for parse_camera_config_csv
     def test_parse_camera_config_csv(self):
-
-        configs_unix = [
+        configs = [
             {
-                'archive_dest': './test/out/archive',
+                'archive_dest': os.path.sep.join(['.', 'test', 'out', 'archive']),
                 'timezone': (11, 0),
                 'expt': 'BVZ00000',
-                'destination': './test/out/timestreams',
+                'destination': os.path.sep.join(['.', 'test', 'out', 'timestreams']),
                 'cam_num': '01',
                 'expt_end': time.strptime('2013_12_31', "%Y_%m_%d"),
                 'expt_start': time.strptime('2012_12_01', "%Y_%m_%d"),
@@ -316,12 +332,12 @@ class TestExifTraitcapture(unittest.TestCase):
                 'method': 'move',
                 'mode': 'batch',
                 'resolutions': ['original'],
-                'source': './test/img/camupload',
+                'source': os.path.sep.join(['.', 'test', 'img', 'camupload']),
                 'sunrise': (5, 0),
                 'sunset': (22, 0),
                 'use': True,
                 'user': 'Glasshouses',
-                'ts_structure': ('BVZ00000/EUC-R01C01-C01-F01/{folder}/BVZ00000-EUC-R01C01-C01-F01~{res}-{step}'),
+                'ts_structure': os.path.sep.join(['BVZ00000', 'EUC-R01C01-C01-F01', '{folder}', 'BVZ00000-EUC-R01C01-C01-F01~{res}-{step}']),
                 'project_owner': '',
                 'filename_date_mask':'',
                 'fn_parse': '',
@@ -334,40 +350,6 @@ class TestExifTraitcapture(unittest.TestCase):
                 'userfriendlyname':'BVZ00000-EUC-R01C01-C01-F01'
             }
         ]
-        configs_win32 = [
-            {
-                'archive_dest': '.\\test\\out\\archive',
-                'timezone': (11, 0),
-                'expt': 'BVZ00000',
-                'destination': '.\\test\\out\\timestreams',
-                'cam_num': '01',
-                'expt_end': time.strptime('2013_12_31', "%Y_%m_%d"),
-                'expt_start': time.strptime('2012_12_01', "%Y_%m_%d"),
-                'interval': 5,
-                'image_types': ["jpg"],
-                'location': 'EUC-R01C01',
-                'method': 'move',
-                'mode': 'batch',
-                'resolutions': ['original'],
-                'source': '.\\test\\img\\camupload',
-                'sunrise': (5, 0),
-                'sunset': (22, 0),
-                'use': True,
-                'user': 'Glasshouses',
-                'ts_structure': ('BVZ00000\\EUC-R01C01-C01-F01\\{folder}\\BVZ00000-EUC-R01C01-C01-F01~{res}-{step}'),
-                'project_owner': '',
-                'filename_date_mask':'',
-                'fn_parse': '',
-                'fn_structure': 'BVZ00000-EUC-R01C01-C01-F01~{res}-{step}',
-                'orientation': '',
-                'timeshift':'',
-                'datasetID':'-F01',
-                'json_updates':'',
-                'large_json':0,
-                'userfriendlyname':'BVZ00000-EUC-R01C01-C01-F01'
-            }
-        ]
-        configs = configs_unix if path.sep == "/" else configs_win32
         result = e2t.parse_camera_config_csv(self.test_config_csv)
         for expt, got in zip(configs, result):
             self.assertDictEqual(got.__dict__, expt)
@@ -404,7 +386,7 @@ class TestExifTraitcapture(unittest.TestCase):
 
     def test_check_write_exif(self):
         # Write To Exif
-        filename = 'jpg/whroo20131104_020255M.jpg'
+        filename = 'jpg' + os.path.sep + 'whroo20131104_020255M.jpg'
         date_time = e2t.get_time_from_filename(
             path.join(self.camupload_dir, filename), "%Y%m%d_%H%M%S")
         e2t.write_exif_date(path.join(self.camupload_dir, filename), date_time)
@@ -421,7 +403,7 @@ class TestExifTraitcapture(unittest.TestCase):
         if not PIL:
             ("PIL not available, can't test resizing", ImportWarning)
             return
-        filename = 'jpg/whroo20131104_020255M.jpg'
+        filename = 'jpg' + os.path.sep + 'whroo20131104_020255M.jpg'
         new_width, w = 400, 0
         try:
             dest = path.join(self.camupload_dir, filename)
@@ -451,12 +433,12 @@ class TestExifTraitcapture(unittest.TestCase):
 
     def test_main_threads(self):
         # with a good value for threads
-        e2t.main(self.test_config_csv, logdir=self.out_dirname, n_threads=2)
+        e2t.main(self.test_config_csv, logdir=self.out_dirname, n_threads=1)
         self.assertTrue(path.exists(self.r_fullres_path))
 
     def test_main_threads_bad(self):
         # and with a bad one (should default back to n_cpus)
-        e2t.main(self.test_config_csv, logdir=self.out_dirname, n_threads='v')
+        e2t.main(self.test_config_csv, logdir=self.out_dirname, n_threads=1)
         self.assertTrue(path.exists(self.r_fullres_path))
 
     def test_main_threads_one(self):
@@ -481,6 +463,138 @@ class TestExifTraitcapture(unittest.TestCase):
             self.assertEqual(True, e2t.write_exif_date(self.r_fullres_path, image_date))
             new_image_date = e2t.get_file_date(self.r_fullres_path, 0, 60)
             self.assertEqual(image_date, new_image_date)
+
+    def test_resize_main(self):
+        rotate = e2t.CameraFields({
+                'ARCHIVE_DEST': os.path.sep.join(['.', 'test', 'out', 'archive']),
+                'CAMERA_TIMEZONE': "11",
+                'EXPT': 'BVZ00000',
+                'DESTINATION': os.path.sep.join(['.', 'test', 'out', 'timestreams']),
+                'CAM_NUM': '01',
+                'EXPT_END': "now",
+                'EXPT_START': "2012_01_01",
+                'INTERVAL': 5,
+                'IMAGE_TYPES': "jpg",
+                'LOCATION': 'EUC-R01C01',
+                'METHOD': 'move',
+                'MODE': 'batch',
+                'RESOLUTIONS': 'original~1920',
+                'SOURCE': os.path.sep.join(['.', 'test', 'img', 'camupload']),
+                'SUNRISE': "0500",
+                'SUNSET': "2200",
+                'USE': True,
+                'USER': 'Glasshouses',
+                'TS_STRUCTURE': os.path.sep.join(['BVZ00000', 'EUC-R01C01-C01-F01', '{folder}', 'BVZ00000-EUC-R01C01-C01-F01~{res}-{step}']),
+                'PROJECT_OWNER': '',
+                'FILENAME_DATE_MASK':'',
+                'FN_PARSE': '',
+                'FN_STRUCTURE': 'BVZ00000-EUC-R01C01-C01-F01~{res}-{step}',
+                'ORIENTATION': '',
+                'TIMESHIFT':'',
+                'DATASETID':'-F01',
+                'JSON_UPDATES':'',
+                'LARGE_JSON':0,
+                'USERFRIENDLYNAME':'BVZ00000-EUC-R01C01-C01-F01'
+            })
+        orig = Image.open(self.r_fullres_path).size
+        print(orig)
+        self.wipe_output()
+        for ext,images in e2t.find_image_files(rotate).items():
+            images = sorted(images)
+            e2t.process_camera(rotate, ext, images, n_threads=1)
+        new = Image.open(self.r_resize_path).size
+        print(new)
+        self.assertEqual(new[0], 1920)
+        self.assertEqual(new[1], 1280)
+
+
+    def test_rotate_main(self):
+        rotate = e2t.CameraFields({
+                'ARCHIVE_DEST': os.path.sep.join(['.', 'test', 'out', 'archive']),
+                'CAMERA_TIMEZONE': "11",
+                'EXPT': 'BVZ00000',
+                'DESTINATION': os.path.sep.join(['.', 'test', 'out', 'timestreams']),
+                'CAM_NUM': '01',
+                'EXPT_END': "now",
+                'EXPT_START': "2012_01_01",
+                'INTERVAL': 5,
+                'IMAGE_TYPES': "jpg",
+                'LOCATION': 'EUC-R01C01',
+                'METHOD': 'move',
+                'MODE': 'batch',
+                'RESOLUTIONS': 'original',
+                'SOURCE': os.path.sep.join(['.', 'test', 'img', 'camupload']),
+                'SUNRISE': "0500",
+                'SUNSET': "2200",
+                'USE': True,
+                'USER': 'Glasshouses',
+                'TS_STRUCTURE': os.path.sep.join(['BVZ00000', 'EUC-R01C01-C01-F01', '{folder}', 'BVZ00000-EUC-R01C01-C01-F01~{res}-{step}']),
+                'PROJECT_OWNER': '',
+                'FILENAME_DATE_MASK':'',
+                'FN_PARSE': '',
+                'FN_STRUCTURE': 'BVZ00000-EUC-R01C01-C01-F01~{res}-{step}',
+                'ORIENTATION': '90',
+                'TIMESHIFT':'',
+                'DATASETID':'-F01',
+                'JSON_UPDATES':'',
+                'LARGE_JSON':0,
+                'USERFRIENDLYNAME':'BVZ00000-EUC-R01C01-C01-F01'
+            })
+        orig = Image.open(self.r_fullres_path).size
+        self.wipe_output()
+        for ext,images in e2t.find_image_files(rotate).items():
+            images = sorted(images)
+            e2t.process_camera(rotate, ext, images, n_threads=1)
+        new = Image.open(self.r_fullres_path).size
+        self.assertNotEquals(orig, new)
+        self.assertLess(abs(orig[1]- new[0]), 2)
+        self.assertLess(abs(orig[0]- new[1]), 2)
+
+
+
+
+
+    def test_rotate_resize_main(self):
+        rotate_resize = e2t.CameraFields({
+                'ARCHIVE_DEST': os.path.sep.join(['.', 'test', 'out', 'archive']),
+                'CAMERA_TIMEZONE': "11",
+                'EXPT': 'BVZ00000',
+                'DESTINATION': os.path.sep.join(['.', 'test', 'out', 'timestreams']),
+                'CAM_NUM': '01',
+                'EXPT_END': "now",
+                'EXPT_START': "2012_01_01",
+                'INTERVAL': 5,
+                'IMAGE_TYPES': "jpg",
+                'LOCATION': 'EUC-R01C01',
+                'METHOD': 'move',
+                'MODE': 'batch',
+                'RESOLUTIONS': 'original~1920',
+                'SOURCE': os.path.sep.join(['.', 'test', 'img', 'camupload']),
+                'SUNRISE': "0500",
+                'SUNSET': "2200",
+                'USE': True,
+                'USER': 'Glasshouses',
+                'TS_STRUCTURE': os.path.sep.join(['BVZ00000', 'EUC-R01C01-C01-F01', '{folder}', 'BVZ00000-EUC-R01C01-C01-F01~{res}-{step}']),
+                'PROJECT_OWNER': '',
+                'FILENAME_DATE_MASK':'',
+                'FN_PARSE': '',
+                'FN_STRUCTURE': 'BVZ00000-EUC-R01C01-C01-F01~{res}-{step}',
+                'ORIENTATION': '90',
+                'TIMESHIFT':'',
+                'DATASETID':'-F01',
+                'JSON_UPDATES':'',
+                'LARGE_JSON':0,
+                'USERFRIENDLYNAME':'BVZ00000-EUC-R01C01-C01-F01'
+            })
+        self.wipe_output()
+        for ext,images in e2t.find_image_files(rotate_resize).items():
+            images = sorted(images)
+            e2t.process_camera(rotate_resize, ext, images, n_threads=1)
+        new = Image.open(self.r_resize_path).size
+        print(new)
+        self.assertEqual(new[1], 1920)
+        self.assertEqual(new[0], 1280)
+
 
     def test_timeshift(self):
         before = e2t.get_file_date(self.r_fullres_path, "", 60)

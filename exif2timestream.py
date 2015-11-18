@@ -287,12 +287,12 @@ def resolution_calc(camera, image):
             try:
                 img = Image.open(image).size
                 if camera.orientation in ("90", "270"):
-                    img = (img[1], img[0])
-                    new_res = (img[1] * resize_resolution[0] / img[0],
-                                   resize_resolution[0])
+                    new_res = (resize_resolution[0],
+                                img[1] * resize_resolution[0] / img[0])
+                    new_res = (new_res[1], new_res[0])
                 else:
                     new_res = (resize_resolution[0],
-                                img[0] * resize_resolution[0] / img[1])
+                                img[1] * resize_resolution[0] / img[0])
                 log.debug("One resolution arguments, '{0:d}'".format(new_res[0]))
                 camera.resolutions[x] = new_res
             except Exception as e:
@@ -874,6 +874,7 @@ def get_actual_start_end(camera, images, ext):
     earlier = True
     j=0
     my_ext_images = [];
+    date = ''
     for image in images:
         my_ext = os.path.splitext(image)[-1].lower().strip(".")
         if (my_ext == ext):
@@ -885,7 +886,7 @@ def get_actual_start_end(camera, images, ext):
         if (date >= camera.expt_start) and (date is not None):
             earlier = False
         j+=1
-    if date is None:
+    if not (date):
         date = camera.expt_start
     p_start = date
     later = True
