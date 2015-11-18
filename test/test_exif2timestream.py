@@ -308,12 +308,12 @@ class TestExifTraitcapture(unittest.TestCase):
     def test_process_image(self):
         e2t.process_image((self.jpg_testfile, self.camera, "jpg"))
         self.assertTrue(path.exists(self.r_fullres_path))
-        self._md5test(self.r_fullres_path, "e570294e9ca282b521ad533ace71c973")
+        self._md5test(self.r_fullres_path, "b0895204732d2806780e87ea6ce8e874")
 
     def test_process_image_map(self):
         e2t.process_image((self.jpg_testfile, self.camera, "jpg"))
         self.assertTrue(path.exists(self.r_fullres_path))
-        self._md5test(self.r_fullres_path, "e570294e9ca282b521ad533ace71c973")
+        self._md5test(self.r_fullres_path, "b0895204732d2806780e87ea6ce8e874")
 
     # tests for parse_camera_config_csv
     def test_parse_camera_config_csv(self):
@@ -370,7 +370,7 @@ class TestExifTraitcapture(unittest.TestCase):
             e2t.gen_config(out_csv)
         except SystemExit:
             pass
-        self._md5test(out_csv, "8fd8fa30986a8aa510599584ab9a38f5")
+        self._md5test(out_csv, "4be1f4a6c460f789851f60a79c2db91c")
 
     # Tests for checking parsing of dates from filename
     def test_check_date_parse(self):
@@ -433,12 +433,12 @@ class TestExifTraitcapture(unittest.TestCase):
 
     def test_main_threads(self):
         # with a good value for threads
-        e2t.main(self.test_config_csv, logdir=self.out_dirname, n_threads=1)
+        e2t.main(self.test_config_csv, logdir=self.out_dirname, n_threads=2)
         self.assertTrue(path.exists(self.r_fullres_path))
 
     def test_main_threads_bad(self):
         # and with a bad one (should default back to n_cpus)
-        e2t.main(self.test_config_csv, logdir=self.out_dirname, n_threads=1)
+        e2t.main(self.test_config_csv, logdir=self.out_dirname, n_threads='v')
         self.assertTrue(path.exists(self.r_fullres_path))
 
     def test_main_threads_one(self):
