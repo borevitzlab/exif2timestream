@@ -108,7 +108,7 @@ class TestExifTraitcapture(unittest.TestCase):
         out_dirname, "timestreams", "BVZ00000", "EUC-R01C01-C01-F01",
         'output', 'BVZ00000-EUC-R01C01-C01-F01~1920-orig', '2013', '2013_11',
         '2013_11_12', '2013_11_12_20',
-        'BVZ00000-EUC-R01C01-C01-F01~1920-orig_2013_11_12_20_55_00_00.JPG'
+        'BVZ00000-EUC-R01C01-C01-F01~1920-orig_2013_11_12_20_55_00_00.jpg'
     )
     r_datetime_path = os.path.join(
         out_dirname, "timestreams", "BVZ00000", "EUC-R01C01-C01-F01",
