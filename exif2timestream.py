@@ -315,14 +315,13 @@ def create_small_json(res, camera, image_resolution, full_res, p_start, p_end, t
         os.makedirs(os.path.join(camera.destination, camera.ts_structure.format(folder=folder,
         res=res, step = step)))
     small_json = open(os.path.join(camera.destination, camera.ts_structure.format(folder=folder,
-        res=res, step = step), '{}-{}-C{}'.format(camera.expt, camera.location, camera.cam_num) +
-                                   str(camera.datasetID) + '-ts-info.json'), 'wb+')
+        res=res, step = step), camera.userfriendlyname + '-ts-info.json'), 'wb+')
     jdump = {
         'expt': camera.expt,
         'owner': camera.project_owner,
         'height': image_resolution[1],
         'height_hires': full_res[camera.orientation not in ("270", "90")],
-        'image_type': ext,
+        'image_type': ext.upper(),
         'ts_name': camera.ts_structure.format(folder = folder, res = res, step = step).replace("\\","/"),
         'ts_id': '{}-{}-C{}'.format(camera.expt, camera.location, camera.cam_num) + str(camera.datasetID),
         'name':camera.userfriendlyname,
@@ -334,7 +333,7 @@ def create_small_json(res, camera, image_resolution, full_res, p_start, p_end, t
         'ts_start': strftime(TS_DATE_FMT, p_start),
         'width': image_resolution[0],
         'width_hires': full_res[camera.orientation in ("90", "270")],
-        'webroot':webrootaddr.format(folder="output", res=res, step ="orig"),
+        'webroot':webrootaddr.format(folder=("output" if res != 'fullres' else "original"), res=res, step =("orig" if ext != 'raw' else "raw")),
         'webroot_hires':(webrootaddr.format(folder="original", res="fullres", step="orig"))
         }
     json.dump(jdump, small_json)
@@ -839,12 +838,13 @@ def get_thumbnail_paths(camera, images, res, image_resolution, folder):
     """Return thumbnail paths, for the final resting place of the images."""
     webrootaddr = ""
     url = "http://phenocam.anu.edu.au/cloud/a_data"
-    if "a_data" in camera.destination:
-        webrootaddr = "http://phenocam.anu.edu.au/cloud/a_data{}/{}".format(
-            camera.destination.split("a_data")[1],
-            camera.ts_structure if camera.ts_structure else camera.location).replace("\\","/")
+    webrootaddr = "http://phenocam.anu.edu.au/cloud/a_data{}/{}".format(
+        camera.destination.split("a_data")[-1],
+        camera.ts_structure if camera.ts_structure else camera.location).replace("\\","/")
     thumb_image = []
+    print("LENGTH", len(images))
     if len(images) > 4 and len(camera.resolutions) != 1:
+        print("Inside If Statement")
         thumb_image = [None, None, None]
         sep = '/'
         for i in range(3):
@@ -861,8 +861,7 @@ def get_thumbnail_paths(camera, images, res, image_resolution, folder):
                 pass
     for i in range (0, len(thumb_image)):
         if thumb_image[i]:
-            if "a_data" in thumb_image[i]:
-                thumb_image[i] = url + thumb_image[i].split("a_data")[1]
+            thumb_image[i] = url + thumb_image[i].split("a_data")[-1]
             if len(camera.resolutions)>1:
                 thumb_image[i] = thumb_image[i].format(folder="output", res = camera.resolutions[1][0])
             else:
@@ -912,7 +911,6 @@ def find_empty_dirs(root_dir):
 
 def process_camera(camera, ext, images, n_threads=1):
     """Process a set of images for one extension for a single camera."""
-
     if (camera.method == 'json'):
         new_images = []
         for image in images:
@@ -962,7 +960,7 @@ def process_camera(camera, ext, images, n_threads=1):
         'expt': camera.expt,
         'height_hires': image_resolution[camera.orientation not in ("270", "90")],
         'height': new_res[camera.orientation not in ("270", "90")],
-        'image_type': ext,
+        'image_type': ext.upper(),
         'ts_id': '{}-{}-C{}'.format(camera.expt, camera.location, camera.cam_num ) + str(camera.datasetID),
         'name':camera.userfriendlyname,
         'period_in_minutes': camera.interval,
