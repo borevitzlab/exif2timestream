@@ -300,7 +300,7 @@ def resolution_calc(camera, image):
             x=x+1
     return camera
 
-def create_small_json(res, camera, image_resolution, full_res, p_start, p_end, ts_end_text, ext, webrootaddr):
+def create_small_json(res, camera, full_res, image_resolution, p_start, p_end, ts_end_text, ext, webrootaddr):
     if (res == "fullres"):
         folder = "original"
     else:
@@ -320,7 +320,7 @@ def create_small_json(res, camera, image_resolution, full_res, p_start, p_end, t
         'expt': camera.expt,
         'owner': camera.project_owner,
         'height': image_resolution[1],
-        'height_hires': full_res[camera.orientation not in ("270", "90")],
+        'height_hires': full_res[1],
         'image_type': ext.upper(),
         'ts_name': camera.ts_structure.format(folder = folder, res = res, step = step).replace("\\","/"),
         'ts_id': '{}-{}-C{}'.format(camera.expt, camera.location, camera.cam_num) + str(camera.datasetID),
@@ -332,7 +332,7 @@ def create_small_json(res, camera, image_resolution, full_res, p_start, p_end, t
         'ts_end': ts_end_text,
         'ts_start': strftime(TS_DATE_FMT, p_start),
         'width': image_resolution[0],
-        'width_hires': full_res[camera.orientation in ("90", "270")],
+        'width_hires': full_res[0],
         'webroot':webrootaddr.format(folder=("output" if res != 'fullres' else "original"), res=res, step =("orig" if ext != 'raw' else "raw")),
         'webroot_hires':(webrootaddr.format(folder="original", res="fullres", step="orig"))
         }
@@ -949,23 +949,20 @@ def process_camera(camera, ext, images, n_threads=1):
         ts_end_text = "now"
     else:
         ts_end_text = strftime(TS_DATE_FMT, p_end)
+    if camera.orientation in ("90", "270"):
+        fullres = (image_resolution[1], image_resolution[0])
+    else:
+        fullres = image_resolution
+    print("Fullres is ", fullres)
     if len(camera.resolutions) >1:
         new_res = camera.resolutions[1]
-        if(camera.orientation in ("90", "270")):
-            original_res = (image_resolution[1], image_resolution[0])
-        else:
-            original_res = image_resolution
-    elif camera.orientation in ("90", "180"):
-        new_res = (image_resolution[1], image_resolution[0])
-        original_res = (image_resolution[1], image_resolution[0])
     else:
-        new_res = image_resolution
-        original_res = image_resolution
+        new_res = fullres
     jdump = {
         'access': '0',
         'expt': camera.expt,
-        'height_hires': image_resolution[camera.orientation not in ("270", "90")],
-        'height': new_res[camera.orientation not in ("90", "270")],
+        'height_hires': fullres[1],
+        'height': new_res[1],
         'image_type': ext.upper(),
         'ts_id': '{}-{}-C{}'.format(camera.expt, camera.location, camera.cam_num ) + str(camera.datasetID),
         'name':camera.userfriendlyname,
@@ -981,10 +978,8 @@ def process_camera(camera, ext, images, n_threads=1):
         'webroot_hires':(webrootaddr.format(folder="original", res="fullres", step="orig")),
         'webroot':webrootaddr.format(folder="output", res=new_res[camera.orientation in ("90",
                                                                    "270")], step ="orig"),
-        'width_hires': image_resolution[camera.orientation in ("90",
-                                                                   "270")],
-        'width': new_res[camera.orientation in ("90",
-                                                                   "270")]
+        'width_hires': fullres[0],
+        'width': new_res[0]
         }
 
     if (camera.json_updates) and ext != "raw" and camera.large_json:
@@ -992,11 +987,11 @@ def process_camera(camera, ext, images, n_threads=1):
             if not (key.lower() in camera.json_updates.lower()):
                 if not (key.lower() in ('ts_name')):
                     jdump.pop(key, None)
-    create_small_json("fullres", camera,original_res, image_resolution, p_start, p_end, ts_end_text, ext, webrootaddr)
+    create_small_json("fullres", camera,fullres, fullres, p_start, p_end, ts_end_text, ext, webrootaddr)
     if ext not in RAW_FORMATS:
         for resize_res in camera.resolutions[1:]:
             new_res = resize_res
-            create_small_json(new_res[camera.orientation in ("90", "270")], camera, new_res, image_resolution, p_start, p_end, ts_end_text, ext, webrootaddr)
+            create_small_json(new_res[camera.orientation in ("90", "270")], camera, fullres, new_res, p_start, p_end, ts_end_text, ext, webrootaddr)
     if ext != 'raw' and camera.large_json:
         return {k: str(v) for k, v in jdump.items()}
     else:

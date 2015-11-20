@@ -478,13 +478,11 @@ class TestExifTraitcapture(unittest.TestCase):
                 'FN_STRUCTURE': 'BVZ00000-EUC-R01C01-C01-F01~{res}-{step}',
                 'ORIENTATION': '',
                 'TIMESHIFT':'',
-                'DATASETID':'-F01',
+                'DATASETID':'01',
                 'JSON_UPDATES':'',
                 'LARGE_JSON':0,
                 'USERFRIENDLYNAME':'BVZ00000-EUC-R01C01-C01-F01'
             })
-        orig = Image.open(self.r_fullres_path).size
-        print(orig)
         self.wipe_output()
         for ext,images in e2t.find_image_files(rotate).items():
             images = sorted(images)
@@ -493,6 +491,63 @@ class TestExifTraitcapture(unittest.TestCase):
         print(new)
         self.assertEqual(new[0], 1920)
         self.assertEqual(new[1], 1280)
+
+    #     Check the JSONS
+
+        file_path = os.path.join(rotate.destination, rotate.ts_structure.format(
+            folder='original', res='fullres', step='orig'), rotate.userfriendlyname
+                                                     + '-ts-info.json')
+        original_json = eval(open(file_path).read())
+        test_json ={
+            "width":5184,
+            "period_in_minutes":5,
+            "expt":"BVZ00000",
+            "ts_end":"now",
+            "height":3456,
+            "posix_start":1384289700.0,
+            "image_type":"JPG",
+            "height_hires":3456,
+            "timezone":0,
+            "width_hires":5184,
+            "webroot_hires":"http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/original/BVZ00000-EUC-R01C01-C01-F01~fullres-orig",
+            "ts_name":"BVZ00000/EUC-R01C01-C01-F01/original/BVZ00000-EUC-R01C01-C01-F01~fullres-orig",
+            "ts_start":'2013_11_12_20_55_00',
+            "owner":"",
+            "webroot":"http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/original/BVZ00000-EUC-R01C01-C01-F01~fullres-orig",
+            "name":"BVZ00000-EUC-R01C01-C01-F01",
+            "ts_id":"BVZ00000-EUC-R01C01-C01-F01",
+            "posix_end":1385209500.0,
+        }
+        self.assertDictEqual(original_json, test_json)
+
+
+            # Finally the resized json
+        file_path_resized = os.path.join(rotate.destination, rotate.ts_structure.format(
+            folder='output', res='1920', step='orig'), rotate.userfriendlyname
+                                                     + '-ts-info.json')
+        resized_json= eval(open(file_path_resized).read())
+
+        resized_test_json  ={
+            "width":1920,
+            "period_in_minutes":5,
+            "expt":"BVZ00000",
+            "ts_end":"now",
+            "height":1280,
+            "posix_start":1384289700.0,
+            "image_type":"JPG",
+            "height_hires":3456,
+            "timezone":0,
+            "width_hires":5184,
+            "webroot_hires":"http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/original/BVZ00000-EUC-R01C01-C01-F01~fullres-orig",
+            "ts_name":"BVZ00000/EUC-R01C01-C01-F01/output/BVZ00000-EUC-R01C01-C01-F01~1920-orig",
+            "ts_start":'2013_11_12_20_55_00',
+            "owner":"",
+            "webroot":"http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/output/BVZ00000-EUC-R01C01-C01-F01~1920-orig",
+            "name":"BVZ00000-EUC-R01C01-C01-F01",
+            "ts_id":"BVZ00000-EUC-R01C01-C01-F01",
+            "posix_end":1385209500.0,
+        }
+        self.assertDictEqual(resized_json, resized_test_json)
 
 
     def test_rotate_main(self):
@@ -522,12 +577,12 @@ class TestExifTraitcapture(unittest.TestCase):
                 'FN_STRUCTURE': 'BVZ00000-EUC-R01C01-C01-F01~{res}-{step}',
                 'ORIENTATION': '90',
                 'TIMESHIFT':'',
-                'DATASETID':'-F01',
+                'DATASETID':'01',
                 'JSON_UPDATES':'',
                 'LARGE_JSON':0,
                 'USERFRIENDLYNAME':'BVZ00000-EUC-R01C01-C01-F01'
             })
-        orig = Image.open(self.r_fullres_path).size
+        orig = Image.open(self.jpg_testfile).size
         self.wipe_output()
         for ext,images in e2t.find_image_files(rotate).items():
             images = sorted(images)
@@ -537,6 +592,33 @@ class TestExifTraitcapture(unittest.TestCase):
         self.assertLess(abs(orig[1]- new[0]), 2)
         self.assertLess(abs(orig[0]- new[1]), 2)
 
+          #     Check the JSONS
+
+        file_path = os.path.join(rotate.destination, rotate.ts_structure.format(
+            folder='original', res='fullres', step='orig'), rotate.userfriendlyname
+                                                     + '-ts-info.json')
+        original_json = eval(open(file_path).read())
+        test_json ={
+            "width":3456,
+            "period_in_minutes":5,
+            "expt":"BVZ00000",
+            "ts_end":"now",
+            "height":5184,
+            "posix_start":1384289700.0,
+            "image_type":"JPG",
+            "height_hires":5184,
+            "timezone":0,
+            "width_hires":3456,
+            "webroot_hires":"http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/original/BVZ00000-EUC-R01C01-C01-F01~fullres-orig",
+            "ts_name":"BVZ00000/EUC-R01C01-C01-F01/original/BVZ00000-EUC-R01C01-C01-F01~fullres-orig",
+            "ts_start":'2013_11_12_20_55_00',
+            "owner":"",
+            "webroot":"http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/original/BVZ00000-EUC-R01C01-C01-F01~fullres-orig",
+            "name":"BVZ00000-EUC-R01C01-C01-F01",
+            "ts_id":"BVZ00000-EUC-R01C01-C01-F01",
+            "posix_end":1385209500.0,
+        }
+        self.assertDictEqual(original_json, test_json)
 
 
 
@@ -568,7 +650,7 @@ class TestExifTraitcapture(unittest.TestCase):
                 'FN_STRUCTURE': 'BVZ00000-EUC-R01C01-C01-F01~{res}-{step}',
                 'ORIENTATION': '90',
                 'TIMESHIFT':'',
-                'DATASETID':'-F01',
+                'DATASETID':'01',
                 'JSON_UPDATES':'',
                 'LARGE_JSON':0,
                 'USERFRIENDLYNAME':'BVZ00000-EUC-R01C01-C01-F01'
@@ -578,9 +660,63 @@ class TestExifTraitcapture(unittest.TestCase):
             images = sorted(images)
             e2t.process_camera(rotate_resize, ext, images, n_threads=1)
         new = Image.open(self.r_resize_path).size
-        print(new)
         self.assertEqual(new[1], 1920)
         self.assertEqual(new[0], 1280)
+
+          #     Check the JSONS
+
+        file_path = os.path.join(rotate_resize.destination, rotate_resize.ts_structure.format(
+            folder='original', res='fullres', step='orig'), rotate_resize.userfriendlyname
+                                                     + '-ts-info.json')
+        original_json = eval(open(file_path).read())
+        test_json ={
+            "width":3456,
+            "period_in_minutes":5,
+            "expt":"BVZ00000",
+            "ts_end":"now",
+            "height":5184,
+            "posix_start":1384289700.0,
+            "image_type":"JPG",
+            "height_hires":5184,
+            "timezone":0,
+            "width_hires":3456,
+            "webroot_hires":"http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/original/BVZ00000-EUC-R01C01-C01-F01~fullres-orig",
+            "ts_name":"BVZ00000/EUC-R01C01-C01-F01/original/BVZ00000-EUC-R01C01-C01-F01~fullres-orig",
+            "ts_start":'2013_11_12_20_55_00',
+            "owner":"",
+            "webroot":"http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/original/BVZ00000-EUC-R01C01-C01-F01~fullres-orig",
+            "name":"BVZ00000-EUC-R01C01-C01-F01",
+            "ts_id":"BVZ00000-EUC-R01C01-C01-F01",
+            "posix_end":1385209500.0,
+        }
+        self.assertDictEqual(original_json, test_json)
+
+        file_path_resized = os.path.join(rotate_resize.destination, rotate_resize.ts_structure.format(
+            folder='output', res='1920', step='orig'), rotate_resize.userfriendlyname
+                                                     + '-ts-info.json')
+        resized_json= eval(open(file_path_resized).read())
+
+        resized_test_json  ={
+            "width":1280,
+            "period_in_minutes":5,
+            "expt":"BVZ00000",
+            "ts_end":"now",
+            "height":1920,
+            "posix_start":1384289700.0,
+            "image_type":"JPG",
+            "height_hires":5184,
+            "timezone":0,
+            "width_hires":3456,
+            "webroot_hires":"http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/original/BVZ00000-EUC-R01C01-C01-F01~fullres-orig",
+            "ts_name":"BVZ00000/EUC-R01C01-C01-F01/output/BVZ00000-EUC-R01C01-C01-F01~1920-orig",
+            "ts_start":'2013_11_12_20_55_00',
+            "owner":"",
+            "webroot":"http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/output/BVZ00000-EUC-R01C01-C01-F01~1920-orig",
+            "name":"BVZ00000-EUC-R01C01-C01-F01",
+            "ts_id":"BVZ00000-EUC-R01C01-C01-F01",
+            "posix_end":1385209500.0,
+        }
+        self.assertDictEqual(resized_json, resized_test_json)
 
     def test_start_end(self):
         start_end = e2t.CameraFields({
