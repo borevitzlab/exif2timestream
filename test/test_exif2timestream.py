@@ -420,12 +420,12 @@ class TestExifTraitcapture(unittest.TestCase):
 
     def test_main_threads(self):
         # with a good value for threads
-        e2t.main(self.test_config_csv, logdir=self.out_dirname, n_threads=1)
+        e2t.main(self.test_config_csv, logdir=self.out_dirname, n_threads=2)
         self.assertTrue(path.exists(self.r_fullres_path))
 
     def test_main_threads_bad(self):
         # and with a bad one (should default back to n_cpus)
-        e2t.main(self.test_config_csv, logdir=self.out_dirname, n_threads=1)
+        e2t.main(self.test_config_csv, logdir=self.out_dirname, n_threads='v')
         self.assertTrue(path.exists(self.r_fullres_path))
 
     def test_main_threads_one(self):
@@ -1302,6 +1302,77 @@ class TestExifTraitcapture(unittest.TestCase):
         self.assertEqual(os.path.join("BVZ00000", "EUC-R01C01-C01-F01", "{folder}", "BVZ00000-EUC-R01C01-C01-F01~{res}-{step}"), output.ts_structure)
         self.assertEqual("BVZ00000-EUC-R01C01-C01-F01~{res}-{step}", output.fn_structure)
         self.assertEqual('BVZ00000-EUC-R01C01-C01-F01', output.userfriendlyname)
+
+    def test_resolution_calc(self):
+        res_calc = e2t.CameraFields({
+            'ARCHIVE_DEST': os.path.sep.join(['.', 'test', 'out', 'archive']),
+            'CAMERA_TIMEZONE': "11",
+            'EXPT': 'BVZ00000',
+            'DESTINATION': os.path.sep.join(['.', 'test', 'out', 'timestreams']),
+            'CAM_NUM': '01',
+            'EXPT_END': "now",
+            'EXPT_START': "2002_01_01",
+            'INTERVAL': 5,
+            'IMAGE_TYPES': "jpg~raw",
+            'LOCATION': 'EUC-R01C01',
+            'METHOD': 'move',
+            'MODE': 'batch',
+            'RESOLUTIONS': 'original~1920',
+            'SOURCE': os.path.sep.join(['.', 'test', 'img', 'camupload']),
+            'SUNRISE': "0500",
+            'SUNSET': "2200",
+            'USE': True,
+            'USER': 'Glasshouses',
+            'TS_STRUCTURE': os.path.sep.join(['BVZ00000', 'EUC-R01C01-C01-F01', '{folder}', 'BVZ00000-EUC-R01C01-C01-F01~{res}-{step}']),
+            'PROJECT_OWNER': '',
+            'FILENAME_DATE_MASK':'',
+            'FN_PARSE': '',
+            'FN_STRUCTURE': 'BVZ00000-EUC-R01C01-C01-F01~{res}-{step}',
+            'ORIENTATION': '',
+            'TIMESHIFT':'',
+            'DATASETID':'1',
+            'JSON_UPDATES':'',
+            'LARGE_JSON':'',
+            'USERFRIENDLYNAME':'BVZ00000-EUC-R01C01-C01-F01'
+        })
+        dimensions = e2t.resolution_calc(res_calc, self.jpg_testfile)
+
+        self.assertEqual(dimensions.resolutions, [(5184, 3456), (1920, 1280)])
+
+        res_calc_r = e2t.CameraFields({
+            'ARCHIVE_DEST': os.path.sep.join(['.', 'test', 'out', 'archive']),
+            'CAMERA_TIMEZONE': "11",
+            'EXPT': 'BVZ00000',
+            'DESTINATION': os.path.sep.join(['.', 'test', 'out', 'timestreams']),
+            'CAM_NUM': '01',
+            'EXPT_END': "now",
+            'EXPT_START': "2002_01_01",
+            'INTERVAL': 5,
+            'IMAGE_TYPES': "jpg~raw",
+            'LOCATION': 'EUC-R01C01',
+            'METHOD': 'move',
+            'MODE': 'batch',
+            'RESOLUTIONS': 'original~1920',
+            'SOURCE': os.path.sep.join(['.', 'test', 'img', 'camupload']),
+            'SUNRISE': "0500",
+            'SUNSET': "2200",
+            'USE': True,
+            'USER': 'Glasshouses',
+            'TS_STRUCTURE': os.path.sep.join(['BVZ00000', 'EUC-R01C01-C01-F01', '{folder}', 'BVZ00000-EUC-R01C01-C01-F01~{res}-{step}']),
+            'PROJECT_OWNER': '',
+            'FILENAME_DATE_MASK':'',
+            'FN_PARSE': '',
+            'FN_STRUCTURE': 'BVZ00000-EUC-R01C01-C01-F01~{res}-{step}',
+            'ORIENTATION': '90',
+            'TIMESHIFT':'',
+            'DATASETID':'1',
+            'JSON_UPDATES':'',
+            'LARGE_JSON':'',
+            'USERFRIENDLYNAME':'BVZ00000-EUC-R01C01-C01-F01'
+        })
+
+        dimensions_r = e2t.resolution_calc(res_calc_r, self.jpg_testfile)
+        self.assertEqual(dimensions_r.resolutions, [(3456, 5184), (1280, 1920)])
 
     def test_structure_format_all(self):
         ts_format_test = e2t.CameraFields(

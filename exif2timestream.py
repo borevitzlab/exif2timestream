@@ -276,16 +276,19 @@ def d2s(date):
         return date
 
 def resolution_calc(camera, image):
-    x=1
-
+    x=0
+    try:
+        camera.resolutions[0] = Image.open(image).size
+    except IOError:
+        return camera
+    if (camera.orientation in ("90", "270")):
+        camera.resolutions[0] = (camera.resolutions[0][1], camera.resolutions[0][0])
     for resize_resolution in camera.resolutions:
         if resize_resolution[1] is None:
             try:
-                img = Image.open(image).size
+                img = camera.resolutions[0]
                 if camera.orientation in ("90", "270"):
-                    new_res = (resize_resolution[0],
-                                img[1] * resize_resolution[0] / img[0])
-                    new_res = (new_res[1], new_res[0])
+                    new_res = (img[0] * resize_resolution[0] / img[1], resize_resolution[0])
                 else:
                     new_res = (resize_resolution[0],
                                 img[1] * resize_resolution[0] / img[0])
@@ -293,7 +296,7 @@ def resolution_calc(camera, image):
                 camera.resolutions[x] = new_res
             except Exception as e:
                 log.debug("Wouldn't calculate resolution arguments" + str(e))
-            x=x+1
+        x=x+1
     return camera
 
 def create_small_json(res, camera, full_res, image_resolution, p_start, p_end, ts_end_text, ext, webrootaddr):
