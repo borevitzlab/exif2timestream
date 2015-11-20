@@ -98,6 +98,8 @@ def bool_str(x):
         return x
     elif isinstance(x, int):
         return bool(x)
+    elif (len(x) ==0):
+        return False
     x = x.strip().lower()
     if x in {"t", "true", "y", "yes", "f", "false", "n", "no"}:
         return x in {"t", "true", "y", "yes"}
@@ -167,12 +169,6 @@ def remove_underscores(x):
     """Replaces '_' with '-'."""
     return x.replace("_", "-")
 
-def large_json(x):
-    if x in {"true", "True", "yes", "Yes", "1"}:
-        return 1
-    else:
-        return 0
-
 
 def method_list(x):
     """Ensure x is a vaild timestream method."""
@@ -220,7 +216,7 @@ class CameraFields(object):
         ('datasetID', 'DATASETID', dataset),
         ('timeshift', 'TIMESHIFT', str),
         ('userfriendlyname', 'USERFRIENDLYNAME', str),
-        ('large_json', 'LARGE_JSON', large_json),
+        ('large_json', 'LARGE_JSON', bool_str),
         ('json_updates', 'JSON_UPDATES', str)
         )
 
@@ -730,7 +726,7 @@ def parse_camera_config_csv(filename):
                 camera = CameraFields(camera)
                 if camera.use:
                     yield parse_structures(camera)
-            except (SkipImage, ValueError):
+            except (SkipImage, ValueError) as e:
                 continue
 
 
@@ -953,7 +949,6 @@ def process_camera(camera, ext, images, n_threads=1):
         fullres = (image_resolution[1], image_resolution[0])
     else:
         fullres = image_resolution
-    print("Fullres is ", fullres)
     if len(camera.resolutions) >1:
         new_res = camera.resolutions[1]
     else:
@@ -1007,7 +1002,7 @@ def main(configfile, n_threads=1, logdir=None, debug=False):
     n_images = 0
     json_dump = []
     for camera in parse_camera_config_csv(configfile):
-        if (len(json_dump) is 0) and camera.large_json:
+        if (len(json_dump) == 0) and camera.large_json:
             try:
                 already_json = open(os.path.join(camera.destination, 'all_cameras.json'), 'r')
                 json_dump = json.load(already_json)
@@ -1042,8 +1037,9 @@ def main(configfile, n_threads=1, logdir=None, debug=False):
                 if not os.path.exists(jpath):
                     log.warn("Could not make dir '{}', skipping images"
                              .format(jpath))
-            with open(os.path.join(jpath, 'all_cameras.json'), 'w') as fname:
-                json.dump(json_dump, fname)
+            if (len(json_dump)>0):
+                with open(os.path.join(jpath, 'all_cameras.json'), 'w') as fname:
+                    json.dump(json_dump, fname)
         #remove any empty directories in source
         if camera.method == "archive":
             empty = find_empty_dirs(camera.source)
