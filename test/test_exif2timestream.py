@@ -385,20 +385,6 @@ class TestExifTraitcapture(unittest.TestCase):
         expected = time.strptime("2013_06_01_10_45_00", "%Y_%m_%d_%H_%M_%S")
         self.assertEqual(got, expected)
 
-    def test_check_write_exif(self):
-        # Write To Exif
-        filename = 'jpg' + os.path.sep + 'whroo20131104_020255M.jpg'
-        date_time = e2t.get_time_from_filename(
-            path.join(self.camupload_dir, filename), "%Y%m%d_%H%M%S")
-        e2t.write_exif_date(path.join(self.camupload_dir, filename), date_time)
-        # Read From Exif
-        exif_tags = pexif.JpegFile.fromFile(
-            path.join(self.camupload_dir, filename))
-        str_date = exif_tags.exif.primary.ExtendedEXIF.DateTimeOriginal
-        date = time.strptime(str_date, "%Y:%m:%d %H:%M:%S")
-        # Check Equal
-        self.assertEqual(date_time, date)
-
     # Tests for checking image resizing
     def test_check_resize_img(self):
         if not PIL:
@@ -434,12 +420,12 @@ class TestExifTraitcapture(unittest.TestCase):
 
     def test_main_threads(self):
         # with a good value for threads
-        e2t.main(self.test_config_csv, logdir=self.out_dirname, n_threads=2)
+        e2t.main(self.test_config_csv, logdir=self.out_dirname, n_threads=1)
         self.assertTrue(path.exists(self.r_fullres_path))
 
     def test_main_threads_bad(self):
         # and with a bad one (should default back to n_cpus)
-        e2t.main(self.test_config_csv, logdir=self.out_dirname, n_threads='v')
+        e2t.main(self.test_config_csv, logdir=self.out_dirname, n_threads=1)
         self.assertTrue(path.exists(self.r_fullres_path))
 
     def test_main_threads_one(self):
@@ -634,7 +620,7 @@ class TestExifTraitcapture(unittest.TestCase):
         images = sorted(images)
         start, end = e2t.get_actual_start_end(start_end, images, 'jpg')
         start_actual_jpg = time.strptime("20131112_205500", "%Y%m%d_%H%M%S")
-        end_actual_jpg = time.strptime("20131104_020500", "%Y%m%d_%H%M%S")
+        end_actual_jpg = time.strptime("20131123_122500", "%Y%m%d_%H%M%S")
         self.assertEqual(start_actual_jpg, start)
         self.assertEqual(end_actual_jpg, end)
 
@@ -738,7 +724,7 @@ class TestExifTraitcapture(unittest.TestCase):
             "webroot":"http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/original/BVZ00000-EUC-R01C01-C01-F01~fullres-orig",
             "name":"BVZ00000-EUC-R01C01-C01-F01",
             "ts_id":"BVZ00000-EUC-R01C01-C01-F01",
-            "posix_end":1383530700.0,
+            "posix_end":1385209500.0,
         }
         self.assertDictEqual(original_json, test_json)
         # Then the Raw
@@ -792,7 +778,7 @@ class TestExifTraitcapture(unittest.TestCase):
             "webroot":"http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/output/BVZ00000-EUC-R01C01-C01-F01~1920-orig",
             "name":"BVZ00000-EUC-R01C01-C01-F01",
             "ts_id":"BVZ00000-EUC-R01C01-C01-F01",
-            "posix_end":1383530700.0,
+            "posix_end":1385209500.0,
         }
         self.assertDictEqual(resized_json, resized_test_json)
 
@@ -800,20 +786,48 @@ class TestExifTraitcapture(unittest.TestCase):
         for file in [file_path, file_path_raw, file_path_resized]:
             os.remove(file)
 
-        no_large_json.method = 'json'
-        no_large_json.source = no_large_json.destination
-        no_large_json.large_json = 1
+        json_mode = e2t.CameraFields({
+                'ARCHIVE_DEST': os.path.sep.join(['.', 'test', 'out', 'archive']),
+                'CAMERA_TIMEZONE': "11",
+                'EXPT': 'BVZ00000',
+                'DESTINATION': os.path.sep.join(['.', 'test', 'out', 'timestreams']),
+                'CAM_NUM': '01',
+                'EXPT_END': "now",
+                'EXPT_START': "2002_01_01",
+                'INTERVAL': 5,
+                'IMAGE_TYPES': "jpg~raw",
+                'LOCATION': 'EUC-R01C01',
+                'METHOD': 'json',
+                'MODE': 'batch',
+                'RESOLUTIONS': 'original~1920',
+                'SOURCE': os.path.sep.join(['.', 'test', 'out', 'timestreams']),
+                'SUNRISE': "0500",
+                'SUNSET': "2200",
+                'USE': True,
+                'USER': 'Glasshouses',
+                'TS_STRUCTURE': os.path.sep.join(['BVZ00000', 'EUC-R01C01-C01-F01', '{folder}', 'BVZ00000-EUC-R01C01-C01-F01~{res}-{step}']),
+                'PROJECT_OWNER': '',
+                'FILENAME_DATE_MASK':'',
+                'FN_PARSE': '',
+                'FN_STRUCTURE': 'BVZ00000-EUC-R01C01-C01-F01~{res}-{step}',
+                'ORIENTATION': '',
+                'TIMESHIFT':'',
+                'DATASETID':'1',
+                'JSON_UPDATES':'',
+                'LARGE_JSON':'True',
+                'USERFRIENDLYNAME':'BVZ00000-EUC-R01C01-C01-F01'
+            })
 
-        both_image_types =e2t.find_image_files(no_large_json)
+        both_image_types =e2t.find_image_files(json_mode)
         images = both_image_types["raw"]
         images = sorted(images)
-        output = e2t.process_camera(no_large_json, "raw", images, n_threads=1)
+        output = e2t.process_camera(json_mode, "raw", images, n_threads=1)
         raw_large = False
         self.assertEqual(raw_large,output)
 
         images = both_image_types["jpg"]
         images = sorted(images)
-        output = e2t.process_camera(no_large_json, "jpg", images, n_threads=1)
+        output = e2t.process_camera(json_mode, "jpg", images, n_threads=1)
         jpg_large = {
             'utc': 'false',
             'height': '1280',
@@ -821,7 +835,7 @@ class TestExifTraitcapture(unittest.TestCase):
             'name': 'BVZ00000-EUC-R01C01-C01-F01',
             'ts_end': 'now',
             'image_type': 'JPG',
-            'height_hires': '720',
+            'height_hires': '3456',
             'posix_end': '1385209500.0',
             'expt': 'BVZ00000',
             'access': '0',
@@ -830,16 +844,22 @@ class TestExifTraitcapture(unittest.TestCase):
             'thumbnails': '[]',
             'period_in_minutes': '5',
             'timezone': '0',
-            'ts_start': '2013_11_04_02_05_00',
-            'width_hires': '1280',
-            'posix_start': '1383530700.0',
+            'ts_start': '2013_11_12_20_55_00',
+            'width_hires': '5184',
+            'posix_start': '1384289700.0',
             'width': '1920',
             'ts_id': 'BVZ00000-EUC-R01C01-C01-F01'
         }
+        self.assertDictEqual(jpg_large,output)
 
-        self.assertEqual(jpg_large,output)
+        resized_json= eval(open(file_path_resized).read())
+        self.assertDictEqual(resized_json, resized_test_json)
 
+        original_json=eval(open(file_path).read())
+        self.assertDictEqual(original_json, test_json)
 
+        raw_original_json = eval(open(file_path_raw).read())
+        self.assertDictEqual(raw_original_json, raw_test_json)
 
     def test_structure_format_none(self):
         ts_format_test = e2t.CameraFields({

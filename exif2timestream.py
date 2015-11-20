@@ -842,7 +842,6 @@ def get_thumbnail_paths(camera, images, res, image_resolution, folder):
         camera.destination.split("a_data")[-1],
         camera.ts_structure if camera.ts_structure else camera.location).replace("\\","/")
     thumb_image = []
-    print("LENGTH", len(images))
     if len(images) > 4 and len(camera.resolutions) != 1:
         print("Inside If Statement")
         thumb_image = [None, None, None]
