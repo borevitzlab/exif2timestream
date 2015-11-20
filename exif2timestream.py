@@ -172,7 +172,7 @@ def remove_underscores(x):
 
 def method_list(x):
     """Ensure x is a vaild timestream method."""
-    if x not in {"copy", "archive", "move", "resize", "json"}:
+    if x not in {"copy", "archive", "move", "resize", "json", "rotate"}:
         raise ValueError
     return x
 
@@ -673,6 +673,9 @@ def process_image(args):
         img_array = Image.open(image)
         resize_function(camera, image_date, image, img_array)
         log.debug("Rezied Image {}".format(image))
+    if camera.method == "rotate" and (ext not in RAW_FORMATS):
+        rotate_image(camera.orientation, image)
+        return
     if camera.method == "archive":
         log.debug("Will archive {}".format(image))
         ts_name = make_timestream_name(camera, res="fullres")
