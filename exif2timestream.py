@@ -843,7 +843,6 @@ def get_thumbnail_paths(camera, images, res, image_resolution, folder):
         camera.ts_structure if camera.ts_structure else camera.location).replace("\\","/")
     thumb_image = []
     if len(images) > 4 and len(camera.resolutions) != 1:
-        print("Inside If Statement")
         thumb_image = [None, None, None]
         sep = '/'
         for i in range(3):
@@ -952,13 +951,21 @@ def process_camera(camera, ext, images, n_threads=1):
         ts_end_text = strftime(TS_DATE_FMT, p_end)
     if len(camera.resolutions) >1:
         new_res = camera.resolutions[1]
+        if(camera.orientation in ("90", "270")):
+            original_res = (image_resolution[1], image_resolution[0])
+        else:
+            original_res = image_resolution
+    elif camera.orientation in ("90", "180"):
+        new_res = (image_resolution[1], image_resolution[0])
+        original_res = (image_resolution[1], image_resolution[0])
     else:
-        new_res = res
+        new_res = image_resolution
+        original_res = image_resolution
     jdump = {
         'access': '0',
         'expt': camera.expt,
         'height_hires': image_resolution[camera.orientation not in ("270", "90")],
-        'height': new_res[camera.orientation not in ("270", "90")],
+        'height': new_res[camera.orientation not in ("90", "270")],
         'image_type': ext.upper(),
         'ts_id': '{}-{}-C{}'.format(camera.expt, camera.location, camera.cam_num ) + str(camera.datasetID),
         'name':camera.userfriendlyname,
@@ -985,7 +992,7 @@ def process_camera(camera, ext, images, n_threads=1):
             if not (key.lower() in camera.json_updates.lower()):
                 if not (key.lower() in ('ts_name')):
                     jdump.pop(key, None)
-    create_small_json("fullres", camera,image_resolution, image_resolution, p_start, p_end, ts_end_text, ext, webrootaddr)
+    create_small_json("fullres", camera,original_res, image_resolution, p_start, p_end, ts_end_text, ext, webrootaddr)
     if ext not in RAW_FORMATS:
         for resize_res in camera.resolutions[1:]:
             new_res = resize_res
