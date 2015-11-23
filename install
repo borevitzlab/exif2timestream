@@ -1,7 +1,2 @@
 #!/bin/bash
-#Install the packages needed for Scimage
-if [[ "$OSTYPE" == "msys"* ]]; then
-       echo "You are on a microsoft system. Please run the win_install.bat script instead"
-else
-	python setup.py install
-fi
+python setup.py install
