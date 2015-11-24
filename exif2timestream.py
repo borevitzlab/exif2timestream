@@ -300,6 +300,7 @@ def resolution_calc(camera, image):
     return camera
 
 def create_small_json(res, camera, full_res, image_resolution, p_start, p_end, ts_end_text, ext, webrootaddr):
+    print("RESRES", res)
     if (res == "fullres"):
         folder = "original"
     else:
@@ -313,28 +314,57 @@ def create_small_json(res, camera, full_res, image_resolution, p_start, p_end, t
         res=res, step = step))):
         os.makedirs(os.path.join(camera.destination, camera.ts_structure.format(folder=folder,
         res=res, step = step)))
+    if os.path.isfile(os.path.join(camera.destination, camera.ts_structure.format(folder=folder,
+        res=res, step = step), camera.userfriendlyname + '-ts-info.json')):
+        old_json= open(os.path.join(camera.destination, camera.ts_structure.format(folder=folder,
+            res=res, step = step), camera.userfriendlyname + '-ts-info.json'), 'r')
+        jdump = eval(old_json.read())
+        old_json.close()
+        if jdump['posix_start']> mktime(p_start):
+            jdump['posix_start'] = mktime(p_start)
+            jdump['ts_start'] = strftime(TS_DATE_FMT, p_start)
+        if jdump['posix_end'] < mktime(p_end):
+            jdump['posix_end'] = mktime(p_end)
+            if (jdump['ts_end'] != 'now'):
+                jdump['ts_end'] = strftime(TS_DATE_FMT, p_end)
+        if len(camera.userfriendlyname) > 0:
+            jdump['name'] = camera.userfriendlyname
+        if (camera.method == 'rotate'):
+            jdump['height'] = image_resolution[1]
+            jdump['height_hires']=  full_res[1]
+            jdump['width']= image_resolution[0]
+            jdump['width_hires']= full_res[0]
+        if (camera.method == 'resize'):
+            jdump['height'] = image_resolution[1]
+            jdump['height_hires']=  full_res[1]
+            jdump['width']= image_resolution[0]
+            jdump['width_hires']= full_res[0]
+            jdump['webroot'] = webrootaddr.format(folder=("output" if res != 'fullres' else "original"), res=res, step =("orig" if ext != 'raw' else "raw"))
+
+    else:
+        jdump = {
+            'expt': camera.expt,
+            'owner': camera.project_owner,
+            'height': image_resolution[1],
+            'height_hires': full_res[1],
+            'image_type': ext.upper(),
+            'ts_name': camera.ts_structure.format(folder = folder, res = res, step = step).replace("\\","/"),
+            'ts_id': '{}-{}-C{}'.format(camera.expt, camera.location, camera.cam_num) + str(camera.datasetID),
+            'name':camera.userfriendlyname,
+            'period_in_minutes': camera.interval,
+            'posix_end': mktime(p_end),
+            'posix_start': mktime(p_start),
+            'timezone': camera.timezone[0],
+            'ts_end': ts_end_text,
+            'ts_start': strftime(TS_DATE_FMT, p_start),
+            'width': image_resolution[0],
+            'width_hires': full_res[0],
+            'webroot':webrootaddr.format(folder=("output" if res != 'fullres' else "original"), res=res, step =("orig" if ext != 'raw' else "raw")),
+            'webroot_hires':(webrootaddr.format(folder="original", res="fullres", step="orig"))
+            }
+
     small_json = open(os.path.join(camera.destination, camera.ts_structure.format(folder=folder,
         res=res, step = step), camera.userfriendlyname + '-ts-info.json'), 'wb+')
-    jdump = {
-        'expt': camera.expt,
-        'owner': camera.project_owner,
-        'height': image_resolution[1],
-        'height_hires': full_res[1],
-        'image_type': ext.upper(),
-        'ts_name': camera.ts_structure.format(folder = folder, res = res, step = step).replace("\\","/"),
-        'ts_id': '{}-{}-C{}'.format(camera.expt, camera.location, camera.cam_num) + str(camera.datasetID),
-        'name':camera.userfriendlyname,
-        'period_in_minutes': camera.interval,
-        'posix_end': mktime(p_end),
-        'posix_start': mktime(p_start),
-        'timezone': camera.timezone[0],
-        'ts_end': ts_end_text,
-        'ts_start': strftime(TS_DATE_FMT, p_start),
-        'width': image_resolution[0],
-        'width_hires': full_res[0],
-        'webroot':webrootaddr.format(folder=("output" if res != 'fullres' else "original"), res=res, step =("orig" if ext != 'raw' else "raw")),
-        'webroot_hires':(webrootaddr.format(folder="original", res="fullres", step="orig"))
-        }
     json.dump(jdump, small_json)
     small_json.close()
 

@@ -420,12 +420,12 @@ class TestExifTraitcapture(unittest.TestCase):
 
     def test_main_threads(self):
         # with a good value for threads
-        e2t.main(self.test_config_csv, logdir=self.out_dirname, n_threads=2)
+        e2t.main(self.test_config_csv, logdir=self.out_dirname, n_threads=1)
         self.assertTrue(path.exists(self.r_fullres_path))
 
     def test_main_threads_bad(self):
         # and with a bad one (should default back to n_cpus)
-        e2t.main(self.test_config_csv, logdir=self.out_dirname, n_threads='v')
+        e2t.main(self.test_config_csv, logdir=self.out_dirname, n_threads=1)
         self.assertTrue(path.exists(self.r_fullres_path))
 
     def test_main_threads_one(self):
@@ -1412,8 +1412,99 @@ class TestExifTraitcapture(unittest.TestCase):
         self.assertEqual(''.join(["BVZ00000", "EUC-R01C01-location", "potato~{res}-{step}"]), output.fn_structure)
         self.assertEqual(''.join(["BVZ00000", "EUC-R01C01-location", "potato"]), output.userfriendlyname)
 
+    def test_small_json_write_over(self):
+        small_json = e2t.CameraFields({
+            'ARCHIVE_DEST': os.path.sep.join(['.', 'test', 'out', 'archive']),
+            'CAMERA_TIMEZONE': "11",
+            'EXPT': 'BVZ00000',
+            'DESTINATION': os.path.sep.join(['.', 'test', 'out', 'timestreams']),
+            'CAM_NUM': '01',
+            'EXPT_END': "now",
+            'EXPT_START': "2002_01_01",
+            'INTERVAL': 5,
+            'IMAGE_TYPES': "jpg~raw",
+            'LOCATION': 'EUC-R01C01',
+            'METHOD': 'move',
+            'MODE': 'batch',
+            'RESOLUTIONS': 'original',
+            'SOURCE': os.path.sep.join(['.', 'test', 'img', 'camupload']),
+            'SUNRISE': "0500",
+            'SUNSET': "2200",
+            'USE': True,
+            'USER': 'Glasshouses',
+            'TS_STRUCTURE': os.path.sep.join(['BVZ00000', 'EUC-R01C01-C01-F01', '{folder}', 'BVZ00000-EUC-R01C01-C01-F01~{res}-{step}']),
+            'PROJECT_OWNER': '',
+            'FILENAME_DATE_MASK':'',
+            'FN_PARSE': '',
+            'FN_STRUCTURE': 'BVZ00000-EUC-R01C01-C01-F01~{res}-{step}',
+            'ORIENTATION': '',
+            'TIMESHIFT':'',
+            'DATASETID':'1',
+            'JSON_UPDATES':'',
+            'LARGE_JSON':0,
+            'USERFRIENDLYNAME':'BVZ00000-EUC-R01C01-C01-F01'
+         })
+        self.wipe_output()
+        for ext,images in e2t.find_image_files(small_json).items():
+             images = sorted(images)
+             output = e2t.process_camera(small_json, ext, images, n_threads=1)
+             self.assertEqual(False,output)
+        #     Check the Mini-Jsons
+        #     First the original value
+        file_path = os.path.join(small_json.destination, small_json.ts_structure.format(
+            folder='original', res='fullres', step='orig'), small_json.userfriendlyname
+                                                     + '-ts-info.json')
+        original_json = eval(open(file_path).read())
+        test_json ={
+            "width":5184,
+            "period_in_minutes":5,
+            "expt":"BVZ00000",
+            "ts_end":"now",
+            "height":3456,
+            "posix_start":1384289700.0,
+            "image_type":"JPG",
+            "height_hires":3456,
+            "timezone":0,
+            "width_hires":5184,
+            "webroot_hires":"http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/original/BVZ00000-EUC-R01C01-C01-F01~fullres-orig",
+            "ts_name":"BVZ00000/EUC-R01C01-C01-F01/original/BVZ00000-EUC-R01C01-C01-F01~fullres-orig",
+            "ts_start":'2013_11_12_20_55_00',
+            "owner":"",
+            "webroot":"http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/original/BVZ00000-EUC-R01C01-C01-F01~fullres-orig",
+            "name":"BVZ00000-EUC-R01C01-C01-F01",
+            "ts_id":"BVZ00000-EUC-R01C01-C01-F01",
+            "posix_end":1385209500.0,
+        }
+        self.assertDictEqual(original_json, test_json)
+        small_json.method = 'resize'
+        e2t.create_small_json("fullres", small_json, (5184, 3456), (1920, 1080),
+                    time.strptime("19990101", "%Y%m%d"), time.strptime("20150101", "%Y%m%d"),
+                    "now", ".jpg", webrootaddr = "http://phenocam.anu.edu.au/cloud/a_data{}/{}".format(
+                        small_json.destination.split("a_data")[-1],small_json.ts_structure if small_json.ts_structure
+                        else small_json.location).replace("\\","/"))
 
-
+        original_json = eval(open(file_path).read())
+        after_json={
+            "width":1920,
+            "period_in_minutes":5,
+            "expt":"BVZ00000",
+            "ts_end":"now",
+            "height":1080,
+            "posix_start":915148800.0,
+            "image_type":"JPG",
+            "height_hires":3456,
+            "timezone":0,
+            "width_hires":5184,
+            "webroot_hires":"http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/original/BVZ00000-EUC-R01C01-C01-F01~fullres-orig",
+            "ts_name":"BVZ00000/EUC-R01C01-C01-F01/original/BVZ00000-EUC-R01C01-C01-F01~fullres-orig",
+            "ts_start":'1999_01_01_00_00_00',
+            "owner":"",
+            "webroot":"http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/original/BVZ00000-EUC-R01C01-C01-F01~fullres-orig",
+            "name":"BVZ00000-EUC-R01C01-C01-F01",
+            "ts_id":"BVZ00000-EUC-R01C01-C01-F01",
+            "posix_end":1420070400.0,
+        }
+        self.assertDictEqual(original_json, after_json)
 
 if __name__ == "__main__":
     runner = unittest.TextTestRunner(verbosity=3)
