@@ -300,7 +300,6 @@ def resolution_calc(camera, image):
     return camera
 
 def create_small_json(res, camera, full_res, image_resolution, p_start, p_end, ts_end_text, ext, webrootaddr):
-    print("RESRES", res)
     if (res == "fullres"):
         folder = "original"
     else:
