@@ -1098,4 +1098,7 @@ if __name__ == "__main__":
         from ._version import get_versions
         print("Version {}".format(get_versions()['version']))
         sys.exit(0)
+    if opts.generate:
+        gen_config(opts.generate)
+        sys.exit(0)
     main(opts.config, debug=opts.debug, logdir=opts.logdir, n_threads=opts.threads)
