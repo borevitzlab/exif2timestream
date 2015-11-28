@@ -317,10 +317,17 @@ def create_small_json(res, camera, full_res, image_resolution, p_start, p_end, t
     else:
         folder = "output"
 
+
     if (ext in RAW_FORMATS):
         step = "raw"
     else:
         step = 'orig'
+    if (len(camera.resolutions)>1 and step == 'orig'):
+        lower_resolution = True
+        low_res = image_resolution[camera.orientation in ("90", "270")]
+    else:
+        lower_resolution = False
+        low_res = res
     if not os.path.exists(os.path.join(camera.destination, camera.ts_structure.format(folder=folder,
         res=res, step = step))):
         os.makedirs(os.path.join(camera.destination, camera.ts_structure.format(folder=folder,
@@ -350,10 +357,11 @@ def create_small_json(res, camera, full_res, image_resolution, p_start, p_end, t
             jdump['height_hires']=  full_res[1]
             jdump['width']= image_resolution[0]
             jdump['width_hires']= full_res[0]
-            jdump['webroot'] = webrootaddr.format(folder=("output" if res != 'fullres' else "original"), res=res, step =("orig" if ext != 'raw' else "raw"))
+            jdump['webroot'] = webrootaddr.format(folder=("output" if lower_resolution else "original"), res=low_res, step =("orig" if ext != 'raw' else "raw"))
 
     else:
         jdump = {
+            'access':0,
             'expt': camera.expt,
             'owner': camera.project_owner,
             'height': image_resolution[1],
@@ -366,13 +374,15 @@ def create_small_json(res, camera, full_res, image_resolution, p_start, p_end, t
             'posix_end': mktime(p_end),
             'posix_start': mktime(p_start),
             'timezone': camera.timezone[0],
-            'thumbnail':thumb_image,
+            'thumbnails':thumb_image,
             'ts_end': ts_end_text,
+            'ts_version' :'1',
             'ts_start': strftime(TS_DATE_FMT, p_start),
             'width': image_resolution[0],
             'width_hires': full_res[0],
-            'webroot':webrootaddr.format(folder=("output" if res != 'fullres' else "original"), res=res, step =("orig" if ext != 'raw' else "raw")),
-            'webroot_hires':(webrootaddr.format(folder="original", res="fullres", step="orig"))
+            'webroot':webrootaddr.format(folder=("output" if lower_resolution else "original"), res=low_res, step =("orig" if ext != 'raw' else "raw")),
+            'webroot_hires':(webrootaddr.format(folder="original", res="fullres", step="orig")),
+            'utc' : 'false',
             }
 
     small_json = open(os.path.join(camera.destination, camera.ts_structure.format(folder=folder,
@@ -926,7 +936,7 @@ def get_actual_start_end(camera, images, ext):
         if (my_ext == ext):
             my_ext_images.append(image);
         elif (my_ext in RAW_FORMATS) and (ext == "raw"):
-            my_ext_images.append(image);	
+            my_ext_images.append(image);
     while earlier and (j<= len(my_ext_images)-1):
         date = get_file_date(my_ext_images[j], camera.timeshift, camera.interval * 60)
         if (date >= camera.expt_start) and (date is not None):
@@ -953,7 +963,6 @@ def find_empty_dirs(root_dir):
         if(len(files) is 1 and "thumbs.db" in files):
             os.remove(os.path.join(dirpath,"thumbs.db"))
         if (not dirs and not files) or len(os.listdir(dirpath))==0:
-            print ("removing empty dir " + dirpath)
             os.rmdir(dirpath)
 
 def process_camera(camera, ext, images, n_threads=1):
@@ -978,7 +987,6 @@ def process_camera(camera, ext, images, n_threads=1):
         low_res = "fullres"
         low_folder = "original"
     webrootaddr, thumb_image = get_thumbnail_paths(camera, images, low_res, image_resolution, low_folder)
-    print("THUMB_IMAGE IS ",thumb_image)
     webrootaddr = webrootaddr.replace("\\","/")
 
     # TODO: sort out the whole subsecond clusterfuck
@@ -1011,20 +1019,26 @@ def process_camera(camera, ext, images, n_threads=1):
         new_res = camera.resolutions[1]
     else:
         new_res = fullres
+    if (ext in RAW_FORMATS):
+        step = "raw"
+    else:
+        step = 'orig'
 
     jdump = {
-        'access': '0',
+        'access': 0,
         'expt': camera.expt,
         'height_hires': fullres[1],
         'height': new_res[1],
         'image_type': ext.upper(),
         'ts_id': '{}-{}-C{}'.format(camera.expt, camera.location, camera.cam_num ) + str(camera.datasetID),
         'name':camera.userfriendlyname,
+        'owner':camera.project_owner,
         'period_in_minutes': camera.interval,
         'posix_end': mktime(p_end),
         'posix_start': mktime(p_start),
         'thumbnails': thumb_image,
         'timezone': camera.timezone[0],
+        'ts_name' : camera.fn_structure.format(folder = folder, res = res, step = step).replace(os.path.sep,""),
         'ts_end': ts_end_text,
         'ts_start': strftime(TS_DATE_FMT, p_start),
         'ts_version': '1',
