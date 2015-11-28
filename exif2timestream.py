@@ -394,7 +394,6 @@ def parse_structures(camera):
     if len(camera.userfriendlyname) <1:
         camera.userfriendlyname = '{}-{}-C{}{}'.format(camera.expt, camera.location, camera.cam_num,camera.datasetID)
     else:
-         print ("USERFIRENDLY ", camera.userfriendlyname, len(camera.userfriendlyname))
          for key, value in camera.__dict__.items():
             camera.userfriendlyname = camera.userfriendlyname.replace(key.upper(),
                                                               str(value))
@@ -1090,7 +1089,6 @@ def main(configfile, n_threads=1, logdir=None, debug=False):
         log.info("Images are coming from {}, being put in {}".format(
             camera.source, camera.destination))
         for ext, images in find_image_files(camera).items():
-            print("EXT, IMAGES", ext, images)
             print(("Have Found {0} {1} images from this camera".format(
                 len(images), ext)))
             log.info("Have Found {0} {1} images from this camera".format(

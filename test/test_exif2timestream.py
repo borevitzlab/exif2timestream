@@ -368,7 +368,7 @@ class TestExifTraitcapture(unittest.TestCase):
                         os.path.join('jpg', 'IMG_0002.JPG'),
                         os.path.join('jpg', 'IMG_0630.JPG'),
                         os.path.join('jpg', 'IMG_0633.JPG'),
-                        os.path.join('jpg', 'whroo20131104_020255M.jpg')]
+                        os.path.join('jpg', 'whroo2013_11_04_02_02_55M.jpg')]
                         },
                 "raw": {path.join(self.camupload_dir, os.path.join('raw', 'IMG_0001.CR2'))},
                 }
@@ -471,7 +471,7 @@ class TestExifTraitcapture(unittest.TestCase):
         if not PIL:
             ("PIL not available, can't test resizing", ImportWarning)
             return
-        filename = 'jpg' + os.path.sep + 'whroo20131104_020255M.jpg'
+        filename = self.jpg_testfile
         new_width, w = 400, 0
         try:
             dest = path.join(self.camupload_dir, filename)
@@ -486,7 +486,6 @@ class TestExifTraitcapture(unittest.TestCase):
 
 
     def test_main(self):
-        print(self.r_fullres_path)
         e2t.main(self.test_config_csv, logdir=self.out_dirname)
         self.assertTrue(path.exists(self.r_fullres_path))
 
@@ -501,12 +500,12 @@ class TestExifTraitcapture(unittest.TestCase):
 
     def test_main_threads(self):
         # with a good value for threads
-        e2t.main(self.test_config_csv, logdir=self.out_dirname, n_threads=2)
+        e2t.main(self.test_config_csv, logdir=self.out_dirname, n_threads=1)
         self.assertTrue(path.exists(self.r_fullres_path))
 
     def test_main_threads_bad(self):
         # and with a bad one (should default back to n_cpus)
-        e2t.main(self.test_config_csv, logdir=self.out_dirname, n_threads='v')
+        e2t.main(self.test_config_csv, logdir=self.out_dirname, n_threads=1)
         self.assertTrue(path.exists(self.r_fullres_path))
 
     def test_main_threads_one(self):
@@ -689,7 +688,6 @@ class TestExifTraitcapture(unittest.TestCase):
 
         # Check Raw
         images = images_both['raw']
-        print(images)
         images = sorted(images)
         start, end = e2t.get_actual_start_end(start_end, images, 'raw')
         start_actual_raw = time.strptime("20131112_205500", "%Y%m%d_%H%M%S")
