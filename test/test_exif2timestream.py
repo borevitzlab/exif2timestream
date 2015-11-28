@@ -766,7 +766,6 @@ class TestExifTraitcapture(unittest.TestCase):
                                                      + '-ts-info.json')
         temp = open(file_path_raw)
         temp = str(temp.read())
-        print(temp)
         raw_original_json = eval(str(temp))
         raw_test_json ={
             "width":3456,
@@ -867,6 +866,7 @@ class TestExifTraitcapture(unittest.TestCase):
         self.assertEqual(raw_large,output)
 
         images = both_image_types["jpg"]
+
         images = sorted(images)
         output = e2t.process_camera(json_mode, "jpg", images, n_threads=1)
         jpg_large = {
@@ -882,7 +882,11 @@ class TestExifTraitcapture(unittest.TestCase):
             'access': '0',
             'webroot': 'http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/output/BVZ00000-EUC-R01C01-C01-F01~1920-orig',
             'webroot_hires': 'http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/original/BVZ00000-EUC-R01C01-C01-F01~fullres-orig',
-            'thumbnails': ['http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/output/BVZ00000-EUC-R01C01-C01-F01~1920-orig/2013/2013_11/2013_11_12/2013_11_12_20/BVZ00000-EUC-R01C01-C01-F01~1920-orig_2013_11_12_20_55_00_00.jpg'],
+            'thumbnails': [
+                'http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/output/BVZ00000-EUC-R01C01-C01-F01~1920-orig/2013/2013_11/2013_11_12/2013_11_12_20/BVZ00000-EUC-R01C01-C01-F01~1920-orig_2013_11_12_20_55_00_00.jpg',
+                'http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/output/BVZ00000-EUC-R01C01-C01-F01~1920-orig/2013/2013_11/2013_11_23/2013_11_23_11/BVZ00000-EUC-R01C01-C01-F01~1920-orig_2013_11_23_11_40_00_00.jpg',
+                'http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/output/BVZ00000-EUC-R01C01-C01-F01~1920-orig/2013/2013_11/2013_11_23/2013_11_23_12/BVZ00000-EUC-R01C01-C01-F01~1920-orig_2013_11_23_12_25_00_00.jpg'
+            ],
             'period_in_minutes': 5,
             'timezone': 0,
             'ts_start': '2013_11_12_20_55_00',
@@ -894,13 +898,13 @@ class TestExifTraitcapture(unittest.TestCase):
         self.assertDictEqual(jpg_large,output)
 
         resized_json= eval(open(file_path_resized).read())
-        # self.assertDictEqual(resized_json, resized_test_json)
+        self.assertDictEqual(resized_json, resized_test_json)
 
         original_json=eval(open(file_path).read())
-        # self.assertDictEqual(original_json, test_json)
+        self.assertDictEqual(original_json, test_json)
 
         raw_original_json = eval(open(file_path_raw).read())
-        # self.assertDictEqual(raw_original_json, raw_test_json)
+        self.assertDictEqual(raw_original_json, raw_test_json)
 
     def test_resize_mode(self):
          no_resize = copy.deepcopy(self.camera_both)

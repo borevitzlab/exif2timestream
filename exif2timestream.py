@@ -967,8 +967,6 @@ def process_camera(camera, ext, images, n_threads=1):
     p_start, p_end = get_actual_start_end(camera, images, ext)
     try:
         my_image = (x for x in images if ((os.path.splitext(x)[-1].lower().strip(".") == ext) or (os.path.splitext(x)[-1].lower().strip(".") in RAW_FORMATS and ext == "raw"))).next()
-        if camera.method == 'json':
-            images = [my_image]
     except StopIteration:
 	    return
     camera = resolution_calc(camera, my_image)
@@ -980,6 +978,7 @@ def process_camera(camera, ext, images, n_threads=1):
         low_res = "fullres"
         low_folder = "original"
     webrootaddr, thumb_image = get_thumbnail_paths(camera, images, low_res, image_resolution, low_folder)
+    print("THUMB_IMAGE IS ",thumb_image)
     webrootaddr = webrootaddr.replace("\\","/")
 
     # TODO: sort out the whole subsecond clusterfuck
@@ -1077,7 +1076,7 @@ def main(configfile, n_threads=1, logdir=None, debug=False):
         log.info("Images are coming from {}, being put in {}".format(
             camera.source, camera.destination))
         for ext, images in find_image_files(camera).items():
-
+            print("EXT, IMAGES", ext, images)
             print(("Have Found {0} {1} images from this camera".format(
                 len(images), ext)))
             log.info("Have Found {0} {1} images from this camera".format(
