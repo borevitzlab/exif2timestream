@@ -712,10 +712,7 @@ def process_image(args):
 
     image, camera, ext = args
     image_date = get_file_date(image, camera.timeshift, camera.interval * 60)
-    if camera.expt_start > image_date or image_date > camera.expt_end:
-        log.debug("Skipping {}. Outside of date range {} to {}".format(
-            image, d2s(camera.expt_start), d2s(camera.expt_end)))
-        return
+
     my_ext = os.path.splitext(image)[-1].lower().strip(".")
     if not (my_ext == ext) and not ((my_ext in RAW_FORMATS) and (ext == "raw")):
         return
@@ -725,10 +722,18 @@ def process_image(args):
         log.debug ("Skipping file {}, assumed last image".format(image))
         return
     if camera.method == "resize" and (ext not in RAW_FORMATS):
+        if camera.expt_start > image_date or image_date > camera.expt_end:
+            log.debug("Skipping {}. Outside of date range {} to {}".format(
+                image, d2s(camera.expt_start), d2s(camera.expt_end)))
+            return
         img_array = Image.open(image)
         resize_function(camera, image_date, image, img_array)
         log.debug("Rezied Image {}".format(image))
     if camera.method == "rotate" and (ext not in RAW_FORMATS):
+        if camera.expt_start > image_date or image_date > camera.expt_end:
+            log.debug("Skipping {}. Outside of date range {} to {}".format(
+                image, d2s(camera.expt_start), d2s(camera.expt_end)))
+            return
         rotate_image(camera.orientation, image)
         return
     if camera.method == "archive":
@@ -755,6 +760,10 @@ def process_image(args):
         log.debug("Copied {} to {}".format(image, archive_image))
     try:
         # deal with original image (move/copy etc)
+        if camera.expt_start > image_date or image_date > camera.expt_end:
+            log.debug("Skipping {}. Outside of date range {} to {}".format(
+                image, d2s(camera.expt_start), d2s(camera.expt_end)))
+            raise SkipImage
         timestreamise_image(
             image, camera, subsec=0,
             step="raw" if ext.lower() in RAW_FORMATS else "orig")
