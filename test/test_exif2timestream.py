@@ -15,7 +15,9 @@ import warnings
 import json
 # Module imports
 from .. import exif2timestream as e2t
-import pexif
+from .. import ListImagesByTime as lbt
+from .. import DeleteImagesByTime as dbt
+import csv
 
 PIL= True
 try:
@@ -67,6 +69,18 @@ class TestExifTraitcapture(unittest.TestCase):
         'USERFRIENDLYNAME':'BVZ00000-EUC-R01C01-C01-F01',
         'JSON_UPDATES':'',
         'LARGE_JSON':0
+    }
+    config_list_delete = {
+        'DELETE_DEST': os.path.sep.join([out_dirname, 'archive']),
+        'TIMESTREAM_NAME': 'BVZ00000',
+        'EXPT_END': '2013_11_12',
+        'EXPT_START': '2013_11_11',
+        'IMAGE_TYPES': 'jpg',
+        'ROOT_PATH': os.path.sep.join([dirname, "img", "DateCheck"]),
+        'START_TIME': '1100',
+        'END_TIME': '1200',
+        'USE': '1',
+        'DATE_MASK': '%Y_%m_%d_%H_%M_%S',
     }
 
     original_jpg_json = {
@@ -1064,6 +1078,50 @@ class TestExifTraitcapture(unittest.TestCase):
         after_json['posix_end'] = 1420070400.0
         after_json['ts_start'] = "1999_01_01_00_00_00"
         self.assertDictEqual(original_json, after_json)
+
+    def test_ListByTime(self):
+        self.wipe_output()
+        list_time = copy.deepcopy(self.config_list_delete)
+        list_time = lbt.CameraFields(list_time)
+        for ext, images in lbt.find_image_files(list_time).items():
+            lbt.process_timestream(list_time, ext, sorted(images), 1)
+        with open(os.path.join(list_time.delete_dest, list_time.timestream_name + '_Night_Files.csv'), 'rb') as f:
+            reader = csv.reader(f)
+            output_list = list(reader)[1:]
+        timestream_list = [
+            ['BVZ00000', os.path.join(list_time.root_path, 'whroo2013_11_10_10_59_59M.jpg')],
+            ['BVZ00000', os.path.join(list_time.root_path, 'whroo2013_11_10_11_01_01M.jpg')],
+            ['BVZ00000', os.path.join(list_time.root_path, 'whroo2013_11_10_12_01_01M.jpg')],
+            ['BVZ00000', os.path.join(list_time.root_path, 'whroo2013_11_11_10_59_59M.jpg')],
+            ['BVZ00000', os.path.join(list_time.root_path, 'whroo2013_11_11_12_01_01M.jpg')],
+            ['BVZ00000', os.path.join(list_time.root_path, 'whroo2013_11_12_10_59_59M.jpg')],
+            ['BVZ00000', os.path.join(list_time.root_path, 'whroo2013_11_12_11_01_01M.jpg')],
+            ['BVZ00000', os.path.join(list_time.root_path, 'whroo2013_11_12_12_01_01M.jpg')]
+        ]
+        self.assertEqual(output_list, timestream_list)
+
+    def test_DelByTime(self):
+        self.wipe_output()
+        del_time = copy.deepcopy(self.config_list_delete)
+        del_time= lbt.CameraFields(del_time)
+        for ext, images in dbt.find_image_files(del_time).items():
+            dbt.process_timestream(del_time, ext, sorted(images), 1)
+        images_del = os.listdir(os.path.join(del_time.delete_dest, 'DateCheck'))
+        images_should_be_deleted = [
+            'whroo2013_11_10_10_59_59M.jpg',
+            'whroo2013_11_10_11_01_01M.jpg',
+            'whroo2013_11_10_12_01_01M.jpg',
+            'whroo2013_11_11_10_59_59M.jpg',
+            'whroo2013_11_11_12_01_01M.jpg',
+            'whroo2013_11_12_10_59_59M.jpg',
+            'whroo2013_11_12_11_01_01M.jpg',
+            'whroo2013_11_12_12_01_01M.jpg'
+        ]
+        images_kept = os.listdir(del_time.root_path)
+        images_should_be_kept = ['whroo2013_11_11_11_01_01M.jpg']
+        self.assertEqual(images_del, images_should_be_deleted)
+        self.assertEqual(images_kept, images_should_be_kept)
+
 
 if __name__ == "__main__":
     runner = unittest.TextTestRunner(verbosity=3)

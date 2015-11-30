@@ -18,7 +18,6 @@ class CameraFields(object):
         ('use', 'USE', bool_str),
         ('timestream_name', 'TIMESTREAM_NAME', str),
         ('root_path', 'ROOT_PATH', path_exists),
-        ('archive_dest', 'ARCHIVE_DEST', path_exists),
         ('delete_dest', 'DELETE_DEST', path_exists),
         ('expt_end', 'EXPT_END', date_end),
         ('expt_start', 'EXPT_START', date),
@@ -30,7 +29,7 @@ class CameraFields(object):
 
     TS_CSV = dict((a, b) for a, b, c in ts_csv_fields)
     CSV_TS = {v: k for k, v in TS_CSV.items()}
-    REQUIRED = {"use", "timestream_name", "root_path", "archive_dest", "delete_dest", "expt_end", "expt_start", "start_time",
+    REQUIRED = {"use", "timestream_name", "root_path", "delete_dest", "expt_end", "expt_start", "start_time",
                 "end_time", 'image_types'}
     SCHEMA = dict((a, c) for a, b, c in ts_csv_fields)
 
@@ -53,7 +52,6 @@ class CameraFields(object):
             """Ensure that pathnames are correct for this system."""
             return p.replace(r'\\', '/').replace('/', os.path.sep)
         self.root_path = local(self.root_path)
-        self.archive_dest = local(self.archive_dest)
         log.debug("Validated camera '{}'".format(csv_config_dict))
 
 def parse_camera_config_csv(filename):
@@ -114,6 +112,9 @@ def process_image(args):
     log.debug("Starting to process image")
     image, camera, ext = args
     delete = False
+    if "last_image" in image.lower() :
+        log.debug ("Skipping file {}, assumed last image".format(image))
+        return
     try:
         image_date = get_file_date(image, 0, round_secs=1,date_mask=camera.date_mask)
         time_tuple = (image_date.tm_hour, image_date.tm_min)
@@ -193,10 +194,6 @@ def main(configfile, n_threads=1, logdir=None, debug=False):
             camera.timestream_name))
         log.info("Archiving images between Times {}, {} and Dates {}, {}".format(camera.start_time, camera.end_time, time.strftime("%Y/%m/%d", camera.expt_start), time.strftime("%Y/%m/%d", camera.expt_end)))
 
-        print("Images are coming from {}, being put in {}".format(
-            camera.root_path, camera.archive_dest))
-        log.info("Images are coming from {}, being put in {}".format(
-            camera.root_path, camera.archive_dest))
 
         for ext, images in find_image_files(camera).items():
             print(("Have {0} {1} images from this camera".format(
@@ -206,10 +203,21 @@ def main(configfile, n_threads=1, logdir=None, debug=False):
             n_images += len(images)
             process_timestream(camera, ext, sorted(images), n_threads)
 
+def gen_config(fname):
+    """Write example config and exit if a filename is passed."""
+    if fname is None:
+        return
+    with open(fname, "w") as f:
+        f.write(",".join(l[1] for l in CameraFields.ts_csv_fields) + "\n")
+    sys.exit()
+
 if __name__ == "__main__":
     opts = cli_options()
     if opts.version:
         from ._version import get_versions
         print("Version {}".format(get_versions()['version']))
+        sys.exit(0)
+    if opts.generate:
+        gen_config(opts.generate)
         sys.exit(0)
     main(opts.config, debug=opts.debug, logdir='log', n_threads=opts.threads)
