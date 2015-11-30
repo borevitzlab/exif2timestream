@@ -1087,7 +1087,7 @@ class TestExifTraitcapture(unittest.TestCase):
             lbt.process_timestream(list_time, ext, sorted(images), 1)
         with open(os.path.join(list_time.delete_dest, list_time.timestream_name + '_Night_Files.csv'), 'rb') as f:
             reader = csv.reader(f)
-            output_list = sorteD(list(reader)[1:])
+            output_list = sorted(list(reader)[1:])
         timestream_list = sorted([
             ['BVZ00000', os.path.join(list_time.root_path, 'whroo2013_11_10_10_59_59M.jpg')],
             ['BVZ00000', os.path.join(list_time.root_path, 'whroo2013_11_10_11_01_01M.jpg')],
