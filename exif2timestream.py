@@ -313,9 +313,9 @@ def resolution_calc(camera, image):
 
 def create_small_json(res, camera, full_res, image_resolution, p_start, p_end, ts_end_text, ext, webrootaddr, thumb_image):
     if (res == "fullres"):
-        folder = "original"
+        folder = "originals"
     else:
-        folder = "output"
+        folder = "outputs"
 
 
     if (ext in RAW_FORMATS):
@@ -357,7 +357,7 @@ def create_small_json(res, camera, full_res, image_resolution, p_start, p_end, t
             jdump['height_hires']=  full_res[1]
             jdump['width']= image_resolution[0]
             jdump['width_hires']= full_res[0]
-            jdump['webroot'] = webrootaddr.format(folder=("output" if lower_resolution else "original"), res=low_res, step =("orig" if ext != 'raw' else "raw"))
+            jdump['webroot'] = webrootaddr.format(folder=("outputs" if lower_resolution else "originals"), res=low_res, step =("orig" if ext != 'raw' else "raw"))
 
     else:
         jdump = {
@@ -380,8 +380,8 @@ def create_small_json(res, camera, full_res, image_resolution, p_start, p_end, t
             'ts_start': strftime(TS_DATE_FMT, p_start),
             'width': image_resolution[0],
             'width_hires': full_res[0],
-            'webroot':webrootaddr.format(folder=("output" if lower_resolution else "original"), res=low_res, step =("orig" if ext != 'raw' else "raw")),
-            'webroot_hires':(webrootaddr.format(folder="original", res="fullres", step="orig")),
+            'webroot':webrootaddr.format(folder=("outputs" if lower_resolution else "originals"), res=low_res, step =("orig" if ext != 'raw' else "raw")),
+            'webroot_hires':(webrootaddr.format(folder="originals", res="fullres", step="orig")),
             'utc' : 'false',
             }
 
@@ -457,7 +457,7 @@ def resize_function(camera, image_date, dest, img_array):
         resizing_temp_outname = get_new_file_name(image_date, ts_name)
         resized_img = os.path.join(
             camera.destination,
-            camera.ts_structure.format(folder='output', res=str(new_res[camera.orientation in ("90", "270")]),
+            camera.ts_structure.format(folder='outputs', res=str(new_res[camera.orientation in ("90", "270")]),
                                        cam=camera.cam_num, step='orig'),
             resizing_temp_outname)
         if os.path.isfile(resized_img):
@@ -602,7 +602,7 @@ def round_struct_time(in_time, round_secs, tz_hrs=0, uselocal=True):
 
 
 def make_timestream_name(camera, res="fullres", step="orig",
-                         folder='original'):
+                         folder='originals'):
     """Makes a timestream name given the format (module-level constant), step,
     resolution and a camera object."""
     if isinstance(res, tuple):
@@ -632,7 +632,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
     out_image = get_new_file_name(image_date, ts_name, n=subsec, ext=in_ext)
     out_image = os.path.join(
         camera.destination,
-        camera.ts_structure.format(folder='original', res='fullres',
+        camera.ts_structure.format(folder='originals', res='fullres',
                                    cam=camera.cam_num, step=step),
         out_image)
     # make the target directory
@@ -884,7 +884,7 @@ def get_resolution(image, camera):
                 image_resolution=(0,0)
     except IOError:
         image_resolution = (0, 0)
-    folder, res = "original", 'fullres'
+    folder, res = "originals", 'fullres'
     return res, image_resolution, folder
 
 
@@ -920,9 +920,9 @@ def get_thumbnail_paths(camera, images, res, image_resolution, folder):
         if thumb_image[i]:
             thumb_image[i] = url + thumb_image[i].split("a_data")[-1]
             if len(camera.resolutions)>1:
-                thumb_image[i] = thumb_image[i].format(folder="output", res = camera.resolutions[1][camera.orientation in ("90", "270")])
+                thumb_image[i] = thumb_image[i].format(folder="outputs", res = camera.resolutions[1][camera.orientation in ("90", "270")])
             else:
-                thumb_image[i] = thumb_image[i].format(folder="original", res = "orig")
+                thumb_image[i] = thumb_image[i].format(folder="originals", res = "orig")
     return webrootaddr, thumb_image
 
 def get_actual_start_end(camera, images, ext):
@@ -981,10 +981,10 @@ def process_camera(camera, ext, images, n_threads=1):
     res, image_resolution, folder = get_resolution(my_image, camera)
     if (len(camera.resolutions) >1):
         low_res = camera.resolutions[1][camera.orientation in ("90", "270")]
-        low_folder = "output"
+        low_folder = "outputs"
     else:
         low_res = "fullres"
-        low_folder = "original"
+        low_folder = "originals"
     webrootaddr, thumb_image = get_thumbnail_paths(camera, images, low_res, image_resolution, low_folder)
     webrootaddr = webrootaddr.replace("\\","/")
 
@@ -1042,8 +1042,8 @@ def process_camera(camera, ext, images, n_threads=1):
         'ts_start': strftime(TS_DATE_FMT, p_start),
         'ts_version': '1',
         'utc': "false",
-        'webroot_hires':(webrootaddr.format(folder="original", res="fullres", step="orig")),
-        'webroot':webrootaddr.format(folder="output", res=new_res[camera.orientation in ("90",
+        'webroot_hires':(webrootaddr.format(folder="originals", res="fullres", step="orig")),
+        'webroot':webrootaddr.format(folder="outputs", res=new_res[camera.orientation in ("90",
                                                                    "270")], step ="orig"),
         'width_hires': fullres[0],
         'width': new_res[0]

@@ -95,16 +95,16 @@ class TestExifTraitcapture(unittest.TestCase):
             "height_hires":3456,
             "timezone":11,
             "width_hires":5184,
-            "webroot_hires":"http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/original/BVZ00000-EUC-R01C01-C01-F01~fullres-orig",
+            "webroot_hires":"http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/originals/BVZ00000-EUC-R01C01-C01-F01~fullres-orig",
             "ts_name":"BVZ00000-EUC-R01C01-C01-F01~fullres-orig",
             "ts_start":'2013_11_12_20_55_00',
             'thumbnails': [
-                 'http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/output/BVZ00000-EUC-R01C01-C01-F01~1920-orig/2013/2013_11/2013_11_12/2013_11_12_20/BVZ00000-EUC-R01C01-C01-F01~1920-orig_2013_11_12_20_55_00_00.jpg',
-                 'http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/output/BVZ00000-EUC-R01C01-C01-F01~1920-orig/2013/2013_11/2013_11_23/2013_11_23_11/BVZ00000-EUC-R01C01-C01-F01~1920-orig_2013_11_23_11_40_00_00.jpg',
-                 'http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/output/BVZ00000-EUC-R01C01-C01-F01~1920-orig/2013/2013_11/2013_11_23/2013_11_23_12/BVZ00000-EUC-R01C01-C01-F01~1920-orig_2013_11_23_12_25_00_00.jpg'
+                 'http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/outputs/BVZ00000-EUC-R01C01-C01-F01~1920-orig/2013/2013_11/2013_11_12/2013_11_12_20/BVZ00000-EUC-R01C01-C01-F01~1920-orig_2013_11_12_20_55_00_00.jpg',
+                 'http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/outputs/BVZ00000-EUC-R01C01-C01-F01~1920-orig/2013/2013_11/2013_11_23/2013_11_23_11/BVZ00000-EUC-R01C01-C01-F01~1920-orig_2013_11_23_11_40_00_00.jpg',
+                 'http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/outputs/BVZ00000-EUC-R01C01-C01-F01~1920-orig/2013/2013_11/2013_11_23/2013_11_23_12/BVZ00000-EUC-R01C01-C01-F01~1920-orig_2013_11_23_12_25_00_00.jpg'
             ],
             "owner":"",
-            "webroot":"http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/output/BVZ00000-EUC-R01C01-C01-F01~1920-orig",
+            "webroot":"http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/outputs/BVZ00000-EUC-R01C01-C01-F01~1920-orig",
             "name":"BVZ00000-EUC-R01C01-C01-F01",
             "ts_id":"BVZ00000-EUC-R01C01-C01-F01",
             "posix_end":1385209500.0,
@@ -123,12 +123,12 @@ class TestExifTraitcapture(unittest.TestCase):
             "height_hires":5184,
             "timezone":11,
             "width_hires":3456,
-            "webroot_hires":"http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/original/BVZ00000-EUC-R01C01-C01-F01~fullres-orig",
+            "webroot_hires":"http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/originals/BVZ00000-EUC-R01C01-C01-F01~fullres-orig",
             "ts_name":"BVZ00000-EUC-R01C01-C01-F01~fullres-raw",
             "ts_start":'2013_11_12_20_55_00',
-            'thumbnails': ['http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/output/BVZ00000-EUC-R01C01-C01-F01~1920-orig/2013/2013_11/2013_11_12/2013_11_12_20/BVZ00000-EUC-R01C01-C01-F01~1920-orig_2013_11_12_20_55_00_00.jpg'],
+            'thumbnails': ['http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/outputs/BVZ00000-EUC-R01C01-C01-F01~1920-orig/2013/2013_11/2013_11_12/2013_11_12_20/BVZ00000-EUC-R01C01-C01-F01~1920-orig_2013_11_12_20_55_00_00.jpg'],
             "owner":"",
-            "webroot":"http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/original/BVZ00000-EUC-R01C01-C01-F01~fullres-raw",
+            "webroot":"http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/originals/BVZ00000-EUC-R01C01-C01-F01~fullres-raw",
             "name":"BVZ00000-EUC-R01C01-C01-F01",
             "ts_id":"BVZ00000-EUC-R01C01-C01-F01",
             "posix_end":1384289700.0,
@@ -148,16 +148,16 @@ class TestExifTraitcapture(unittest.TestCase):
             "height_hires":3456,
             "timezone":11,
             "width_hires":5184,
-            "webroot_hires":"http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/original/BVZ00000-EUC-R01C01-C01-F01~fullres-orig",
+            "webroot_hires":"http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/originals/BVZ00000-EUC-R01C01-C01-F01~fullres-orig",
             "ts_name":"BVZ00000-EUC-R01C01-C01-F01~fullres-orig",
             "ts_start":'2013_11_12_20_55_00',
             'thumbnails': [
-                 'http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/original/BVZ00000-EUC-R01C01-C01-F01~fullres-orig/2013/2013_11/2013_11_12/2013_11_12_20/BVZ00000-EUC-R01C01-C01-F01~fullres-orig_2013_11_12_20_55_00_00.jpg',
-                 'http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/original/BVZ00000-EUC-R01C01-C01-F01~fullres-orig/2013/2013_11/2013_11_23/2013_11_23_11/BVZ00000-EUC-R01C01-C01-F01~fullres-orig_2013_11_23_11_40_00_00.jpg',
-                 'http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/original/BVZ00000-EUC-R01C01-C01-F01~fullres-orig/2013/2013_11/2013_11_23/2013_11_23_12/BVZ00000-EUC-R01C01-C01-F01~fullres-orig_2013_11_23_12_25_00_00.jpg'
+                 'http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/originals/BVZ00000-EUC-R01C01-C01-F01~fullres-orig/2013/2013_11/2013_11_12/2013_11_12_20/BVZ00000-EUC-R01C01-C01-F01~fullres-orig_2013_11_12_20_55_00_00.jpg',
+                 'http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/originals/BVZ00000-EUC-R01C01-C01-F01~fullres-orig/2013/2013_11/2013_11_23/2013_11_23_11/BVZ00000-EUC-R01C01-C01-F01~fullres-orig_2013_11_23_11_40_00_00.jpg',
+                 'http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/originals/BVZ00000-EUC-R01C01-C01-F01~fullres-orig/2013/2013_11/2013_11_23/2013_11_23_12/BVZ00000-EUC-R01C01-C01-F01~fullres-orig_2013_11_23_12_25_00_00.jpg'
             ],
             "owner":"",
-            "webroot":"http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/original/BVZ00000-EUC-R01C01-C01-F01~fullres-orig",
+            "webroot":"http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/originals/BVZ00000-EUC-R01C01-C01-F01~fullres-orig",
             "name":"BVZ00000-EUC-R01C01-C01-F01",
             "ts_id":"BVZ00000-EUC-R01C01-C01-F01",
             'ts_version': '1',
@@ -177,16 +177,16 @@ class TestExifTraitcapture(unittest.TestCase):
             "height_hires":3456,
             "timezone":11,
             "width_hires":5184,
-            "webroot_hires":"http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/original/BVZ00000-EUC-R01C01-C01-F01~fullres-orig",
+            "webroot_hires":"http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/originals/BVZ00000-EUC-R01C01-C01-F01~fullres-orig",
             "ts_name":"BVZ00000-EUC-R01C01-C01-F01~1920-orig",
             "ts_start":'2013_11_12_20_55_00',
             'thumbnails': [
-                 'http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/output/BVZ00000-EUC-R01C01-C01-F01~1920-orig/2013/2013_11/2013_11_12/2013_11_12_20/BVZ00000-EUC-R01C01-C01-F01~1920-orig_2013_11_12_20_55_00_00.jpg',
-                 'http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/output/BVZ00000-EUC-R01C01-C01-F01~1920-orig/2013/2013_11/2013_11_23/2013_11_23_11/BVZ00000-EUC-R01C01-C01-F01~1920-orig_2013_11_23_11_40_00_00.jpg',
-                 'http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/output/BVZ00000-EUC-R01C01-C01-F01~1920-orig/2013/2013_11/2013_11_23/2013_11_23_12/BVZ00000-EUC-R01C01-C01-F01~1920-orig_2013_11_23_12_25_00_00.jpg'
+                 'http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/outputs/BVZ00000-EUC-R01C01-C01-F01~1920-orig/2013/2013_11/2013_11_12/2013_11_12_20/BVZ00000-EUC-R01C01-C01-F01~1920-orig_2013_11_12_20_55_00_00.jpg',
+                 'http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/outputs/BVZ00000-EUC-R01C01-C01-F01~1920-orig/2013/2013_11/2013_11_23/2013_11_23_11/BVZ00000-EUC-R01C01-C01-F01~1920-orig_2013_11_23_11_40_00_00.jpg',
+                 'http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/outputs/BVZ00000-EUC-R01C01-C01-F01~1920-orig/2013/2013_11/2013_11_23/2013_11_23_12/BVZ00000-EUC-R01C01-C01-F01~1920-orig_2013_11_23_12_25_00_00.jpg'
             ],
             "owner":"",
-            "webroot":"http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/output/BVZ00000-EUC-R01C01-C01-F01~1920-orig",
+            "webroot":"http://phenocam.anu.edu.au/cloud/a_data./test/out/timestreams/BVZ00000/EUC-R01C01-C01-F01/outputs/BVZ00000-EUC-R01C01-C01-F01~1920-orig",
             "name":"BVZ00000-EUC-R01C01-C01-F01",
             "ts_id":"BVZ00000-EUC-R01C01-C01-F01",
             'ts_version': '1',
@@ -196,26 +196,26 @@ class TestExifTraitcapture(unittest.TestCase):
 
     r_fullres_path = os.path.join(
         out_dirname, "timestreams", "BVZ00000", "EUC-R01C01-C01-F01",
-        'original', 'BVZ00000-EUC-R01C01-C01-F01~fullres-orig', '2013', '2013_11',
+        'originals', 'BVZ00000-EUC-R01C01-C01-F01~fullres-orig', '2013', '2013_11',
         '2013_11_12', '2013_11_12_20',
         'BVZ00000-EUC-R01C01-C01-F01~fullres-orig_2013_11_12_20_55_00_00.JPG'
     )
     r_resize_path = os.path.join(
         out_dirname, "timestreams", "BVZ00000", "EUC-R01C01-C01-F01",
-        'output', 'BVZ00000-EUC-R01C01-C01-F01~1920-orig', '2013', '2013_11',
+        'outputs', 'BVZ00000-EUC-R01C01-C01-F01~1920-orig', '2013', '2013_11',
         '2013_11_12', '2013_11_12_20',
         'BVZ00000-EUC-R01C01-C01-F01~1920-orig_2013_11_12_20_55_00_00.jpg'
     )
     r_datetime_path = os.path.join(
         out_dirname, "timestreams", "BVZ00000", "EUC-R01C01-C01-F01",
-        "original",'BVZ00000-EUC-R01C01-C01-F01~fullres-orig', '2013', '2013_11',
+        "originals",'BVZ00000-EUC-R01C01-C01-F01~fullres-orig', '2013', '2013_11',
         '2013_11_04', '2013_11_04_02',
         'BVZ00000-EUC-R01C01-C01-F01~fullres-orig_2013_11_04_22_05_00_00.JPG'
     )
 
     r_raw_path = os.path.join(
         out_dirname, "timestreams", "BVZ00000", "EUC-R01C01-C01-F01",
-        "original",'BVZ00000-EUC-R01C01-C01-F01~fullres-raw', '2013', '2013_11',
+        "originals",'BVZ00000-EUC-R01C01-C01-F01~fullres-raw', '2013', '2013_11',
         '2013_11_12', '2013_11_12_20',
         'BVZ00000-EUC-R01C01-C01-F01~fullres-raw_2013_11_12_20_55_00_00'
         '.CR2'
@@ -566,7 +566,7 @@ class TestExifTraitcapture(unittest.TestCase):
     #     Check the JSONS
 
         file_path = os.path.join(rotate.destination, rotate.ts_structure.format(
-            folder='original', res='fullres', step='orig'), rotate.userfriendlyname
+            folder='originals', res='fullres', step='orig'), rotate.userfriendlyname
                                                      + '-ts-info.json')
         original_json = eval(open(file_path).read())
         test_json = copy.deepcopy(self.original_jpg_json)
@@ -575,7 +575,7 @@ class TestExifTraitcapture(unittest.TestCase):
 
             # Finally the resized json
         file_path_resized = os.path.join(rotate.destination, rotate.ts_structure.format(
-            folder='output', res='1920', step='orig'), rotate.userfriendlyname
+            folder='outputs', res='1920', step='orig'), rotate.userfriendlyname
                                                      + '-ts-info.json')
         resized_json= eval(open(file_path_resized).read())
 
@@ -604,7 +604,7 @@ class TestExifTraitcapture(unittest.TestCase):
           #     Check the JSONS
 
         file_path = os.path.join(rotate.destination, rotate.ts_structure.format(
-            folder='original', res='fullres', step='orig'), rotate.userfriendlyname
+            folder='originals', res='fullres', step='orig'), rotate.userfriendlyname
                                                      + '-ts-info.json')
         original_json = eval(open(file_path).read())
         test_json = copy.deepcopy(self.original_single_jpg_json)
@@ -637,7 +637,7 @@ class TestExifTraitcapture(unittest.TestCase):
           #     Check the JSONS
 
         file_path = os.path.join(rotate_resize.destination, rotate_resize.ts_structure.format(
-            folder='original', res='fullres', step='orig'), rotate_resize.userfriendlyname
+            folder='originals', res='fullres', step='orig'), rotate_resize.userfriendlyname
                                                      + '-ts-info.json')
         original_json = eval(open(file_path).read())
         test_json = copy.deepcopy(self.original_jpg_json)
@@ -648,7 +648,7 @@ class TestExifTraitcapture(unittest.TestCase):
         self.assertDictEqual(original_json, test_json)
 
         file_path_resized = os.path.join(rotate_resize.destination, rotate_resize.ts_structure.format(
-            folder='output', res='1920', step='orig'), rotate_resize.userfriendlyname
+            folder='outputs', res='1920', step='orig'), rotate_resize.userfriendlyname
                                                      + '-ts-info.json')
         resized_json= eval(open(file_path_resized).read())
         test_json_resized = copy.deepcopy(self.resized_jpg_json)
@@ -752,14 +752,14 @@ class TestExifTraitcapture(unittest.TestCase):
         #     Check the Mini-Jsons
         #     First the original value
         file_path = os.path.join(no_large_json.destination, no_large_json.ts_structure.format(
-            folder='original', res='fullres', step='orig'), no_large_json.userfriendlyname
+            folder='originals', res='fullres', step='orig'), no_large_json.userfriendlyname
                                                      + '-ts-info.json')
         original_json = eval(open(file_path).read())
         test_json = copy.deepcopy(self.original_jpg_json)
         self.assertDictEqual(original_json, test_json)
         # Then the Raw
         file_path_raw = os.path.join(no_large_json.destination, no_large_json.ts_structure.format(
-            folder='original', res='fullres', step='raw'), no_large_json.userfriendlyname
+            folder='originals', res='fullres', step='raw'), no_large_json.userfriendlyname
                                                      + '-ts-info.json')
         temp = open(file_path_raw)
         temp = str(temp.read())
@@ -769,7 +769,7 @@ class TestExifTraitcapture(unittest.TestCase):
 
         # Finally the resized json
         file_path_resized = os.path.join(no_large_json.destination, no_large_json.ts_structure.format(
-            folder='output', res='1920', step='orig'), no_large_json.userfriendlyname
+            folder='outputs', res='1920', step='orig'), no_large_json.userfriendlyname
                                                      + '-ts-info.json')
         resized_json= eval(open(file_path_resized).read())
 
@@ -826,12 +826,12 @@ class TestExifTraitcapture(unittest.TestCase):
         #     Check the Mini-Jsons
         #     First the original value
          file_path = os.path.join(no_resize.destination, no_resize.ts_structure.format(
-            folder='original', res='fullres', step='orig'), no_resize.userfriendlyname
+            folder='originals', res='fullres', step='orig'), no_resize.userfriendlyname
                                                      + '-ts-info.json')
          original_json = eval(open(file_path).read())
          self.assertDictEqual(original_json, self.original_single_jpg_json)
          file_path_resized = os.path.join(no_resize.destination, no_resize.ts_structure.format(
-            folder='output', res='1920', step='orig'), no_resize.userfriendlyname
+            folder='outputs', res='1920', step='orig'), no_resize.userfriendlyname
                                                      + '-ts-info.json')
          self.assertFalse(os.path.exists(file_path_resized))
 
@@ -870,13 +870,13 @@ class TestExifTraitcapture(unittest.TestCase):
         #     Check the Mini-Jsons
         #     First the original value
         file_path = os.path.join(no_rotate.destination, no_rotate.ts_structure.format(
-            folder='original', res='fullres', step='orig'), no_rotate.userfriendlyname
+            folder='originals', res='fullres', step='orig'), no_rotate.userfriendlyname
                                                      + '-ts-info.json')
         original_json = eval(open(file_path).read())
         test_json = self.original_single_jpg_json
         self.assertDictEqual(original_json, test_json)
         file_path_resized = os.path.join(no_rotate.destination, no_rotate.ts_structure.format(
-            folder='output', res='1920', step='orig'), no_rotate.userfriendlyname
+            folder='outputs', res='1920', step='orig'), no_rotate.userfriendlyname
                                                      + '-ts-info.json')
 
         old = Image.open(self.r_fullres_path).size
@@ -1058,7 +1058,7 @@ class TestExifTraitcapture(unittest.TestCase):
         #     Check the Mini-Jsons
         #     First the original value
         file_path = os.path.join(small_json.destination, small_json.ts_structure.format(
-            folder='original', res='fullres', step='orig'), small_json.userfriendlyname
+            folder='originals', res='fullres', step='orig'), small_json.userfriendlyname
                                                      + '-ts-info.json')
         original_json = eval(open(file_path).read())
         test_json = copy.deepcopy(self.original_single_jpg_json)
