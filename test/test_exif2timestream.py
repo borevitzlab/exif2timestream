@@ -1087,8 +1087,8 @@ class TestExifTraitcapture(unittest.TestCase):
             lbt.process_timestream(list_time, ext, sorted(images), 1)
         with open(os.path.join(list_time.delete_dest, list_time.timestream_name + '_Night_Files.csv'), 'rb') as f:
             reader = csv.reader(f)
-            output_list = list(reader)[1:]
-        timestream_list = [
+            output_list = sorteD(list(reader)[1:])
+        timestream_list = sorted([
             ['BVZ00000', os.path.join(list_time.root_path, 'whroo2013_11_10_10_59_59M.jpg')],
             ['BVZ00000', os.path.join(list_time.root_path, 'whroo2013_11_10_11_01_01M.jpg')],
             ['BVZ00000', os.path.join(list_time.root_path, 'whroo2013_11_10_12_01_01M.jpg')],
@@ -1097,7 +1097,7 @@ class TestExifTraitcapture(unittest.TestCase):
             ['BVZ00000', os.path.join(list_time.root_path, 'whroo2013_11_12_10_59_59M.jpg')],
             ['BVZ00000', os.path.join(list_time.root_path, 'whroo2013_11_12_11_01_01M.jpg')],
             ['BVZ00000', os.path.join(list_time.root_path, 'whroo2013_11_12_12_01_01M.jpg')]
-        ]
+        ])
         self.assertEqual(output_list, timestream_list)
 
     def test_DelByTime(self):
@@ -1106,8 +1106,8 @@ class TestExifTraitcapture(unittest.TestCase):
         del_time= lbt.CameraFields(del_time)
         for ext, images in dbt.find_image_files(del_time).items():
             dbt.process_timestream(del_time, ext, sorted(images), 1)
-        images_del = os.listdir(os.path.join(del_time.delete_dest, 'DateCheck'))
-        images_should_be_deleted = [
+        images_del = sorted(os.listdir(os.path.join(del_time.delete_dest, 'DateCheck')))
+        images_should_be_deleted = sorted([
             'whroo2013_11_10_10_59_59M.jpg',
             'whroo2013_11_10_11_01_01M.jpg',
             'whroo2013_11_10_12_01_01M.jpg',
@@ -1116,7 +1116,7 @@ class TestExifTraitcapture(unittest.TestCase):
             'whroo2013_11_12_10_59_59M.jpg',
             'whroo2013_11_12_11_01_01M.jpg',
             'whroo2013_11_12_12_01_01M.jpg'
-        ]
+        ])
         images_kept = os.listdir(del_time.root_path)
         images_should_be_kept = ['whroo2013_11_11_11_01_01M.jpg']
         self.assertEqual(images_del, images_should_be_deleted)
