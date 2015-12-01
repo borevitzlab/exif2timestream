@@ -493,7 +493,7 @@ def resize_img(filename, destination, to_width, to_height, img_array):
             exif_source.exif.primary.Orientation
         exif_dest.writeFile(destination)
         log.debug("Successfully copied exif data also")
-    except (AttributeError, pexif.JpegFile.InvalidFile):
+    except (AttributeError, pexif.JpegFile.InvalidFile, struct.error, IOError):
         log.debug("Unable to copy over some exif data")
 
 
@@ -776,6 +776,7 @@ def process_image(args):
             retry =-1
             if (retry >0):
                 log.debug("Error on image {}, trying again")
+                time.sleep(1)
             else:
                 log.error("Struct or IO error on image {}".format(image))
                 log.debug("Struct or IO Error on image {}".format(image))
