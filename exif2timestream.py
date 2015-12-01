@@ -769,10 +769,10 @@ def process_image(args):
             except OSError:
                 log.error("Could not delete '{0}'".format(image))
             log.debug("Deleted {}".format(image))
-    except struct.error as e:
-        print("Something weng wrong with Image", image, " : ", e)
-        log.error("Struct error on image ", image)
-        log.debug("Struct Error on image", image)
+    except (struct.error, IOError) as e:
+        print("Something weng wrong with Image {} image".format(image))
+        log.error("Struct error on image {}".format(image))
+        log.debug("Struct error on image {}".format(image))
 
 
 def parse_camera_config_csv(filename):
