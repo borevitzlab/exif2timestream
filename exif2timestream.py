@@ -709,70 +709,76 @@ def _dont_clobber(fn, mode="append"):
 def process_image(args):
     """Do move and copy operations for a camera config and list of images."""
     log.debug("Starting to process image")
-    try:
-        image, camera, ext = args
-        image_date = get_file_date(image, camera.timeshift, camera.interval * 60)
-        if camera.expt_start > image_date or image_date > camera.expt_end:
-            log.debug("Skipping {}. Outside of date range {} to {}".format(
-                image, d2s(camera.expt_start), d2s(camera.expt_end)))
-            return
-        my_ext = os.path.splitext(image)[-1].lower().strip(".")
-        if not (my_ext == ext) and not ((my_ext in RAW_FORMATS) and (ext == "raw")):
-            return
-        if camera.method == "json":
-            return
-        if "last_image" in image.lower() :
-            log.debug ("Skipping file {}, assumed last image".format(image))
-            return
-        if camera.method == "resize" and (ext not in RAW_FORMATS):
-            img_array = Image.open(image)
-            resize_function(camera, image_date, image, img_array)
-            log.debug("Rezied Image {}".format(image))
-        if camera.method == "rotate" and (ext not in RAW_FORMATS):
-            rotate_image(camera.orientation, image)
-            return
-        if camera.method == "archive":
-            log.debug("Will archive {}".format(image))
-            ts_name = make_timestream_name(camera, res="fullres")
-            out_image = get_new_file_name(image_date, ts_name)
-            archive_image = os.path.join(
-                camera.archive_dest,
-                camera.expt,
-                (camera.expt + '-' +
-                    camera.location + "-C" +
-                    camera.cam_num +
-                    camera.datasetID + "~fullres-" + (ext if ext in RAW_FORMATS else "orig")).replace("_","-"),
-                os.path.relpath(image, camera.source))
-            try:
-                os.makedirs(os.path.dirname(archive_image))
-                log.debug("Made archive dir {}".format(os.path.dirname(
-                    archive_image)))
-            except OSError as exc:
-                if not os.path.exists(os.path.dirname(archive_image)):
-                    raise exc
-            archive_image = _dont_clobber(archive_image)
-            shutil.copyfile(image, archive_image)
-            log.debug("Copied {} to {}".format(image, archive_image))
+    retry = 2
+    while(retry):
         try:
-            # deal with original image (move/copy etc)
-            timestreamise_image(
-                image, camera, subsec=0,
-                step="raw" if ext.lower() in RAW_FORMATS else "orig")
-            log.debug("Successfully timestreamed {}".format(image))
-        except SkipImage:
-            log.debug("Failed to timestream {} (got SkipImage)".format(image))
-
-        if camera.method in {"move", "archive"}:
-            # images have been archived above, so just delete originals
+            image, camera, ext = args
+            image_date = get_file_date(image, camera.timeshift, camera.interval * 60)
+            if camera.expt_start > image_date or image_date > camera.expt_end:
+                log.debug("Skipping {}. Outside of date range {} to {}".format(
+                    image, d2s(camera.expt_start), d2s(camera.expt_end)))
+                return
+            my_ext = os.path.splitext(image)[-1].lower().strip(".")
+            if not (my_ext == ext) and not ((my_ext in RAW_FORMATS) and (ext == "raw")):
+                return
+            if camera.method == "json":
+                return
+            if "last_image" in image.lower() :
+                log.debug ("Skipping file {}, assumed last image".format(image))
+                return
+            if camera.method == "resize" and (ext not in RAW_FORMATS):
+                img_array = Image.open(image)
+                resize_function(camera, image_date, image, img_array)
+                log.debug("Rezied Image {}".format(image))
+            if camera.method == "rotate" and (ext not in RAW_FORMATS):
+                rotate_image(camera.orientation, image)
+                return
+            if camera.method == "archive":
+                log.debug("Will archive {}".format(image))
+                ts_name = make_timestream_name(camera, res="fullres")
+                out_image = get_new_file_name(image_date, ts_name)
+                archive_image = os.path.join(
+                    camera.archive_dest,
+                    camera.expt,
+                    (camera.expt + '-' +
+                        camera.location + "-C" +
+                        camera.cam_num +
+                        camera.datasetID + "~fullres-" + (ext if ext in RAW_FORMATS else "orig")).replace("_","-"),
+                    os.path.relpath(image, camera.source))
+                try:
+                    os.makedirs(os.path.dirname(archive_image))
+                    log.debug("Made archive dir {}".format(os.path.dirname(
+                        archive_image)))
+                except OSError as exc:
+                    if not os.path.exists(os.path.dirname(archive_image)):
+                        raise exc
+                archive_image = _dont_clobber(archive_image)
+                shutil.copyfile(image, archive_image)
+                log.debug("Copied {} to {}".format(image, archive_image))
             try:
-                os.unlink(image)
-            except OSError:
-                log.error("Could not delete '{0}'".format(image))
-            log.debug("Deleted {}".format(image))
-    except (struct.error, IOError) as e:
-        print("Something weng wrong with Image {} image".format(image))
-        log.error("Struct error on image {}".format(image))
-        log.debug("Struct error on image {}".format(image))
+                # deal with original image (move/copy etc)
+                timestreamise_image(
+                    image, camera, subsec=0,
+                    step="raw" if ext.lower() in RAW_FORMATS else "orig")
+                log.debug("Successfully timestreamed {}".format(image))
+            except SkipImage:
+                log.debug("Failed to timestream {} (got SkipImage)".format(image))
+
+            if camera.method in {"move", "archive"}:
+                # images have been archived above, so just delete originals
+                try:
+                    os.unlink(image)
+                except OSError:
+                    log.error("Could not delete '{0}'".format(image))
+                log.debug("Deleted {}".format(image))
+            retry = 0
+        except (struct.error, IOError) as e:
+            retry =-1
+            if (retry >0):
+                log.debug("Error on image {}, trying again")
+            else:
+                log.error("Struct or IO error on image {}".format(image))
+                log.debug("Struct or IO Error on image {}".format(image))
 
 
 def parse_camera_config_csv(filename):
