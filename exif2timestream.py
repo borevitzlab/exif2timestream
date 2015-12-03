@@ -776,6 +776,7 @@ def process_image(args):
             retry =-1
             if (retry >0):
                 log.debug("Error on image {}, trying again")
+                retry -=1
                 time.sleep(1)
             else:
                 log.error("Struct or IO error on image {}".format(image))
