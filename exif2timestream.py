@@ -773,11 +773,10 @@ def process_image(args):
                 log.debug("Deleted {}".format(image))
             retry = 0
         except (struct.error, IOError) as e:
-            retry =-1
+            retry =retry - 1
             if (retry >0):
                 log.debug("Error on image {}, trying again")
-                retry -=1
-                time.sleep(1)
+                sleep(1)
             else:
                 log.error("Struct or IO error on image {}".format(image))
                 log.debug("Struct or IO Error on image {}".format(image))
