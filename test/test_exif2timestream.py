@@ -68,7 +68,8 @@ class TestExifTraitcapture(unittest.TestCase):
         'TIMESHIFT':0,
         'USERFRIENDLYNAME':'BVZ00000-EUC-R01C01-C01-F01',
         'JSON_UPDATES':'',
-        'LARGE_JSON':0
+        'LARGE_JSON':0,
+        'SUBFOLDER': 1
     }
     config_list_delete = {
         'DELETE_DEST': os.path.sep.join([out_dirname, 'archive']),
@@ -442,7 +443,8 @@ class TestExifTraitcapture(unittest.TestCase):
                 'timeshift':'',
                 'datasetID':'-F01',
                 'json_updates':'',
-                'large_json':0,
+                'large_json':False,
+                'sub_folder':True,
                 'userfriendlyname':'BVZ00000-EUC-R01C01-C01-F01'
             }
         ]
@@ -687,6 +689,7 @@ class TestExifTraitcapture(unittest.TestCase):
                 'TIMESHIFT':'',
                 'DATASETID':'-F01',
                 'JSON_UPDATES':'',
+                'SUBFOLDER':True,
                 'LARGE_JSON':0,
                 'USERFRIENDLYNAME':'BVZ00000-EUC-R01C01-C01-F01'
             })
@@ -1096,7 +1099,8 @@ class TestExifTraitcapture(unittest.TestCase):
             ['BVZ00000', os.path.join(list_time.root_path, 'whroo2013_11_11_12_01_01M.jpg')],
             ['BVZ00000', os.path.join(list_time.root_path, 'whroo2013_11_12_10_59_59M.jpg')],
             ['BVZ00000', os.path.join(list_time.root_path, 'whroo2013_11_12_11_01_01M.jpg')],
-            ['BVZ00000', os.path.join(list_time.root_path, 'whroo2013_11_12_12_01_01M.jpg')]
+            ['BVZ00000', os.path.join(list_time.root_path, 'whroo2013_11_12_12_01_01M.jpg')],
+            ['BVZ00000', os.path.join(list_time.root_path, 'subfolder', "whroo2015_11_12_12_01_01M.jpg")]
         ])
         self.assertEqual(output_list, timestream_list)
 
@@ -1115,13 +1119,58 @@ class TestExifTraitcapture(unittest.TestCase):
             'whroo2013_11_11_12_01_01M.jpg',
             'whroo2013_11_12_10_59_59M.jpg',
             'whroo2013_11_12_11_01_01M.jpg',
-            'whroo2013_11_12_12_01_01M.jpg'
+            'whroo2013_11_12_12_01_01M.jpg',
+            os.path.join('subfolder')
         ])
         images_kept = os.listdir(del_time.root_path)
         images_should_be_kept = ['whroo2013_11_11_11_01_01M.jpg']
         self.assertEqual(images_del, images_should_be_deleted)
         self.assertEqual(images_kept, images_should_be_kept)
 
+    def test_sub_folder(self):
+        sub_included = copy.deepcopy(self.camera_both)
+        sub_included = e2t.CameraFields(sub_included)
+        sub_included.source = self.config_list_delete["ROOT_PATH"]
+        expt = {
+            "jpg": [
+                path.join(self.config_list_delete["ROOT_PATH"], x) for x in [
+                    'whroo2013_11_10_10_59_59M.jpg',
+                    'whroo2013_11_10_11_01_01M.jpg',
+                    'whroo2013_11_10_12_01_01M.jpg',
+                    'whroo2013_11_11_10_59_59M.jpg',
+                    'whroo2013_11_11_11_01_01M.jpg',
+                    'whroo2013_11_11_12_01_01M.jpg',
+                    'whroo2013_11_12_10_59_59M.jpg',
+                    'whroo2013_11_12_11_01_01M.jpg',
+                    'whroo2013_11_12_12_01_01M.jpg',
+                    os.path.join('subfolder', "whroo2015_11_12_12_01_01M.jpg")
+                ]
+            ]
+        }
+        got = e2t.find_image_files(sub_included)
+        self.assertDictEqual(got, expt)
+        no_sub = copy.deepcopy(self.camera_both)
+        no_sub = e2t.CameraFields(no_sub)
+        no_sub.sub_folder = False
+        no_sub.source = self.config_list_delete["ROOT_PATH"]
+        no_subfolder = e2t.find_image_files(no_sub)
+        print(no_subfolder)
+        no_sub_expt = {
+            "jpg": [
+                path.join(self.config_list_delete["ROOT_PATH"], x) for x in [
+                    'whroo2013_11_10_10_59_59M.jpg',
+                    'whroo2013_11_10_11_01_01M.jpg',
+                    'whroo2013_11_10_12_01_01M.jpg',
+                    'whroo2013_11_11_10_59_59M.jpg',
+                    'whroo2013_11_11_11_01_01M.jpg',
+                    'whroo2013_11_11_12_01_01M.jpg',
+                    'whroo2013_11_12_10_59_59M.jpg',
+                    'whroo2013_11_12_11_01_01M.jpg',
+                    'whroo2013_11_12_12_01_01M.jpg'
+                ]
+            ]
+        }
+        self.assertDictEqual(no_subfolder, no_sub_expt)
 
 if __name__ == "__main__":
     runner = unittest.TextTestRunner(verbosity=3)

@@ -217,7 +217,8 @@ class CameraFields(object):
         ('timeshift', 'TIMESHIFT', str),
         ('userfriendlyname', 'USERFRIENDLYNAME', str),
         ('large_json', 'LARGE_JSON', bool_str),
-        ('json_updates', 'JSON_UPDATES', str)
+        ('json_updates', 'JSON_UPDATES', str),
+        ('sub_folder', 'SUBFOLDER', bool_str)
         )
 
     TS_CSV = dict((a, b) for a, b, c in ts_csv_fields)
@@ -819,17 +820,33 @@ def find_image_files(camera):
                 src = os.path.join(src, node)
                 break
         log.info("Walking from {} to find images".format(src))
-        for cur_dir, dirs, files in os.walk(src):
-            # for d in dirs:
-            #     if not (d.lower() in IMAGE_SUBFOLDERS or d.startswith("_")):
-            #         if not camera.method in ("resize", "json"):
-            #             #log.error("Source directory has too many subdirs.")
+        if (camera.sub_folder):
+            for cur_dir, dirs, files in os.walk(src):
+                # for d in dirs:
+                #     if not (d.lower() in IMAGE_SUBFOLDERS or d.startswith("_")):
+                #         if not camera.method in ("resize", "json"):
+                #             #log.error("Source directory has too many subdirs.")
 
-            for fle in files:
+                for fle in files:
+                    this_ext = os.path.splitext(fle)[-1].lower().strip(".")
+                    if ext in (this_ext) or (ext == "raw" and this_ext in RAW_FORMATS):
+                        fle_path = os.path.join(cur_dir, fle)
+                        if camera.fn_parse in fle_path and "last_image" not in fle_path:
+                            count_images+=1
+                            print("Found {:5d} Images".format(count_images), end='\r')
+                            try:
+                                ext_files[ext].append(fle_path)
+                            except KeyError:
+                                ext_files[ext] = []
+                                ext_files[ext].append(fle_path)
+            log.info("Found {0} {1} files for camera.".format(
+                len(ext_files), ext))
+        else:
+            for fle in [f for f in os.listdir(src) if os.path.isfile(os.path.join(src, f))]:
                 this_ext = os.path.splitext(fle)[-1].lower().strip(".")
                 if ext in (this_ext) or (ext == "raw" and this_ext in RAW_FORMATS):
-                    fle_path = os.path.join(cur_dir, fle)
-                    if camera.fn_parse in fle_path:
+                    fle_path = os.path.join(src, fle)
+                    if camera.fn_parse in fle_path and "last_image" not in fle_path:
                         count_images+=1
                         print("Found {:5d} Images".format(count_images), end='\r')
                         try:
@@ -839,6 +856,8 @@ def find_image_files(camera):
                             ext_files[ext].append(fle_path)
             log.info("Found {0} {1} files for camera.".format(
                 len(ext_files), ext))
+
+
     return ext_files
 
 
