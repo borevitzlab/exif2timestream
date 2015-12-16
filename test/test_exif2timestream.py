@@ -468,7 +468,7 @@ class TestExifTraitcapture(unittest.TestCase):
             e2t.gen_config(out_csv)
         except SystemExit:
             pass
-        self._md5test(out_csv, "4be1f4a6c460f789851f60a79c2db91c")
+        self._md5test(out_csv, "8a13d3c65ebb646fa728020d42c1119c")
 
     # Tests for checking parsing of dates from filename
     def test_check_date_parse(self):
@@ -1134,15 +1134,15 @@ class TestExifTraitcapture(unittest.TestCase):
         expt = {
             "jpg": [
                 path.join(self.config_list_delete["ROOT_PATH"], x) for x in [
-                    'whroo2013_11_10_10_59_59M.jpg',
-                    'whroo2013_11_10_11_01_01M.jpg',
-                    'whroo2013_11_10_12_01_01M.jpg',
-                    'whroo2013_11_11_10_59_59M.jpg',
-                    'whroo2013_11_11_11_01_01M.jpg',
-                    'whroo2013_11_11_12_01_01M.jpg',
-                    'whroo2013_11_12_10_59_59M.jpg',
-                    'whroo2013_11_12_11_01_01M.jpg',
                     'whroo2013_11_12_12_01_01M.jpg',
+                    'whroo2013_11_12_11_01_01M.jpg',
+                    'whroo2013_11_12_10_59_59M.jpg',
+                    'whroo2013_11_11_12_01_01M.jpg',
+                    'whroo2013_11_11_11_01_01M.jpg',
+                    'whroo2013_11_11_10_59_59M.jpg',
+                    'whroo2013_11_10_12_01_01M.jpg',
+                    'whroo2013_11_10_11_01_01M.jpg',
+                    'whroo2013_11_10_10_59_59M.jpg',
                     os.path.join('subfolder', "whroo2015_11_12_12_01_01M.jpg")
                 ]
             ]
