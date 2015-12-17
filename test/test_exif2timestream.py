@@ -1124,8 +1124,8 @@ class TestExifTraitcapture(unittest.TestCase):
         ])
         images_kept = os.listdir(del_time.root_path)
         images_should_be_kept = ['whroo2013_11_11_11_01_01M.jpg']
-        self.assertEqual(images_del, images_should_be_deleted)
-        self.assertEqual(images_kept, images_should_be_kept)
+        self.assertListEqual(images_del, images_should_be_deleted)
+        self.assertListEqual(images_kept, images_should_be_kept)
 
     def test_sub_folder(self):
         sub_included = copy.deepcopy(self.camera_both)
@@ -1133,7 +1133,7 @@ class TestExifTraitcapture(unittest.TestCase):
         sub_included.source = self.config_list_delete["ROOT_PATH"]
         expt = {
             "jpg": [
-                path.join(self.config_list_delete["ROOT_PATH"], x) for x in [
+                path.join(self.config_list_delete["ROOT_PATH"], x) for x in sorted([
                     'whroo2013_11_12_12_01_01M.jpg',
                     'whroo2013_11_12_11_01_01M.jpg',
                     'whroo2013_11_12_10_59_59M.jpg',
@@ -1144,11 +1144,11 @@ class TestExifTraitcapture(unittest.TestCase):
                     'whroo2013_11_10_11_01_01M.jpg',
                     'whroo2013_11_10_10_59_59M.jpg',
                     os.path.join('subfolder', "whroo2015_11_12_12_01_01M.jpg")
-                ]
+                ])
             ]
         }
         got = e2t.find_image_files(sub_included)
-        self.assertDictEqual(got, expt)
+        self.assertListEqual(sorted(got['jpg']), expt['jpg'])
         no_sub = copy.deepcopy(self.camera_both)
         no_sub = e2t.CameraFields(no_sub)
         no_sub.sub_folder = False
@@ -1157,7 +1157,7 @@ class TestExifTraitcapture(unittest.TestCase):
         print(no_subfolder)
         no_sub_expt = {
             "jpg": [
-                path.join(self.config_list_delete["ROOT_PATH"], x) for x in [
+                path.join(self.config_list_delete["ROOT_PATH"], x) for x in sorted([
                     'whroo2013_11_10_10_59_59M.jpg',
                     'whroo2013_11_10_11_01_01M.jpg',
                     'whroo2013_11_10_12_01_01M.jpg',
@@ -1167,10 +1167,10 @@ class TestExifTraitcapture(unittest.TestCase):
                     'whroo2013_11_12_10_59_59M.jpg',
                     'whroo2013_11_12_11_01_01M.jpg',
                     'whroo2013_11_12_12_01_01M.jpg'
-                ]
+                ])
             ]
         }
-        self.assertDictEqual(no_subfolder, no_sub_expt)
+        self.assertListEqual(sorted(no_subfolder['jpg']), no_sub_expt['jpg'])
 
 if __name__ == "__main__":
     runner = unittest.TextTestRunner(verbosity=3)
