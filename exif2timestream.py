@@ -40,7 +40,7 @@ TS_FMT = TS_V1_FMT
 TS_NAME_FMT = "{expt}-{loc}-c{cam}~{res}-{step}"
 TS_NAME_STRUCT = "EXPT-LOCATION-CAM_NUM"
 FULLRES_CONSTANTS = {"original", "orig", "fullres"}
-IMAGE_TYPE_CONSTANTS = {"raw", "jpg"}
+IMAGE_TYPE_CONSTANTS = {"raw", "jpg", "cor", "seg"}
 RAW_FORMATS = {"cr2", "nef", "tif", "tiff", "raw"}
 IMAGE_SUBFOLDERS = {"raw", "jpg", "png", "tiff", "nef", "cr2"}
 DATE_NOW_CONSTANTS = {"now", "current"}
@@ -313,16 +313,13 @@ def resolution_calc(camera, image):
     return camera
 
 def create_small_json(res, camera, full_res, image_resolution, p_start, p_end, ts_end_text, ext, webrootaddr, thumb_image):
-    if (res == "fullres"):
+    if (res == "fullres") and ext not in ["cor", "seg"]:
         folder = "originals"
     else:
         folder = "outputs"
 
 
-    if (ext in RAW_FORMATS):
-        step = "raw"
-    else:
-        step = 'orig'
+    step = ext
     if (len(camera.resolutions)>1 and step == 'orig'):
         lower_resolution = True
         low_res = image_resolution[camera.orientation in ("90", "270")]
@@ -330,13 +327,13 @@ def create_small_json(res, camera, full_res, image_resolution, p_start, p_end, t
         lower_resolution = False
         low_res = res
     if not os.path.exists(os.path.join(camera.destination, camera.ts_structure.format(folder=folder,
-        res=res, step = step))):
+        res=res, step = step if step != "raw" else "orig"))):
         os.makedirs(os.path.join(camera.destination, camera.ts_structure.format(folder=folder,
-        res=res, step = step)))
+        res=res, step = step if step != "raw" else "orig")))
     if os.path.isfile(os.path.join(camera.destination, camera.ts_structure.format(folder=folder,
-        res=res, step = step), camera.userfriendlyname + '-ts-info.json')):
+        res=res, step = step if step != "raw" else "orig"), camera.userfriendlyname + '-ts-info.json')):
         old_json= open(os.path.join(camera.destination, camera.ts_structure.format(folder=folder,
-            res=res, step = step), camera.userfriendlyname + '-ts-info.json'), 'r')
+            res=res, step = step if step != "raw" else "orig"), camera.userfriendlyname + '-ts-info.json'), 'r')
         jdump = eval(old_json.read())
         old_json.close()
         if jdump['posix_start']> mktime(p_start):
@@ -358,7 +355,7 @@ def create_small_json(res, camera, full_res, image_resolution, p_start, p_end, t
             jdump['height_hires']=  full_res[1]
             jdump['width']= image_resolution[0]
             jdump['width_hires']= full_res[0]
-            jdump['webroot'] = webrootaddr.format(folder=("outputs" if lower_resolution else "originals"), res=low_res, step =("orig" if ext != 'raw' else "raw"))
+            jdump['webroot'] = webrootaddr.format(folder=("outputs" if lower_resolution else "originals"), res=low_res, step =("orig" if ext== 'jpg' else ext))
 
     else:
         jdump = {
@@ -367,9 +364,9 @@ def create_small_json(res, camera, full_res, image_resolution, p_start, p_end, t
             'owner': camera.project_owner,
             'height': image_resolution[1],
             'height_hires': full_res[1],
-            'image_type': ext.upper(),
-            'ts_name': camera.fn_structure.format(folder = folder, res = res, step = step).replace(os.path.sep,""),
-            'ts_id': '{}-{}-C{}'.format(camera.expt, camera.location, camera.cam_num) + str(camera.datasetID),
+            'image_type': ("JPG"),
+            'ts_name': camera.fn_structure.format(folder = folder, res = res, step = step if step != "raw" else "orig").replace(os.path.sep,""),
+            'ts_id': ('{}-{}-C{}'.format(camera.expt, camera.location, camera.cam_num) + str(camera.datasetID) + (('-' + ext) if ext in ["cor", "seg"] else '')) ,
             'name':camera.userfriendlyname,
             'period_in_minutes': camera.interval,
             'posix_end': mktime(p_end),
@@ -381,13 +378,13 @@ def create_small_json(res, camera, full_res, image_resolution, p_start, p_end, t
             'ts_start': strftime(TS_DATE_FMT, p_start),
             'width': image_resolution[0],
             'width_hires': full_res[0],
-            'webroot':webrootaddr.format(folder=("outputs" if lower_resolution else "originals"), res=low_res, step =("orig" if ext != 'raw' else "raw")),
-            'webroot_hires':(webrootaddr.format(folder="originals", res="fullres", step="orig")),
+            'webroot':webrootaddr.format(folder=("outputs" if lower_resolution or ext in ["cor", "seg"] else "originals"), res=low_res, step =step if step != "raw" else "orig"),
+            'webroot_hires':(webrootaddr.format(folder="outputs" if ext in ["cor", "seg"] else "originals", res="fullres", step=step if step != "raw" else "orig")),
             'utc' : 'false',
             }
 
     small_json = open(os.path.join(camera.destination, camera.ts_structure.format(folder=folder,
-        res=res, step = step), camera.userfriendlyname + '-ts-info.json'), 'wb+')
+        res=res, step = step if step != "raw" else "orig"), camera.userfriendlyname + '-ts-info.json'), 'wb+')
     json.dump(jdump, small_json)
     small_json.close()
 
@@ -445,7 +442,7 @@ def parse_structures(camera):
     return camera
 
 
-def resize_function(camera, image_date, dest, img_array):
+def resize_function(camera, image_date, dest, img_array, step="orig"):
     """Create a resized image in a new location."""
     log.debug("Now checking if we have 1 or 2 resolution arguments on '{}'"
               .format(dest))
@@ -454,12 +451,12 @@ def resize_function(camera, image_date, dest, img_array):
         log.debug("Two resolution arguments, "
                   "'{}' x '{}'".format(new_res[0], new_res[1]))
         log.info("Now getting Timestream name")
-        ts_name = make_timestream_name(camera, res=new_res[camera.orientation in ("90", "270")], step="orig")
+        ts_name = make_timestream_name(camera, res=new_res[camera.orientation in ("90", "270")], step=step)
         resizing_temp_outname = get_new_file_name(image_date, ts_name)
         resized_img = os.path.join(
             camera.destination,
             camera.ts_structure.format(folder='outputs', res=str(new_res[camera.orientation in ("90", "270")]),
-                                       cam=camera.cam_num, step='orig'),
+                                       cam=camera.cam_num, step=step),
             resizing_temp_outname)
         if os.path.isfile(resized_img):
             return
@@ -633,7 +630,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
     out_image = get_new_file_name(image_date, ts_name, n=subsec, ext=in_ext)
     out_image = os.path.join(
         camera.destination,
-        camera.ts_structure.format(folder='originals', res='fullres',
+        camera.ts_structure.format(folder='originals' if step in ["orig", "raw"] else 'outputs', res='fullres',
                                    cam=camera.cam_num, step=step),
         out_image)
     # make the target directory
@@ -664,7 +661,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
     if len(camera.resolutions) > 1 and step != "raw":
         log.info("Going to resize image '{}'".format(dest))
         try:
-            resize_function(camera, image_date, dest, img_array)
+            resize_function(camera, image_date, dest, img_array, step=step)
         except IOError:
             log.debug("Resize failed due to io error")
             raise SkipImage
@@ -672,7 +669,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
             log.debug("Faied to resize due to skipimage being reported first")
             raise SkipImage
         except Exception as e:
-            print(e)
+            print("Unknown Exception on Resize Function", e)
             log.debug(e)
             log.debug("Resize failed for unknown reason")
             raise SkipImage
@@ -713,7 +710,7 @@ def process_image(args):
     retry = 2
     while(retry):
         try:
-            image, camera, ext = args
+            image, camera, ext, step = args
             image_date = get_file_date(image, camera.timeshift, camera.interval * 60)
             if camera.expt_start > image_date or image_date > camera.expt_end:
                 log.debug("Skipping {}. Outside of date range {} to {}".format(
@@ -760,7 +757,7 @@ def process_image(args):
                 # deal with original image (move/copy etc)
                 timestreamise_image(
                     image, camera, subsec=0,
-                    step="raw" if ext.lower() in RAW_FORMATS else "orig")
+                    step=step if step else ("raw" if ext.lower() in RAW_FORMATS else "orig"))
                 log.debug("Successfully timestreamed {}".format(image))
             except SkipImage:
                 log.debug("Failed to timestream {} (got SkipImage)".format(image))
@@ -829,7 +826,8 @@ def find_image_files(camera):
 
                 for fle in files:
                     this_ext = os.path.splitext(fle)[-1].lower().strip(".")
-                    if ext in (this_ext) or (ext == "raw" and this_ext in RAW_FORMATS):
+                    if (ext in (this_ext) or (ext == "raw" and this_ext in RAW_FORMATS)) or \
+                        (ext in ["cor", "seg"] and this_ext == 'jpg'):
                         fle_path = os.path.join(cur_dir, fle)
                         if camera.fn_parse in fle_path and "last_image" not in fle_path:
                             count_images+=1
@@ -918,8 +916,9 @@ def get_resolution(image, camera):
     return res, image_resolution, folder
 
 
-def get_thumbnail_paths(camera, images, res, image_resolution, folder):
+def get_thumbnail_paths(camera, images, res, image_resolution, folder, step='orig'):
     """Return thumbnail paths, for the final resting place of the images."""
+    if not step: step = 'orig'
     webrootaddr = ""
     url = "http://phenocam.anu.edu.au/cloud/a_data"
     webrootaddr = "http://phenocam.anu.edu.au/cloud/a_data{}/{}".format(
@@ -939,10 +938,10 @@ def get_thumbnail_paths(camera, images, res, image_resolution, folder):
                 image_date = get_file_date(images[start + i], camera.timeshift,
                                            camera.interval * 60)
                 ts_image = get_new_file_name(
-                    image_date, make_timestream_name(camera, res, 'orig'))
+                    image_date, make_timestream_name(camera, res, step))
                 thumb_image.append(sep.join([
                     camera.destination, os.path.dirname(camera.ts_structure).format(folder=folder),
-                        os.path.basename(camera.ts_structure).format(res=res, step='orig'), ts_image]).replace("\\","/"))
+                        os.path.basename(camera.ts_structure).format(res=res, step=step), ts_image]).replace("\\","/"))
             except (SkipImage):
                 print("SkipImage")
                 pass
@@ -996,6 +995,11 @@ def find_empty_dirs(root_dir):
 
 def process_camera(camera, ext, images, n_threads=1):
     """Process a set of images for one extension for a single camera."""
+    if ext in ["cor", "seg"]:
+        step = ext
+        ext = 'jpg'
+    else:
+        step = False
     if (camera.method == 'json'):
         new_images = []
         for image in images:
@@ -1015,7 +1019,7 @@ def process_camera(camera, ext, images, n_threads=1):
     else:
         low_res = "fullres"
         low_folder = "originals"
-    webrootaddr, thumb_image = get_thumbnail_paths(camera, images, low_res, image_resolution, low_folder)
+    webrootaddr, thumb_image = get_thumbnail_paths(camera, images, low_res, image_resolution, low_folder, step=step)
     webrootaddr = webrootaddr.replace("\\","/")
 
     # TODO: sort out the whole subsecond clusterfuck
@@ -1024,7 +1028,7 @@ def process_camera(camera, ext, images, n_threads=1):
         for count, image in enumerate(images):
             print("Processed {:5d} Images".format(count), end='\r')
 
-            process_image((image, camera, ext))
+            process_image((image, camera, ext, step))
     else:
         threads = max(1, min(n_threads, multiprocessing.cpu_count() - 1))
         log.info("Using {0:d} processes".format(threads))
@@ -1050,7 +1054,7 @@ def process_camera(camera, ext, images, n_threads=1):
         new_res = fullres
     if (ext in RAW_FORMATS):
         step = "raw"
-    else:
+    elif not step:
         step = 'orig'
 
     jdump = {
@@ -1058,7 +1062,7 @@ def process_camera(camera, ext, images, n_threads=1):
         'expt': camera.expt,
         'height_hires': fullres[1],
         'height': new_res[1],
-        'image_type': ext.upper(),
+        'image_type': 'JPG' if ext not in RAW_FORMATS else 'RAW',
         'ts_id': '{}-{}-C{}'.format(camera.expt, camera.location, camera.cam_num ) + str(camera.datasetID),
         'name':camera.userfriendlyname,
         'owner':camera.project_owner,
@@ -1072,9 +1076,9 @@ def process_camera(camera, ext, images, n_threads=1):
         'ts_start': strftime(TS_DATE_FMT, p_start),
         'ts_version': '1',
         'utc': "false",
-        'webroot_hires':(webrootaddr.format(folder="originals", res="fullres", step="orig")),
+        'webroot_hires':(webrootaddr.format(folder="originals" if step in ["orig", "raw"] else "outputs", res="fullres", step=step)),
         'webroot':webrootaddr.format(folder="outputs", res=new_res[camera.orientation in ("90",
-                                                                   "270")], step ="orig"),
+                                                                   "270")], step =step),
         'width_hires': fullres[0],
         'width': new_res[0]
         }
@@ -1083,6 +1087,7 @@ def process_camera(camera, ext, images, n_threads=1):
             if not (key.lower() in camera.json_updates.lower()):
                 if not (key.lower() in ('ts_name')):
                     jdump.pop(key, None)
+    ext = step
     create_small_json("fullres", camera,fullres, new_res, p_start, p_end, ts_end_text, ext, webrootaddr, thumb_image)
     if ext not in RAW_FORMATS:
         for resize_res in camera.resolutions[1:]:

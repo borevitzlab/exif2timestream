@@ -403,12 +403,12 @@ class TestExifTraitcapture(unittest.TestCase):
 
     # tests for process_image
     def test_process_image(self):
-        e2t.process_image((self.jpg_testfile, self.camera, "jpg"))
+        e2t.process_image((self.jpg_testfile, self.camera, "jpg", False))
         self.assertTrue(path.exists(self.r_fullres_path))
         self._md5test(self.r_fullres_path, "b0895204732d2806780e87ea6ce8e874")
 
     def test_process_image_map(self):
-        e2t.process_image((self.jpg_testfile, self.camera, "jpg"))
+        e2t.process_image((self.jpg_testfile, self.camera, "jpg", False))
         self.assertTrue(path.exists(self.r_fullres_path))
         self._md5test(self.r_fullres_path, "b0895204732d2806780e87ea6ce8e874")
 
@@ -1069,7 +1069,7 @@ class TestExifTraitcapture(unittest.TestCase):
         small_json.method = 'resize'
         e2t.create_small_json("fullres", small_json, (5184, 3456), (1920, 1280),
                     time.strptime("19990101", "%Y%m%d"), time.strptime("20150101", "%Y%m%d"),
-                    "now", ".jpg", "http://phenocam.anu.edu.au/cloud/a_data{}/{}".format(
+                    "now", "orig", "http://phenocam.anu.edu.au/cloud/a_data{}/{}".format(
                         small_json.destination.split("a_data")[-1],small_json.ts_structure if small_json.ts_structure
                         else small_json.location).replace("\\","/"), [])
 
