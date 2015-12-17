@@ -729,7 +729,7 @@ def process_image(args):
                 return
             if camera.method == "resize" and (ext not in RAW_FORMATS):
                 img_array = Image.open(image)
-                resize_function(camera, image_date, image, img_array)
+                resize_function(camera, image_date, image, img_array, step=step)
                 log.debug("Rezied Image {}".format(image))
             if camera.method == "rotate" and (ext not in RAW_FORMATS):
                 rotate_image(camera.orientation, image)
