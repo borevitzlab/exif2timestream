@@ -312,8 +312,8 @@ def resolution_calc(camera, image):
         x=x+1
     return camera
 
-def create_small_json(res, camera, full_res, image_resolution, p_start, p_end, ts_end_text, ext, webrootaddr, thumb_image):
-    if (res == "fullres"):
+def create_small_json(res, camera, full_res, image_resolution, p_start, p_end, ts_end_text, ext, webrootaddr, thumb_image, step):
+    if (res == "fullres") and (step not in ["cor", "seg"]):
         folder = "originals"
     else:
         folder = "outputs"
@@ -322,7 +322,7 @@ def create_small_json(res, camera, full_res, image_resolution, p_start, p_end, t
     if (ext in RAW_FORMATS):
         step = "raw"
     else:
-        step = 'orig'
+        step = step
     if (len(camera.resolutions)>1 and step == 'orig'):
         lower_resolution = True
         low_res = image_resolution[camera.orientation in ("90", "270")]
@@ -369,8 +369,8 @@ def create_small_json(res, camera, full_res, image_resolution, p_start, p_end, t
             'height_hires': full_res[1],
             'image_type': ext.upper(),
             'ts_name': camera.fn_structure.format(folder = folder, res = res, step = step).replace(os.path.sep,""),
-            'ts_id': '{}-{}-C{}'.format(camera.expt, camera.location, camera.cam_num) + str(camera.datasetID),
-            'name':camera.userfriendlyname,
+            'ts_id': '{}-{}-C{}'.format(camera.expt, camera.location, camera.cam_num) + str(camera.datasetID)  + ('' if step not in ['cor', 'seg'] else ('-' + step)),
+            'name':camera.userfriendlyname ,
             'period_in_minutes': camera.interval,
             'posix_end': mktime(p_end),
             'posix_start': mktime(p_start),
@@ -381,8 +381,8 @@ def create_small_json(res, camera, full_res, image_resolution, p_start, p_end, t
             'ts_start': strftime(TS_DATE_FMT, p_start),
             'width': image_resolution[0],
             'width_hires': full_res[0],
-            'webroot':webrootaddr.format(folder=("outputs" if lower_resolution else "originals"), res=low_res, step =("orig" if ext != 'raw' else "raw")),
-            'webroot_hires':(webrootaddr.format(folder="originals", res="fullres", step="orig")),
+            'webroot':webrootaddr.format(folder=("outputs" if lower_resolution or step in ['cor', 'seg'] else "originals"), res=low_res, step =step),
+            'webroot_hires':(webrootaddr.format(folder="outputs" if step in ['cor', 'seg'] else "originals", res="fullres", step=step if step != 'raw' else 'orig')),
             'utc' : 'false',
             }
 
@@ -744,7 +744,7 @@ def process_image(args):
                     (camera.expt + '-' +
                         camera.location + "-C" +
                         camera.cam_num +
-                        camera.datasetID + "~fullres-" + (ext if ext in RAW_FORMATS else "orig")).replace("_","-"),
+                        camera.datasetID + "~fullres-" + (step if step in (RAW_FORMATS | {"cor", "seg"}) else "orig")).replace("_","-"),
                     os.path.relpath(image, camera.source))
                 try:
                     os.makedirs(os.path.dirname(archive_image))
@@ -1036,7 +1036,7 @@ def process_camera(camera, ext, images, n_threads=1):
         threads = max(1, min(n_threads, multiprocessing.cpu_count() - 1))
         log.info("Using {0:d} processes".format(threads))
         # set the function's camera-wide arguments
-        args = ((image, camera, ext) for image in images)
+        args = ((image, camera, ext, step) for image in images)
         pool = multiprocessing.Pool(threads)
         for count, _ in enumerate(pool.imap(process_image, args)):
             print("Processed {:5d} Images".format(count), end='\r')
@@ -1055,10 +1055,11 @@ def process_camera(camera, ext, images, n_threads=1):
         new_res = camera.resolutions[1]
     else:
         new_res = fullres
-    if (ext in RAW_FORMATS):
-        step = "raw"
-    elif not step:
-        step = 'orig'
+    if not step:
+        if (ext in RAW_FORMATS):
+            step = "raw"
+        else:
+            step = "orig"
 
     jdump = {
         'access': 0,
@@ -1066,8 +1067,8 @@ def process_camera(camera, ext, images, n_threads=1):
         'height_hires': fullres[1],
         'height': new_res[1],
         'image_type': 'JPG' if ext not in RAW_FORMATS else 'RAW',
-        'ts_id': '{}-{}-C{}'.format(camera.expt, camera.location, camera.cam_num ) + str(camera.datasetID),
-        'name':camera.userfriendlyname,
+        'ts_id': '{}-{}-C{}'.format(camera.expt, camera.location, camera.cam_num ) + str(camera.datasetID) + ('' if step not in ['cor', 'seg'] else ('-' + step)),
+        'name':camera.userfriendlyname + ('' if step not in ['cor', 'seg'] else ('-' + step)),
         'owner':camera.project_owner,
         'period_in_minutes': camera.interval,
         'posix_end': mktime(p_end),
@@ -1090,11 +1091,11 @@ def process_camera(camera, ext, images, n_threads=1):
             if not (key.lower() in camera.json_updates.lower()):
                 if not (key.lower() in ('ts_name')):
                     jdump.pop(key, None)
-    create_small_json("fullres", camera,fullres, new_res, p_start, p_end, ts_end_text, ext, webrootaddr, thumb_image)
+    create_small_json("fullres", camera,fullres, new_res, p_start, p_end, ts_end_text, ext, webrootaddr, thumb_image, step)
     if ext not in RAW_FORMATS:
         for resize_res in camera.resolutions[1:]:
             new_res = resize_res
-            create_small_json(new_res[camera.orientation in ("90", "270")], camera, fullres, new_res, p_start, p_end, ts_end_text, ext, webrootaddr, thumb_image)
+            create_small_json(new_res[camera.orientation in ("90", "270")], camera, fullres, new_res, p_start, p_end, ts_end_text, ext, webrootaddr, thumb_image, step)
     if ext != 'raw' and camera.large_json:
         return {k: v for k, v in jdump.items()}
     else:

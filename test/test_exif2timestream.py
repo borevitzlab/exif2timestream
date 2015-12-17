@@ -1071,7 +1071,7 @@ class TestExifTraitcapture(unittest.TestCase):
                     time.strptime("19990101", "%Y%m%d"), time.strptime("20150101", "%Y%m%d"),
                     "now", "orig", "http://phenocam.anu.edu.au/cloud/a_data{}/{}".format(
                         small_json.destination.split("a_data")[-1],small_json.ts_structure if small_json.ts_structure
-                        else small_json.location).replace("\\","/"), [])
+                        else small_json.location).replace("\\","/"), [], 'orig')
 
         original_json = eval(open(file_path).read())
         after_json= copy.deepcopy(self.original_single_jpg_json)
