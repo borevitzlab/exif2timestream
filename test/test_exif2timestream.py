@@ -403,12 +403,12 @@ class TestExifTraitcapture(unittest.TestCase):
 
     # tests for process_image
     def test_process_image(self):
-        e2t.process_image((self.jpg_testfile, self.camera, "jpg"))
+        e2t.process_image((self.jpg_testfile, self.camera, "jpg", False))
         self.assertTrue(path.exists(self.r_fullres_path))
         self._md5test(self.r_fullres_path, "b0895204732d2806780e87ea6ce8e874")
 
     def test_process_image_map(self):
-        e2t.process_image((self.jpg_testfile, self.camera, "jpg"))
+        e2t.process_image((self.jpg_testfile, self.camera, "jpg", False))
         self.assertTrue(path.exists(self.r_fullres_path))
         self._md5test(self.r_fullres_path, "b0895204732d2806780e87ea6ce8e874")
 
@@ -1069,9 +1069,9 @@ class TestExifTraitcapture(unittest.TestCase):
         small_json.method = 'resize'
         e2t.create_small_json("fullres", small_json, (5184, 3456), (1920, 1280),
                     time.strptime("19990101", "%Y%m%d"), time.strptime("20150101", "%Y%m%d"),
-                    "now", ".jpg", "http://phenocam.anu.edu.au/cloud/a_data{}/{}".format(
+                    "now", "orig", "http://phenocam.anu.edu.au/cloud/a_data{}/{}".format(
                         small_json.destination.split("a_data")[-1],small_json.ts_structure if small_json.ts_structure
-                        else small_json.location).replace("\\","/"), [])
+                        else small_json.location).replace("\\","/"), [], 'orig')
 
         original_json = eval(open(file_path).read())
         after_json= copy.deepcopy(self.original_single_jpg_json)
@@ -1124,8 +1124,8 @@ class TestExifTraitcapture(unittest.TestCase):
         ])
         images_kept = os.listdir(del_time.root_path)
         images_should_be_kept = ['whroo2013_11_11_11_01_01M.jpg']
-        self.assertEqual(images_del, images_should_be_deleted)
-        self.assertEqual(images_kept, images_should_be_kept)
+        self.assertListEqual(images_del, images_should_be_deleted)
+        self.assertListEqual(images_kept, images_should_be_kept)
 
     def test_sub_folder(self):
         sub_included = copy.deepcopy(self.camera_both)
@@ -1133,7 +1133,7 @@ class TestExifTraitcapture(unittest.TestCase):
         sub_included.source = self.config_list_delete["ROOT_PATH"]
         expt = {
             "jpg": [
-                path.join(self.config_list_delete["ROOT_PATH"], x) for x in [
+                path.join(self.config_list_delete["ROOT_PATH"], x) for x in sorted([
                     'whroo2013_11_12_12_01_01M.jpg',
                     'whroo2013_11_12_11_01_01M.jpg',
                     'whroo2013_11_12_10_59_59M.jpg',
@@ -1144,11 +1144,11 @@ class TestExifTraitcapture(unittest.TestCase):
                     'whroo2013_11_10_11_01_01M.jpg',
                     'whroo2013_11_10_10_59_59M.jpg',
                     os.path.join('subfolder', "whroo2015_11_12_12_01_01M.jpg")
-                ]
+                ])
             ]
         }
         got = e2t.find_image_files(sub_included)
-        self.assertDictEqual(got, expt)
+        self.assertListEqual(sorted(got['jpg']), expt['jpg'])
         no_sub = copy.deepcopy(self.camera_both)
         no_sub = e2t.CameraFields(no_sub)
         no_sub.sub_folder = False
@@ -1157,7 +1157,7 @@ class TestExifTraitcapture(unittest.TestCase):
         print(no_subfolder)
         no_sub_expt = {
             "jpg": [
-                path.join(self.config_list_delete["ROOT_PATH"], x) for x in [
+                path.join(self.config_list_delete["ROOT_PATH"], x) for x in sorted([
                     'whroo2013_11_10_10_59_59M.jpg',
                     'whroo2013_11_10_11_01_01M.jpg',
                     'whroo2013_11_10_12_01_01M.jpg',
@@ -1167,10 +1167,10 @@ class TestExifTraitcapture(unittest.TestCase):
                     'whroo2013_11_12_10_59_59M.jpg',
                     'whroo2013_11_12_11_01_01M.jpg',
                     'whroo2013_11_12_12_01_01M.jpg'
-                ]
+                ])
             ]
         }
-        self.assertDictEqual(no_subfolder, no_sub_expt)
+        self.assertListEqual(sorted(no_subfolder['jpg']), no_sub_expt['jpg'])
 
 if __name__ == "__main__":
     runner = unittest.TextTestRunner(verbosity=3)
