@@ -58,11 +58,7 @@ def get_interval(date_times):
         if (mc):
             differences.append(Counter(diff).most_common(1)[0][0])
         else:
-            print("diff", diff)
-            print("Most common", Counter(diff).most_common(2))
-            print("First Index", Counter(diff).most_common(2)[1])
-            print("Second Index", Counter(diff).most_common(2)[1][0])
-            differences.append(Counter(diff).most_common(2)[1][0])
+            differences.append(Counter(diff).most_common(2)[-1][0])
     interval = (sum(differences, timedelta(0)) / len(differences))
     if ((interval.seconds / 60) > 30):
         interval = (((interval.seconds/60)+1)*60)
@@ -132,18 +128,21 @@ def main(input_directory, output_directory):
     all_missing_images = {}
     for timestream in all_timestreams:
         date_times= sorted(find_images(timestream))
-        print("Beginning timestream " + timestream)
-        print("Getting relevant data")
-        start_date = date_times[0].date()
-        end_date = date_times[-1].date()
-        start_time, end_time = get_start_end(date_times)
-        interval = get_interval(date_times)
-        print("Finding Missing Images")
-        missing_images=find_missing_images(date_times, start_date, end_date, start_time, end_time, interval)
-        print("Outputting Missing Images")
-        plot_missing_images_graph(missing_images, timestream, start_date, end_date)
-        output_missing_images_csv(missing_images, timestream)
-        all_missing_images[timestream] = missing_images
+        if(date_times):
+            print("Beginning timestream " + timestream)
+            print("Getting relevant data")
+            start_date = date_times[0].date()
+            end_date = date_times[-1].date()
+            start_time, end_time = get_start_end(date_times)
+            interval = get_interval(date_times)
+            print("Finding Missing Images")
+            missing_images=find_missing_images(date_times, start_date, end_date, start_time, end_time, interval)
+            print("Outputting Missing Images")
+            plot_missing_images_graph(missing_images, timestream, start_date, end_date)
+            output_missing_images_csv(missing_images, timestream)
+            all_missing_images[timestream] = missing_images
+        else:
+            print("No images in this timestream")
 
 
     pass
