@@ -53,12 +53,13 @@ def get_interval(date_times):
             dates[str(d.year) + "-" + str(d.month) + "-" + str(d.day)] = [(d)]
     differences = []
     for date, times in dates.iteritems():
-        diff = ([j-i for i, j in zip(times[:-1], times[1:])])
-        mc = Counter(diff).most_common(1)[0][0]
-        if (mc):
-            differences.append(Counter(diff).most_common(1)[0][0])
-        else:
-            differences.append(Counter(diff).most_common(2)[-1][0])
+        if len(times>1):
+            diff = ([j-i for i, j in zip(times[:-1], times[1:])])
+            mc = Counter(diff).most_common(1)[0][0]
+            if (mc):
+                differences.append(Counter(diff).most_common(1)[0][0])
+            else:
+                differences.append(Counter(diff).most_common(2)[-1][0])
     interval = (sum(differences, timedelta(0)) / len(differences))
     if ((interval.seconds / 60) > 30):
         interval = (((interval.seconds/60)+1)*60)
@@ -128,7 +129,7 @@ def main(input_directory, output_directory):
     all_missing_images = {}
     for timestream in all_timestreams:
         date_times= sorted(find_images(timestream))
-        if(date_times):
+        if(date_times<=1):
             print("Beginning timestream " + timestream)
             print("Getting relevant data")
             start_date = date_times[0].date()
