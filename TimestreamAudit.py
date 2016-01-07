@@ -74,20 +74,22 @@ def find_missing_images(date_times, start_date, end_date, start_time, end_time, 
     today = start_date
     first = True
     missing = {}
-    while(today <= end_date) and len(date_times):
-        time = start_time
-        while (time <= end_time) and len(date_times):
-            now = datetime(today.year, today.month, today.day, time.hour, time.minute, time.second)
-            if now in date_times:
-                date_times.remove(now)
-                first = False
-            elif not first:
-                try:
-                    missing[today].append(now)
-                except:
-                    missing[today] = [now]
-            now += timedelta(seconds = interval)
-            time = now.time()
+    while(today <= end_date):
+        if len(date_times):
+            time = start_time
+            while (time <= end_time):
+                if len(date_times):
+                    now = datetime(today.year, today.month, today.day, time.hour, time.minute, time.second)
+                    if now in date_times:
+                        date_times.remove(now)
+                        first = False
+                    elif not first:
+                        try:
+                            missing[today].append(now)
+                        except:
+                            missing[today] = [now]
+                now += timedelta(seconds = interval)
+                time = now.time()
         today += timedelta(days=1)
     return missing
 
@@ -117,6 +119,7 @@ def output_missing_images_csv(missing_images, timestream):
 
 def main(input_directory, output_directory):
     # Find all timestreams in parent folder (Returns a bunch of folder addressess
+    print("Finding timestreams in " + input_directory)
     all_timestreams = find_timestreams(input_directory)
     all_missing_images = {}
     for timestream in all_timestreams:
