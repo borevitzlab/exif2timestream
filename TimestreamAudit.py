@@ -54,7 +54,11 @@ def get_interval(date_times):
     differences = []
     for date, times in dates.iteritems():
         diff = ([j-i for i, j in zip(times[:-1], times[1:])])
-        differences.append(Counter(diff).most_common(1)[0][0])
+        mc = Counter(diff).most_common(1)[0][0]
+        if (mc):
+            differences.append(Counter(diff).most_common(1)[0][0])
+        else:
+            differences.append(Counter(diff).most_common(1)[1][0])
     interval = (sum(differences, timedelta(0)) / len(differences))
     if ((interval.seconds / 60) > 30):
         interval = (((interval.seconds/60)+1)*60)
