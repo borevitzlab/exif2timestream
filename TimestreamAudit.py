@@ -58,7 +58,11 @@ def get_interval(date_times):
         if (mc):
             differences.append(Counter(diff).most_common(1)[0][0])
         else:
-            differences.append(Counter(diff).most_common(1)[1][0])
+            print("diff", diff)
+            print("Most common", Counter(diff).most_common(2))
+            print("First Index", Counter(diff).most_common(2)[1])
+            print("Second Index", Counter(diff).most_common(2)[1][0])
+            differences.append(Counter(diff).most_common(2)[1][0])
     interval = (sum(differences, timedelta(0)) / len(differences))
     if ((interval.seconds / 60) > 30):
         interval = (((interval.seconds/60)+1)*60)
