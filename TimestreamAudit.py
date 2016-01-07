@@ -2,7 +2,7 @@
 import csv
 import matplotlib.pyplot as plt
 import argparse
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from os import walk, path
 import re
 from collections import Counter
@@ -53,7 +53,7 @@ def get_interval(date_times):
             dates[str(d.year) + "-" + str(d.month) + "-" + str(d.day)] = [(d)]
     differences = []
     for date, times in dates.iteritems():
-        if len(times>1):
+        if len(times)>1:
             diff = ([j-i for i, j in zip(times[:-1], times[1:])])
             mc = Counter(diff).most_common(1)[0][0]
             if (mc):
@@ -98,11 +98,11 @@ def find_missing_images(date_times, start_date, end_date, start_time, end_time, 
         today += timedelta(days=1)
     return missing
 
-def plot_missing_images_graph(missing_images, timestream, start_date, end_date):
+def plot_missing_images_graph(missing_images, timestream, start_date, end_date,ipd):
     pltx = []
     plty = []
     for date, images in missing_images.iteritems():
-        number_missing = len(images)
+        number_missing = len(images/ipd)
         pltx.append(date)
         plty.append(number_missing)
     plt.plot(pltx, plty, 'ro')
@@ -122,6 +122,11 @@ def output_missing_images_csv(missing_images, timestream):
             for image in images:
                 writer.writerow({"Date":date,"Time":image.time()})
 
+def images_per_day(start_time, end_time, interval):
+    images = (datetime.combine(date.today(), end_time) - datetime.combine(date.today(), start_time)).total_seconds()/interval
+    return images
+
+
 def main(input_directory, output_directory):
     # Find all timestreams in parent folder (Returns a bunch of folder addressess
     print("Finding timestreams in " + input_directory)
@@ -129,17 +134,19 @@ def main(input_directory, output_directory):
     all_missing_images = {}
     for timestream in all_timestreams:
         date_times= sorted(find_images(timestream))
-        if(date_times<=1):
+        if(date_times):
             print("Beginning timestream " + timestream)
             print("Getting relevant data")
             start_date = date_times[0].date()
             end_date = date_times[-1].date()
             start_time, end_time = get_start_end(date_times)
             interval = get_interval(date_times)
+            print("Calculating images per day")
+            ipd = images_per_day(start_time, end_time, interval)
             print("Finding Missing Images")
             missing_images=find_missing_images(date_times, start_date, end_date, start_time, end_time, interval)
             print("Outputting Missing Images")
-            plot_missing_images_graph(missing_images, timestream, start_date, end_date)
+            plot_missing_images_graph(missing_images, timestream, start_date, end_date, ipd)
             output_missing_images_csv(missing_images, timestream)
             all_missing_images[timestream] = missing_images
         else:
