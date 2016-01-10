@@ -102,15 +102,39 @@ def find_missing_images(date_times, start_date, end_date, start_time, end_time, 
 def plot_missing_images_graph(missing_images, timestream, start_date, end_date,ipd):
     pltx = []
     plty = []
-    for date, images in missing_images.iteritems():
-        number_missing = len(images)/ipd
-        pltx.append(date)
-        plty.append(number_missing)
-    plt.plot(pltx, plty, 'ro')
-    plt.xlim([start_date, end_date])
-    plt.xticks(rotation='vertical')
-    if not len(missing_images):
-        plt.ylim([0, 1])
+    today = start_date
+    while today<= end_date:
+        pltx.append(today)
+        if today in missing_images.keys():
+            plty.append((len(missing_images[today])/ipd)*100)
+        else:
+            plty.append(0)
+        today += timedelta(days=1)
+    N = len(pltx)
+    ind = np.arange(N)  # the x locations for the groups
+    width = 0.35       # the width of the bars
+    fig, ax = plt.subplots()
+    rects1 = ax.bar(ind, plty, width*2, bottom=None)
+
+    # add some text for labels, title and axes ticks
+    ax.set_ylabel('% Of Missing Images')
+    ax.set_xticks(ind + width)
+    plt.ylim([0.0, 100.0])
+    plt.xticks(rotation=30)
+    ax.set_xticklabels(pltx)
+    rects = ax.patches
+
+    def autolabel(rects):
+        # attach some text labels
+        for rect in rects:
+            height = rect.get_height()
+            ax.text(rect.get_x() + rect.get_width()/2., 1.05*height,
+                    '{}'.format(round(height, 3)),
+                    ha='center', va='bottom')
+
+    autolabel(rects1)
+    fig = plt.gcf()
+    fig.set_size_inches((5 + 1*len(pltx)), 5)
     plt.suptitle(timestream.split(path.sep)[-1] + " As Of " + str(datetime.now().date()))
     plt.savefig(timestream + path.sep + "missing_images.jpg", bbox_inches='tight')
     return pltx, plty
@@ -142,31 +166,31 @@ def graph_all_missing_images(all_missing_images, output_directory):
     plty = [] # % of missing images
     for timestream, (dates, per_missing) in all_missing_images.iteritems():
         pltx.append(timestream.split(path.sep)[-1])
-        percentage_missing = (sum(per_missing)/len(per_missing) if len(per_missing) else 0.0)
+        percentage_missing = ((sum(per_missing)/len(per_missing)) if len(per_missing) else 0.0)
         plty.append(percentage_missing)
 
     N = len(pltx)
 
     ind = np.arange(N)  # the x locations for the groups
     width = 0.35       # the width of the bars
-    plt.plot(figsize=(200, 400))
     fig, ax = plt.subplots()
-    rects1 = ax.bar(ind, plty, width*2, color='r')
+    rects1 = ax.bar(ind, plty, width*2, bottom=None)
 
     # add some text for labels, title and axes ticks
     ax.set_ylabel('% Of Missing Images')
     ax.set_title('Percentage of Missing Images by Timestream')
     ax.set_xticks(ind + width)
+    plt.ylim([0.0, 100.0])
     plt.xticks(rotation="vertical")
     ax.set_xticklabels(pltx)
-
+    rects = ax.patches
 
     def autolabel(rects):
         # attach some text labels
         for rect in rects:
             height = rect.get_height()
             ax.text(rect.get_x() + rect.get_width()/2., 1.05*height,
-                    '%d' % int(height),
+                    '{}'.format(round(height, 3)),
                     ha='center', va='bottom')
 
     autolabel(rects1)
