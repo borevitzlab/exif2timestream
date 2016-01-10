@@ -26,7 +26,7 @@ def find_timestreams(input_directory):
     timestreams = []
     for root, dirs, files in walk(input_directory):
         for directory in dirs:
-            prog = re.compile("~\w*-\w*")
+            prog = re.compile("~\w*-(orig|raw)")
             if (prog.search(directory)):
                 timestreams.append(root + path.sep + directory)
 
