@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, date
 from os import walk, path
 import re
 from collections import Counter
+import numpy as np
 from exif2timestream import get_time_from_filename
 def cli_options():
     """Return CLI arguments with argparse."""
@@ -102,7 +103,7 @@ def plot_missing_images_graph(missing_images, timestream, start_date, end_date,i
     pltx = []
     plty = []
     for date, images in missing_images.iteritems():
-        number_missing = len(images/ipd)
+        number_missing = len(images)/ipd
         pltx.append(date)
         plty.append(number_missing)
     plt.plot(pltx, plty, 'ro')
@@ -112,6 +113,7 @@ def plot_missing_images_graph(missing_images, timestream, start_date, end_date,i
         plt.ylim([0, 1])
     plt.suptitle(timestream.split(path.sep)[-1] + " As Of " + str(datetime.now().date()))
     plt.savefig(timestream + path.sep + "missing_images.jpg", bbox_inches='tight')
+    return pltx, plty
 
 def output_missing_images_csv(missing_images, timestream):
     with open(timestream + path.sep + "missing_images.csv", 'w+') as csvfile:
@@ -126,6 +128,50 @@ def images_per_day(start_time, end_time, interval):
     images = (datetime.combine(date.today(), end_time) - datetime.combine(date.today(), start_time)).total_seconds()/interval
     return images
 
+def output_all_missing_images(ts_missing, output_directory):
+    with open(output_directory + path.sep + "missing_images.csv", 'w+') as csvfile:
+        field_names = ["Timestream", "Percentage_missing"]
+        writer = csv.DictWriter(csvfile, fieldnames = field_names)
+        writer.writeheader()
+        for timestream,(dates, per_missing) in ts_missing.iteritems():
+            percentage_missing = (sum(per_missing)/len(per_missing) if len(per_missing) else 0.0)
+            writer.writerow({"Timestream":timestream, "Percentage_missing" : percentage_missing })
+
+def graph_all_missing_images(all_missing_images, output_directory):
+    pltx = [] #Timestream names
+    plty = [] # % of missing images
+    for timestream, (dates, per_missing) in all_missing_images.iteritems():
+        pltx.append(timestream.split(path.sep)[-1])
+        percentage_missing = (sum(per_missing)/len(per_missing) if len(per_missing) else 0.0)
+        plty.append(percentage_missing)
+
+    N = len(pltx)
+
+    ind = np.arange(N)  # the x locations for the groups
+    width = 0.35       # the width of the bars
+
+    fig, ax = plt.subplots()
+    rects1 = ax.bar(ind, plty, width*2, color='r')
+
+    # add some text for labels, title and axes ticks
+    ax.set_ylabel('% Of Missing Images')
+    ax.set_title('Percentage of Missing Images by Timestream')
+    ax.set_xticks(ind + width)
+    plt.xticks(rotation="vertical")
+    ax.set_xticklabels(pltx)
+
+
+    def autolabel(rects):
+        # attach some text labels
+        for rect in rects:
+            height = rect.get_height()
+            ax.text(rect.get_x() + rect.get_width()/2., 1.05*height,
+                    '%d' % int(height),
+                    ha='center', va='bottom')
+
+    autolabel(rects1)
+
+    plt.savefig(output_directory + path.sep + "total_missing_images.jpg", bbox_inches='tight')
 
 def main(input_directory, output_directory):
     # Find all timestreams in parent folder (Returns a bunch of folder addressess
@@ -146,12 +192,14 @@ def main(input_directory, output_directory):
             print("Finding Missing Images")
             missing_images=find_missing_images(date_times, start_date, end_date, start_time, end_time, interval)
             print("Outputting Missing Images")
-            plot_missing_images_graph(missing_images, timestream, start_date, end_date, ipd)
+            dates, per_missing = plot_missing_images_graph(missing_images, timestream, start_date, end_date, ipd)
             output_missing_images_csv(missing_images, timestream)
-            all_missing_images[timestream] = missing_images
+            all_missing_images[timestream] = (dates, per_missing)
         else:
             print("No images in this timestream")
-
+    print("Outputting csv and graph")
+    output_all_missing_images(all_missing_images, output_directory)
+    graph_all_missing_images(all_missing_images, output_directory)
 
     pass
 
