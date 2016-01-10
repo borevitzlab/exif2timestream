@@ -149,7 +149,7 @@ def graph_all_missing_images(all_missing_images, output_directory):
 
     ind = np.arange(N)  # the x locations for the groups
     width = 0.35       # the width of the bars
-
+    plt.plot(figsize=(200, 400))
     fig, ax = plt.subplots()
     rects1 = ax.bar(ind, plty, width*2, color='r')
 
@@ -170,7 +170,8 @@ def graph_all_missing_images(all_missing_images, output_directory):
                     ha='center', va='bottom')
 
     autolabel(rects1)
-
+    fig = plt.gcf()
+    fig.set_size_inches((5 + 1*len(pltx)), 5)
     plt.savefig(output_directory + path.sep + "total_missing_images.jpg", bbox_inches='tight')
 
 def main(input_directory, output_directory):
