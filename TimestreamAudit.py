@@ -227,6 +227,7 @@ def timestream_function(timestream):
         return (timestream, dates, per_missing)
     else:
         print("No images in this timestream")
+        return (False, False, False)
 
 def main(input_directory, output_directory, threads):
     print("Using {} threads".format(threads))
@@ -242,7 +243,8 @@ def main(input_directory, output_directory, threads):
     if threads > len(all_timestreams):
         threads = len(all_timestreams)
     for count, b in enumerate(pool.imap(timestream_function, all_timestreams)):
-        all_missing_images[b[0]] = (b[1], b[2])
+        if (b[0]):
+            all_missing_images[b[0]] = (b[1], b[2])
     # for timestream in all_timestreams:
     #     date_times= sorted(find_images(timestream))
     #     if(date_times):
