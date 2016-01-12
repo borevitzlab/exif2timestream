@@ -204,9 +204,26 @@ def graph_all_missing_images(all_missing_images, output_directory):
                     ha='center', va='bottom')
 
     autolabel(rects1)
-    # fig = plt.gcf()
     fig.set_size_inches((5 + 1*len(pltx)), 5)
     plt.savefig(output_directory + path.sep + "total_missing_images.jpg", bbox_inches='tight')
+    fig = plt.gcf()
+
+def graph_all_missing_images_over_time(all_missing_images, output_directory):
+    plt.close('all')
+    N = len(all_missing_images)
+    f, plots = plt.subplots(N, sharex=True, sharey=True)
+    f.subplots_adjust(hspace=0)
+    plt.setp([a.get_xticklabels() for a in f.axes[:-1]], visible=False)
+    i = 0
+    for timestream, (dates, per_missing) in all_missing_images.iteritems():
+        plots[i].plot(dates, per_missing)
+        plots[i].set_ylabel(timestream.split(path.sep)[-1], rotation="horizontal", labelpad=100)
+        i+= 1
+    f.set_size_inches(10,(5 + 1*len(all_missing_images)))
+    plt.ylim([0.0, 110.0])
+    plt.xticks(rotation=30)
+    plt.savefig(output_directory + path.sep + "total_missing_images_over_time.jpg", bbox_inches='tight')
+
 
 def timestream_function(timestream):
     date_times= sorted(find_images(timestream))
@@ -266,8 +283,10 @@ def main(input_directory, output_directory, threads):
     #         print("No images in this timestream")
     print("")
     print("Outputting Overall csv and graph")
-    output_all_missing_images(OrderedDict(sorted(all_missing_images.items())), output_directory)
-    graph_all_missing_images(OrderedDict(sorted(all_missing_images.items())), output_directory)
+    ordered_dict = OrderedDict(sorted(all_missing_images.items()))
+    output_all_missing_images(ordered_dict, output_directory)
+    graph_all_missing_images(ordered_dict, output_directory)
+    graph_all_missing_images_over_time(ordered_dict, output_directory)
 
     pass
 
