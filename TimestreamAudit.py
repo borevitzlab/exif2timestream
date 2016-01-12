@@ -1,5 +1,6 @@
 """ Crawl through a root directory and audit all of the timestreams inside"""
 from operator import itemgetter
+import multiprocessing
 import csv
 import matplotlib.pyplot as plt
 import argparse
@@ -203,11 +204,32 @@ def graph_all_missing_images(all_missing_images, output_directory):
                     ha='center', va='bottom')
 
     autolabel(rects1)
-    fig = plt.gcf()
+    # fig = plt.gcf()
     fig.set_size_inches((5 + 1*len(pltx)), 5)
     plt.savefig(output_directory + path.sep + "total_missing_images.jpg", bbox_inches='tight')
 
-def main(input_directory, output_directory):
+def timestream_function(timestream):
+    date_times= sorted(find_images(timestream))
+    if(date_times):
+        print("Beginning timestream " + timestream)
+        print("Getting relevant data")
+        start_date = date_times[0].date()
+        end_date = date_times[-1].date()
+        start_time, end_time = get_start_end(date_times)
+        interval = get_interval(date_times)
+        print("Calculating images per day")
+        ipd = images_per_day(start_time, end_time, interval)
+        print("Finding Missing Images")
+        missing_images=find_missing_images(date_times, start_date, end_date, start_time, end_time, interval)
+        print("Outputting Missing Images")
+        dates, per_missing = plot_missing_images_graph(missing_images, timestream, start_date, end_date, ipd)
+        output_missing_images_csv(missing_images, timestream)
+        return (timestream, dates, per_missing)
+    else:
+        print("No images in this timestream")
+
+def main(input_directory, output_directory, threads):
+    print("Using {} threads".format(threads))
     if input_directory[-1] == path.sep:
         input_directory = input_directory[:-1]
     if output_directory[-1] == path.sep:
@@ -216,25 +238,30 @@ def main(input_directory, output_directory):
     print("Finding timestreams in " + input_directory)
     all_timestreams = find_timestreams(input_directory)
     all_missing_images = {}
-    for timestream in all_timestreams:
-        date_times= sorted(find_images(timestream))
-        if(date_times):
-            print("Beginning timestream " + timestream)
-            print("Getting relevant data")
-            start_date = date_times[0].date()
-            end_date = date_times[-1].date()
-            start_time, end_time = get_start_end(date_times)
-            interval = get_interval(date_times)
-            print("Calculating images per day")
-            ipd = images_per_day(start_time, end_time, interval)
-            print("Finding Missing Images")
-            missing_images=find_missing_images(date_times, start_date, end_date, start_time, end_time, interval)
-            print("Outputting Missing Images")
-            dates, per_missing = plot_missing_images_graph(missing_images, timestream, start_date, end_date, ipd)
-            output_missing_images_csv(missing_images, timestream)
-            all_missing_images[timestream] = (dates, per_missing)
-        else:
-            print("No images in this timestream")
+    pool = multiprocessing.Pool(threads)
+    if threads > len(all_timestreams):
+        threads = len(all_timestreams)
+    for count, b in enumerate(pool.imap(timestream_function, all_timestreams)):
+        all_missing_images[b[0]] = (b[1], b[2])
+    # for timestream in all_timestreams:
+    #     date_times= sorted(find_images(timestream))
+    #     if(date_times):
+    #         print("Beginning timestream " + timestream)
+    #         print("Getting relevant data")
+    #         start_date = date_times[0].date()
+    #         end_date = date_times[-1].date()
+    #         start_time, end_time = get_start_end(date_times)
+    #         interval = get_interval(date_times)
+    #         print("Calculating images per day")
+    #         ipd = images_per_day(start_time, end_time, interval)
+    #         print("Finding Missing Images")
+    #         missing_images=find_missing_images(date_times, start_date, end_date, start_time, end_time, interval)
+    #         print("Outputting Missing Images")
+    #         dates, per_missing = plot_missing_images_graph(missing_images, timestream, start_date, end_date, ipd)
+    #         output_missing_images_csv(missing_images, timestream)
+    #         all_missing_images[timestream] = (dates, per_missing)
+    #     else:
+    #         print("No images in this timestream")
     print("")
     print("Outputting Overall csv and graph")
     output_all_missing_images(all_missing_images, output_directory)
@@ -244,4 +271,4 @@ def main(input_directory, output_directory):
 
 if __name__ == "__main__":
     opts = cli_options()
-    main(opts.directory, opts.output)
+    main(opts.directory, opts.output, opts.threads)
