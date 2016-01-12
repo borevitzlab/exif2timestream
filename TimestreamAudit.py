@@ -4,7 +4,7 @@ import csv
 import matplotlib.pyplot as plt
 import argparse
 from datetime import datetime, timedelta, date
-from os import walk, path
+from os import walk, path, listdir
 import re
 from collections import Counter
 import numpy as np
@@ -21,17 +21,30 @@ def cli_options():
     return parser.parse_args()
 
 
+def recursive_find(input_directory):
+    prog = re.compile("~\w*-(orig|raw)")
+    if prog.search(input_directory):
+        return [input_directory]
+    else:
+        sub_streams = []
+        for item in listdir(input_directory):
+            if path.isdir(input_directory + path.sep + item):
+                sub_streams+=(recursive_find(input_directory + path.sep + item))
+        return sub_streams
 
 def find_timestreams(input_directory):
     """ Given an input of a directory, output a bunch of folder directories of timestreams"""
-    timestreams = []
-    for root, dirs, files in walk(input_directory):
-        for directory in dirs:
-            prog = re.compile("~\w*-(orig|raw)")
-            if (prog.search(directory)):
-                timestreams.append(root + path.sep + directory)
+    return recursive_find(input_directory)
 
-    return timestreams
+    # timestreams = []
+    #
+    # for root, dirs, files in walk(input_directory):
+    #     for directory in dirs:
+    #         prog = re.compile("~\w*-(orig|raw)")
+    #         if (prog.search(directory)):
+    #             timestreams.append(root + path.sep + directory)
+    #
+    # return timestreams
 
 def find_images(timestream_directory):
     """ Given a timestream directory, return a bunch of datetime objects which store imagea dates"""
@@ -100,7 +113,10 @@ def find_missing_images(date_times, start_date, end_date, start_time, end_time, 
                             missing[today].append(now)
                         except:
                             missing[today] = [now]
-                now += timedelta(seconds = interval)
+                new_date = now + timedelta(seconds = interval)
+                if now.date() < (new_date).date():
+                    break
+                now = new_date
                 time = now.time()
         today += timedelta(days=1)
     return missing
@@ -228,7 +244,8 @@ def main(input_directory, output_directory):
             all_missing_images[timestream] = (dates, per_missing)
         else:
             print("No images in this timestream")
-    print("Outputting csv and graph")
+    print("")
+    print("Outputting Overall csv and graph")
     output_all_missing_images(all_missing_images, output_directory)
     graph_all_missing_images(all_missing_images, output_directory)
 
