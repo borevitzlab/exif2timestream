@@ -1,4 +1,5 @@
 """ Crawl through a root directory and audit all of the timestreams inside"""
+from operator import itemgetter
 import csv
 import matplotlib.pyplot as plt
 import argparse
@@ -46,6 +47,9 @@ def find_images(timestream_directory):
 def get_interval(date_times):
     """ Given a list of sorted datetimes, calculate the interval between images """
     dates = {}
+    possible_intervals = []
+    for x in [60, 30, 15, 10, 5, 1]:
+        possible_intervals.append(timedelta(minutes=x))
     for d in date_times:
         date = d.date()
         try:
@@ -56,11 +60,13 @@ def get_interval(date_times):
     for date, times in dates.iteritems():
         if len(times)>1:
             diff = ([j-i for i, j in zip(times[:-1], times[1:])])
-            mc = Counter(diff).most_common(1)[0][0]
-            if (mc):
-                differences.append(Counter(diff).most_common(1)[0][0])
-            else:
-                differences.append(Counter(diff).most_common(2)[-1][0])
+            int = timedelta(minutes=60)
+            sort_diff = (sorted(Counter(diff).most_common(), key=itemgetter(1), reverse=True))
+            for pos_int in sort_diff:
+                if pos_int[0] in possible_intervals:
+                    int = pos_int[0]
+                    break
+            differences.append(int)
     interval = (sum(differences, timedelta(0)) / len(differences))
     if ((interval.seconds / 60) > 30):
         interval = (((interval.seconds/60)+1)*60)
