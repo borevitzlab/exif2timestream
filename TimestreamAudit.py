@@ -7,7 +7,7 @@ import argparse
 from datetime import datetime, timedelta, date
 from os import walk, path, listdir
 import re
-from collections import Counter
+from collections import Counter, OrderedDict
 import numpy as np
 from exif2timestream import get_time_from_filename
 def cli_options():
@@ -264,8 +264,8 @@ def main(input_directory, output_directory, threads):
     #         print("No images in this timestream")
     print("")
     print("Outputting Overall csv and graph")
-    output_all_missing_images(all_missing_images, output_directory)
-    graph_all_missing_images(all_missing_images, output_directory)
+    output_all_missing_images(OrderedDict(sorted(all_missing_images.items())), output_directory)
+    graph_all_missing_images(OrderedDict(sorted(all_missing_images.items())), output_directory)
 
     pass
 
