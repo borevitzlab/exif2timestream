@@ -337,7 +337,7 @@ def create_small_json(res, camera, full_res, image_resolution, p_start, p_end, t
         res=res, step = step), camera.userfriendlyname + '-ts-info.json')):
         old_json= open(os.path.join(camera.destination, camera.ts_structure.format(folder=folder,
             res=res, step = step), camera.userfriendlyname + '-ts-info.json'), 'r')
-        jdump = eval(old_json.read())
+        jdump = eval(old_json.read().replace("null", "None"))
         old_json.close()
         if jdump['posix_start']> mktime(p_start):
             jdump['posix_start'] = mktime(p_start)
@@ -671,6 +671,9 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
         except SkipImage:
             log.debug("Faied to resize due to skipimage being reported first")
             raise SkipImage
+        except TypeError:
+            log.debug("Failed on resize due to some SUPER wierd error, ignoring")
+            raise SkipImage
         except Exception as e:
             print("Unknown Exception on Resize Function", e)
             log.debug(e)
@@ -797,6 +800,7 @@ def parse_camera_config_csv(filename):
                 if camera.use:
                     yield parse_structures(camera)
             except (SkipImage, ValueError) as e:
+                print ("Error on csv entry", e)
                 continue
 
 
@@ -946,7 +950,6 @@ def get_thumbnail_paths(camera, images, res, image_resolution, folder, step='ori
                     camera.destination, os.path.dirname(camera.ts_structure).format(folder=folder),
                         os.path.basename(camera.ts_structure).format(res=res, step=step), ts_image]).replace("\\","/"))
             except (SkipImage):
-                print("SkipImage")
                 pass
     for i in range(len(thumb_image)):
         if thumb_image[i]:
