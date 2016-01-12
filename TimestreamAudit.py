@@ -21,30 +21,16 @@ def cli_options():
     return parser.parse_args()
 
 
-def recursive_find(input_directory):
-    prog = re.compile("~\w*-(orig|raw)")
+def find_timestreams(input_directory):
+    prog = re.compile("~fullres-(orig|raw)")
     if prog.search(input_directory):
         return [input_directory]
     else:
         sub_streams = []
         for item in listdir(input_directory):
             if path.isdir(input_directory + path.sep + item):
-                sub_streams+=(recursive_find(input_directory + path.sep + item))
+                sub_streams+=(find_timestreams(input_directory + path.sep + item))
         return sub_streams
-
-def find_timestreams(input_directory):
-    """ Given an input of a directory, output a bunch of folder directories of timestreams"""
-    return recursive_find(input_directory)
-
-    # timestreams = []
-    #
-    # for root, dirs, files in walk(input_directory):
-    #     for directory in dirs:
-    #         prog = re.compile("~\w*-(orig|raw)")
-    #         if (prog.search(directory)):
-    #             timestreams.append(root + path.sep + directory)
-    #
-    # return timestreams
 
 def find_images(timestream_directory):
     """ Given a timestream directory, return a bunch of datetime objects which store imagea dates"""
@@ -159,6 +145,7 @@ def plot_missing_images_graph(missing_images, timestream, start_date, end_date,i
     fig.set_size_inches((5 + 1*len(pltx)), 5)
     plt.suptitle(timestream.split(path.sep)[-1] + " As Of " + str(datetime.now().date()))
     plt.savefig(timestream + path.sep + "missing_images.jpg", bbox_inches='tight')
+    plt.clf()
     return pltx, plty
 
 def output_missing_images_csv(missing_images, timestream):
@@ -221,6 +208,10 @@ def graph_all_missing_images(all_missing_images, output_directory):
     plt.savefig(output_directory + path.sep + "total_missing_images.jpg", bbox_inches='tight')
 
 def main(input_directory, output_directory):
+    if input_directory[-1] == path.sep:
+        input_directory = input_directory[:-1]
+    if output_directory[-1] == path.sep:
+        output_directory = output_directory[:-1]
     # Find all timestreams in parent folder (Returns a bunch of folder addressess
     print("Finding timestreams in " + input_directory)
     all_timestreams = find_timestreams(input_directory)
