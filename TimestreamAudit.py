@@ -215,12 +215,19 @@ def graph_all_missing_images_over_time(all_missing_images, output_directory):
     f.subplots_adjust(hspace=0)
     plt.setp([a.get_xticklabels() for a in f.axes[:-1]], visible=False)
     i = 0
+    start_date = all_missing_images.itervalues().next()[0][0]
+    end_date = all_missing_images.itervalues().next()[0][-1]
+    print(start_date, end_date)
     for timestream, (dates, per_missing) in all_missing_images.iteritems():
+        if dates[0] < start_date:
+            start_date = dates[0]
+        if dates[-1] > end_date:
+            end_date = dates[-1]
         plots[i].plot(dates, per_missing)
         plots[i].set_ylabel(timestream.split(path.sep)[-1], rotation="horizontal", labelpad=100)
         i+= 1
-    f.set_size_inches(10,(5 + 1*len(all_missing_images)))
-    plt.ylim([0.0, 110.0])
+    f.set_size_inches((5 + (end_date-start_date).days/30 ),(5 + 1*len(all_missing_images)))
+    plt.ylim([-10.0, 110.0])
     plt.xticks(rotation=30)
     plt.savefig(output_directory + path.sep + "total_missing_images_over_time.jpg", bbox_inches='tight')
 
