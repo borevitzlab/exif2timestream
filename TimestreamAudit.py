@@ -5,7 +5,7 @@ import csv
 import matplotlib.pyplot as plt
 import argparse
 from datetime import datetime, timedelta, date
-from os import walk, path, listdir
+from os import walk, path#, listdir
 import re
 from collections import Counter, OrderedDict
 import numpy as np
@@ -23,15 +23,22 @@ def cli_options():
 
 
 def find_timestreams(input_directory):
-    prog = re.compile("~fullres-(orig|raw)")
-    if prog.search(input_directory):
-        return [input_directory]
-    else:
-        sub_streams = []
-        for item in listdir(input_directory):
-            if path.isdir(input_directory + path.sep + item):
-                sub_streams+=(find_timestreams(input_directory + path.sep + item))
-        return sub_streams
+    timestreams = []
+    for root, dirs, files in walk(input_directory):
+        for directory in dirs:
+            prog = re.compile("~\w*-(orig|raw)")
+            if (prog.search(directory)):
+                timestreams.append(root + path.sep + directory)
+    return timestreams
+    # prog = re.compile("~fullres-(orig|raw)")
+    # if prog.search(input_directory):
+    #     return [input_directory]
+    # else:
+    #     sub_streams = []
+    #     for item in listdir(input_directory):
+    #         if path.isdir(input_directory + path.sep + item):
+    #             sub_streams+=(find_timestreams(input_directory + path.sep + item))
+    #     return sub_streams
 
 def find_images(timestream_directory):
     """ Given a timestream directory, return a bunch of datetime objects which store imagea dates"""
@@ -217,7 +224,6 @@ def graph_all_missing_images_over_time(all_missing_images, output_directory):
     i = 0
     start_date = all_missing_images.itervalues().next()[0][0]
     end_date = all_missing_images.itervalues().next()[0][-1]
-    print(start_date, end_date)
     for timestream, (dates, per_missing) in all_missing_images.iteritems():
         if dates[0] < start_date:
             start_date = dates[0]
@@ -236,21 +242,21 @@ def timestream_function(timestream):
     date_times= sorted(find_images(timestream))
     if(date_times):
         print("Beginning timestream " + timestream)
-        print("Getting relevant data")
+        # print("Getting relevant data")
         start_date = date_times[0].date()
         end_date = date_times[-1].date()
         start_time, end_time = get_start_end(date_times)
         interval = get_interval(date_times)
-        print("Calculating images per day")
+        # print("Calculating images per day")
         ipd = images_per_day(start_time, end_time, interval)
-        print("Finding Missing Images")
+        # print("Finding Missing Images")
         missing_images=find_missing_images(date_times, start_date, end_date, start_time, end_time, interval)
-        print("Outputting Missing Images")
+        # print("Outputting Missing Images")
         dates, per_missing = plot_missing_images_graph(missing_images, timestream, start_date, end_date, ipd)
         output_missing_images_csv(missing_images, timestream)
         return (timestream, dates, per_missing)
     else:
-        print("No images in this timestream")
+        print("No images in ", timestream)
         return (False, False, False)
 
 def main(input_directory, output_directory, threads):
