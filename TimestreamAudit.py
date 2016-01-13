@@ -26,7 +26,7 @@ def find_timestreams(input_directory):
     timestreams = []
     for root, dirs, files in walk(input_directory):
         for directory in dirs:
-            prog = re.compile("~\w*-(orig|raw)")
+            prog = re.compile("~fullres-(orig|raw)")
             if (prog.search(directory)):
                 timestreams.append(root + path.sep + directory)
     return timestreams
@@ -156,29 +156,52 @@ def plot_missing_images_graph(missing_images, timestream, start_date, end_date,i
     plt.clf()
     return pltx, plty
 
-def output_missing_images_csv(missing_images, timestream):
+def output_missing_images_csv(missing_images, timestream, interval):
     with open(timestream + path.sep + "missing_images.csv", 'w+') as csvfile:
-        field_names = ["Date", "Time"]
+        field_names = ["Timestream", "Interval", "Date"]
         writer = csv.DictWriter(csvfile, fieldnames = field_names)
         writer.writeheader()
         for date, images in missing_images.iteritems():
             for image in images:
-                writer.writerow({"Date":date,"Time":image.time()})
+                writer.writerow({"Timestream":Timestream, "Date":date,"Time":image.time()})
 
 def images_per_day(start_time, end_time, interval):
     images = (datetime.combine(date.today(), end_time) - datetime.combine(date.today(), start_time)).total_seconds()/interval
     return images
 
-def output_all_missing_images(ts_missing, output_directory):
+def output_all_missing_images(ts_missing, output_directory, start_date, end_date):
     with open(output_directory + path.sep + "missing_images.csv", 'w+') as csvfile:
-        field_names = ["Timestream", "Percentage_missing"]
-        writer = csv.DictWriter(csvfile, fieldnames = field_names)
-        writer.writeheader()
-        for timestream,(dates, per_missing) in ts_missing.iteritems():
-            percentage_missing = (sum(per_missing)/len(per_missing) if len(per_missing) else 0.0)
-            writer.writerow({"Timestream":timestream, "Percentage_missing" : percentage_missing })
+        field_names = ["date"]
+        for timestream, other in ts_missing.iteritems():
+            field_names.append(timestream.split(path.sep)[-1])
+        print("Field names", field_names)
+        #Dictionary[date][timestream]
+        d ={}
+        for timestream, (dates, per_missing) in ts_missing.iteritems():
+            for (x, y) in zip(dates, per_missing):
+                try:
+                    d[x.strftime("%Y_%m_%d")][timestream] =  y
+                except:
+                    d[x.strftime("%Y_%m_%d")] = {}
+                    d[x.strftime("%Y_%m_%d")][timestream] =  y
+        writer = csv.writer(csvfile,  lineterminator='\n')
+        output = []
+        writer.writerow(field_names)
+        for date, timestreams in d.iteritems():
+            row = [date]
+            print(timestreams)
+            appended = False
+            for timestream, perc in timestreams.iteritems():
+                row.append(perc)
+                appended = True
+            if not appended:
+                row.append(0)
+            output.append(row)
+        output = sorted(output)
+        for line in output:
+            writer.writerow(line)
 
-def graph_all_missing_images(all_missing_images, output_directory):
+def graph_all_missing_images(all_missing_images, output_directory, start_date, end_date):
     pltx = [] #Timestream names
     plty = [] # % of missing images
     for timestream, (dates, per_missing) in all_missing_images.iteritems():
@@ -215,22 +238,16 @@ def graph_all_missing_images(all_missing_images, output_directory):
     plt.savefig(output_directory + path.sep + "total_missing_images.jpg", bbox_inches='tight')
     fig = plt.gcf()
 
-def graph_all_missing_images_over_time(all_missing_images, output_directory):
+def graph_all_missing_images_over_time(all_missing_images, output_directory, start_date, end_date):
     plt.close('all')
     N = len(all_missing_images)
     f, plots = plt.subplots(N, sharex=True, sharey=True)
     f.subplots_adjust(hspace=0)
     plt.setp([a.get_xticklabels() for a in f.axes[:-1]], visible=False)
     i = 0
-    start_date = all_missing_images.itervalues().next()[0][0]
-    end_date = all_missing_images.itervalues().next()[0][-1]
     for timestream, (dates, per_missing) in all_missing_images.iteritems():
-        if dates[0] < start_date:
-            start_date = dates[0]
-        if dates[-1] > end_date:
-            end_date = dates[-1]
         plots[i].plot(dates, per_missing)
-        plots[i].set_ylabel(timestream.split(path.sep)[-1], rotation="horizontal", labelpad=100)
+        plots[i].set_ylabel(timestream.split(path.sep)[-1], rotation="horizontal", labelpad=130)
         i+= 1
     f.set_size_inches((5 + (end_date-start_date).days/30 ),(5 + 1*len(all_missing_images)))
     plt.ylim([-10.0, 110.0])
@@ -253,7 +270,7 @@ def timestream_function(timestream):
         missing_images=find_missing_images(date_times, start_date, end_date, start_time, end_time, interval)
         # print("Outputting Missing Images")
         dates, per_missing = plot_missing_images_graph(missing_images, timestream, start_date, end_date, ipd)
-        output_missing_images_csv(missing_images, timestream)
+        #output_missing_images_csv(missing_images, timestream)
         return (timestream, dates, per_missing)
     else:
         print("No images in ", timestream)
@@ -296,10 +313,17 @@ def main(input_directory, output_directory, threads):
     #         print("No images in this timestream")
     print("")
     print("Outputting Overall csv and graph")
+    start_date = all_missing_images.itervalues().next()[0][0]
+    end_date = all_missing_images.itervalues().next()[0][-1]
+    for timestream, (dates, per_missing) in all_missing_images.iteritems():
+        if dates[0] < start_date:
+            start_date = dates[0]
+        if dates[-1] > end_date:
+            end_date = dates[-1]
     ordered_dict = OrderedDict(sorted(all_missing_images.items()))
-    output_all_missing_images(ordered_dict, output_directory)
-    graph_all_missing_images(ordered_dict, output_directory)
-    graph_all_missing_images_over_time(ordered_dict, output_directory)
+    output_all_missing_images(ordered_dict, output_directory, start_date, end_date)
+   # graph_all_missing_images(ordered_dict, output_directory, start_date, end_date)
+   # graph_all_missing_images_over_time(ordered_dict, output_directory, start_date, end_date)
 
     pass
 
