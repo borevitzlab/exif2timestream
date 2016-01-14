@@ -157,7 +157,7 @@ def plot_missing_images_graph(missing_images, timestream, start_date, end_date,i
     return pltx, plty
 
 def output_missing_images_csv(missing_images, timestream, iph):
-    with open(timestream + path.sep + "missing_images.csv", 'w+') as csvfile:
+    with open(timestream + path.sep + timestream.split(path.sep)[-1] + "_missing_images.csv", 'w+') as csvfile:
         field_names = ["date", "time", timestream.split(path.sep)[-1]]
         writer = csv.DictWriter(csvfile, fieldnames = field_names, lineterminator='\n')
         writer.writeheader()
@@ -180,7 +180,7 @@ def images_per_day(start_time, end_time, interval):
     return images
 
 def output_all_missing_images(ts_missing, output_directory, start_date, end_date):
-    with open(output_directory + path.sep + "missing_images.csv", 'w+') as csvfile:
+    with open(output_directory + path.sep + "total_missing_images.csv", 'w+') as csvfile:
         field_names = ["date"]
         for timestream, other in ts_missing.iteritems():
             field_names.append(timestream.split(path.sep)[-1])
