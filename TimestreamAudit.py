@@ -156,14 +156,24 @@ def plot_missing_images_graph(missing_images, timestream, start_date, end_date,i
     plt.clf()
     return pltx, plty
 
-def output_missing_images_csv(missing_images, timestream, interval):
+def output_missing_images_csv(missing_images, timestream, iph):
     with open(timestream + path.sep + "missing_images.csv", 'w+') as csvfile:
-        field_names = ["Timestream", "Interval", "Date"]
-        writer = csv.DictWriter(csvfile, fieldnames = field_names)
+        field_names = ["date", "time", timestream.split(path.sep)[-1]]
+        writer = csv.DictWriter(csvfile, fieldnames = field_names, lineterminator='\n')
         writer.writeheader()
+        output = []
         for date, images in missing_images.iteritems():
+            hour = {}
             for image in images:
-                writer.writerow({"Timestream":Timestream, "Date":date,"Time":image.time()})
+                try:
+                    hour[image.time().strftime("%H")] +=1
+                except KeyError:
+                    hour[image.time().strftime("%H")] =1
+            for h, number in hour.iteritems():
+                output.append([date.strftime("%Y-%m-%d"),h + ":00", (number/iph)*100])
+        for line in sorted(output):
+            writer.writerow({"date":line[0], "time":line[1], timestream.split(path.sep)[-1]:line[2]})
+            # writer.writerow({"date":date.strftime("%Y_%m_%d"),"time":h + "_00_00", timestream.split(path.sep)[-1]:(number/ipd)*100})
 
 def images_per_day(start_time, end_time, interval):
     images = (datetime.combine(date.today(), end_time) - datetime.combine(date.today(), start_time)).total_seconds()/interval
@@ -174,22 +184,19 @@ def output_all_missing_images(ts_missing, output_directory, start_date, end_date
         field_names = ["date"]
         for timestream, other in ts_missing.iteritems():
             field_names.append(timestream.split(path.sep)[-1])
-        print("Field names", field_names)
-        #Dictionary[date][timestream]
         d ={}
         for timestream, (dates, per_missing) in ts_missing.iteritems():
             for (x, y) in zip(dates, per_missing):
                 try:
-                    d[x.strftime("%Y_%m_%d")][timestream] =  y
+                    d[x.strftime("%Y-%m-%d")][timestream] =  y
                 except:
-                    d[x.strftime("%Y_%m_%d")] = {}
-                    d[x.strftime("%Y_%m_%d")][timestream] =  y
+                    d[x.strftime("%Y-%m-%d")] = {}
+                    d[x.strftime("%Y-%m-%d")][timestream] =  y
         writer = csv.writer(csvfile,  lineterminator='\n')
         output = []
         writer.writerow(field_names)
         for date, timestreams in d.iteritems():
             row = [date]
-            print(timestreams)
             appended = False
             for timestream, perc in timestreams.iteritems():
                 row.append(perc)
@@ -270,7 +277,9 @@ def timestream_function(timestream):
         missing_images=find_missing_images(date_times, start_date, end_date, start_time, end_time, interval)
         # print("Outputting Missing Images")
         dates, per_missing = plot_missing_images_graph(missing_images, timestream, start_date, end_date, ipd)
-        #output_missing_images_csv(missing_images, timestream)
+        difference = (timedelta(hours = end_time.hour, minutes = end_time.minute) - timedelta(hours = start_time.hour, minutes = start_time.minute))
+        iph = ipd / (float(difference.seconds) / 3600)
+        output_missing_images_csv(missing_images, timestream, iph)
         return (timestream, dates, per_missing)
     else:
         print("No images in ", timestream)
