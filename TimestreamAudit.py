@@ -131,34 +131,34 @@ def plot_missing_images_graph(missing_images, timestream, start_date, end_date, 
         else:
             plty.append(1)
         today += timedelta(days=1)
-    N = len(pltx)
-    ind = np.arange(N)  # the x locations for the groups
-    width = 0.35  # the width of the bars
-    fig, ax = plt.subplots()
-    rects1 = ax.bar(ind, plty, width * 2, bottom=None)
-
-    # add some text for labels, title and axes ticks
-    ax.set_ylabel('% Of Missing Images')
-    ax.set_xticks(ind + width)
-    plt.ylim([0.0, 100.0])
-    plt.xticks(rotation=30)
-    ax.set_xticklabels(pltx)
-    rects = ax.patches
-
-    def autolabel(rects):
-        # attach some text labels
-        for rect in rects:
-            height = rect.get_height()
-            ax.text(rect.get_x() + rect.get_width() / 2., 1.05 * height,
-                    '{}'.format(round(height, 3)),
-                    ha='center', va='bottom')
-
-    autolabel(rects1)
-    fig = plt.gcf()
-    fig.set_size_inches((5 + 1 * len(pltx)), 5)
-    plt.suptitle(timestream.split(path.sep)[-1] + " As Of " + str(datetime.now().date()))
-    plt.savefig(timestream + path.sep + "missing_images.jpg", bbox_inches='tight')
-    plt.clf()
+    # N = len(pltx)
+    # ind = np.arange(N)  # the x locations for the groups
+    # width = 0.35  # the width of the bars
+    # fig, ax = plt.subplots()
+    # rects1 = ax.bar(ind, plty, width * 2, bottom=None)
+    #
+    # # add some text for labels, title and axes ticks
+    # ax.set_ylabel('% Of Missing Images')
+    # ax.set_xticks(ind + width)
+    # plt.ylim([0.0, 100.0])
+    # plt.xticks(rotation=30)
+    # ax.set_xticklabels(pltx)
+    # rects = ax.patches
+    #
+    # def autolabel(rects):
+    #     # attach some text labels
+    #     for rect in rects:
+    #         height = rect.get_height()
+    #         ax.text(rect.get_x() + rect.get_width() / 2., 1.05 * height,
+    #                 '{}'.format(round(height, 3)),
+    #                 ha='center', va='bottom')
+    #
+    # autolabel(rects1)
+    # fig = plt.gcf()
+    # fig.set_size_inches((5 + 1 * len(pltx)), 5)
+    # plt.suptitle(timestream.split(path.sep)[-1] + " As Of " + str(datetime.now().date()))
+    # plt.savefig(timestream + path.sep + "missing_images.jpg", bbox_inches='tight')
+    # plt.clf()
     return pltx, plty
 
 
@@ -227,7 +227,7 @@ def output_all_missing_images(ts_missing, output_directory, start_date, end_date
                     row.append("")
                 count += 1
             output.append(row)
-        # output = sorted(output)
+        output = sorted(output)
         for line in output:
             writer.writerow(line)
 
