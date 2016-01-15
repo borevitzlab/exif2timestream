@@ -186,13 +186,15 @@ def output_all_missing_images(ts_missing, output_directory, start_date, end_date
             field_names.append(timestream.split(path.sep)[-1])
         d ={}
         count = 0
+        experiment_number = re.sub("\D", "", timestream.split(path.sep)[-1].split('-')[0])
+        experiment_number = (int(experiment_number) )
         for timestream, (dates, per_missing) in ts_missing.iteritems():
             for (x, y) in zip(dates, per_missing):
                 try:
-                    d[x.strftime("%Y-%m-%d")][timestream] =  y
+                    d[x.strftime("%Y-%m-%d")][timestream] =  experiment_number*10 + y + count
                 except:
                     d[x.strftime("%Y-%m-%d")] = {}
-                    d[x.strftime("%Y-%m-%d")][timestream] =  y
+                    d[x.strftime("%Y-%m-%d")][timestream] =  experiment_number*10 + y + count
             count +=1
         writer = csv.writer(csvfile,  lineterminator='\n')
         output = []
