@@ -195,24 +195,25 @@ def output_all_missing_images(ts_missing, output_directory, start_date, end_date
                 count =0
             for (x, y) in zip(dates, per_missing):
                 try:
-                    d[x.strftime("%Y-%m-%d")][timestream] =  (experiment_number*10) + y + count
+                    a = experiment_number*10 + y + count
+                    d[x.strftime("%Y-%m-%d")][timestream] =  a
                 except:
                     d[x.strftime("%Y-%m-%d")] = {}
-                    d[x.strftime("%Y-%m-%d")][timestream] =  (experiment_number*10) + y + count
+                    d[x.strftime("%Y-%m-%d")][timestream] =  a
             count +=1
         writer = csv.writer(csvfile,  lineterminator='\n')
         output = []
         writer.writerow(field_names)
         for date, timestreams in d.iteritems():
             row = [date]
-            appended = False
-            for timestream, perc in timestreams.iteritems():
+            # appended = False
+            for timestream, other in ts_missing.iteritems():
+                perc = timestreams[timestream]
+                # row.append(timestreams[timestream])
+                # appended = True
                 row.append(perc)
-                appended = True
-            if not appended:
-                row.append(0)
             output.append(row)
-        output = sorted(output)
+        # output = sorted(output)
         for line in output:
             writer.writerow(line)
 
@@ -297,6 +298,7 @@ def output_by_experiment(ordered_dict, input_directory):
     expt_timestream= {}
     for timestream, (dates, per_missing) in ordered_dict.iteritems():
         experiment = timestream.split(path.sep)[-1].split('-')[0]
+
         if path.isdir(input_directory + path.sep + experiment):
             try:
                 expt_timestream[experiment].append(timestream)
@@ -323,12 +325,10 @@ def output_by_experiment(ordered_dict, input_directory):
             writer.writerow(field_names)
             for date, timestreams in d.iteritems():
                 row = [date]
-                appended = False
-                for timestream, perc in timestreams.iteritems():
-                    row.append(perc)
-                    appended = True
-                if not appended:
-                    row.append(0)
+                for timestream, perc in ordered_dict.iteritems():
+                    if timestream in timestreams.keys() and timestream in expt_timestream[experiment]:
+                        perc = timestreams[timestream]
+                        row.append(perc)
                 output.append(row)
             output = sorted(output)
             for line in output:
