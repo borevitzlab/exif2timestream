@@ -351,7 +351,10 @@ def output_by_experiment(ordered_dict, input_directory):
                             row.append(perc)
                         else:
                             row.append("")
-                output.append(row)
+                for item in row[1:]:
+                    if item != "":
+                        output.append(row)
+                        break
             output = sorted(output)
             for line in output:
                 writer.writerow(line)
