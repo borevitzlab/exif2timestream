@@ -11,12 +11,11 @@ before_install:
  - pip install nose>=1.3.0
  - pip install coverage>=3.6
  - pip install coveralls
-
 install:
- - ./install
+ - travis_wait ./install
 
 script:
- - ./run_tests
+ - ./run_tests test/test_exif2timestream.py
  - ./run_from_cmdline
 
 after_success:

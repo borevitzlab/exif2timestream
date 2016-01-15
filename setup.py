@@ -15,12 +15,13 @@ install_requires = [
     "ExifRead==1.4.2",
     "docopt==0.6.1",
     "voluptuous==0.8.4",
-    "pexif==0.15",    
+    "pexif==0.15",
+    "Pillow==3.0.0"
 ]
 
 test_requires = [
     "coverage==3.7.1",
-    "nose==1.3.0",
+    "nose==1.3.7",
     "pep8==1.4.6",
     "pylint==1.0.0",
 ]

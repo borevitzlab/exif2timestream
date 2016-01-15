@@ -1,3 +1,4 @@
-USE,LOCATION,CAM_NUM,user,mode,METHOD,SOURCE,DESTINATION,ARCHIVE_DEST,INTERVAL,sunrise,sunset,CURRENT_EXPT,EXPT_START,EXPT_END,camera_timezone,resolutions,IMAGE_TYPES
-1,EUC-R01C01,1,Glasshouses,batch,move,./test/img/camupload,./test/out/timestreams,./test/out/archive,5,500,2200,BVZ00000,2012_12_01,2013_12_31,1100,original~1024x768~640x480,jpg
-0,EUC-R01C01,2,Glasshouses,batch,copy,./test/img/camupload,./test/out/timestreams,./test/out/archive,5,500,2200,BVZ00000,2012_12_01,2013_12_31,1100,original~1024x768~640x480,jpg
+USE,LOCATION,CAM_NUM,USER,MODE,METHOD,SOURCE,DESTINATION,ARCHIVE_DEST,INTERVAL,SUNRISE,SUNSET,EXPT,EXPT_START,EXPT_END,CAMERA_TIMEZONE,RESOLUTIONS,IMAGE_TYPES,TS_STRUCTURE,PROJECT_OWNER,FILENAME_DATE_MASK,ORIENTATION,FN_PARSE,FN_STRUCTURE,DATASETID,TIMESHIFT,USERFRIENDLYNAME,JSON_UPDATES,LARGE_JSON,SUBFOLDER
+1,EUC-R01C01,1,Glasshouses,batch,move,./test/img/camupload,./test/out/timestreams,./test/out/archive,5,500,2200,BVZ00000,2012_12_01,2013_12_31,1100,original,jpg,,,,,,,1,,,,,TRUE
+0,EUC-R01C01,2,Glasshouses,batch,copy,./test/img/camupload,./test/out/timestreams,./test/out/archive,5,500,2200,BVZ00000,2012_12_01,2013_12_31,1100,original,jpg,,,,,,,1,,,,,TRUE
+0,overstory_nadir,1,Fnqr-daintree,batch,copy,../final_test,../Test_To_Output/a_data,../Test_To_Archive,60,500,1800,fnqr-daintree,2000_01_01,now,1000,original~1920,jpg,,,,,,,1,,,,,TRUE

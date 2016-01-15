@@ -1,4 +1,7 @@
 #!/bin/bash
 
 nosetests $@ --logging-filter=-nose,-exifread --with-coverage --cover-package exif2timestream
+rm -rf test/out
+
+
 exit $?
