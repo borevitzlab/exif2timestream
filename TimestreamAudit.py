@@ -207,11 +207,21 @@ def output_all_missing_images(ts_missing, output_directory, start_date, end_date
         for date, timestreams in d.iteritems():
             row = [date]
             # appended = False
+            old_expt=0
             for timestream, other in ts_missing.iteritems():
-                perc = timestreams[timestream]
+                if (old_expt != experiment_number):
+                    old_expt = experiment_number
+                    count =0
+                if timestream in timestreams.keys():
+                    perc = timestreams[timestream]
                 # row.append(timestreams[timestream])
                 # appended = True
-                row.append(perc)
+                    row.append(perc)
+                else:
+                    experiment_number = re.sub("\D", "", timestream.split(path.sep)[-1].split('-')[0])
+                    experiment_number = (int(experiment_number))
+                    row.append(experiment_number*10 +1 + count)
+                count +=1
             output.append(row)
         # output = sorted(output)
         for line in output:
