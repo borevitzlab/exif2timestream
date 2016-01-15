@@ -122,9 +122,9 @@ def plot_missing_images_graph(missing_images, timestream, start_date, end_date,i
     while today<= end_date:
         pltx.append(today)
         if today in missing_images.keys():
-            plty.append((len(missing_images[today])/ipd)*100)
+            plty.append(1 - ((len(missing_images[today])/ipd)))
         else:
-            plty.append(0)
+            plty.append(1)
         today += timedelta(days=1)
     N = len(pltx)
     ind = np.arange(N)  # the x locations for the groups
@@ -170,7 +170,7 @@ def output_missing_images_csv(missing_images, timestream, iph):
                 except KeyError:
                     hour[image.time().strftime("%H")] =1
             for h, number in hour.iteritems():
-                output.append([date.strftime("%Y-%m-%d"),h + ":00", (number/iph)*100])
+                output.append([date.strftime("%Y-%m-%d"),h + ":00", (number/iph)])
         for line in sorted(output):
             writer.writerow({"date":line[0], "time":line[1], timestream.split(path.sep)[-1]:line[2]})
             # writer.writerow({"date":date.strftime("%Y_%m_%d"),"time":h + "_00_00", timestream.split(path.sep)[-1]:(number/ipd)*100})
@@ -179,12 +179,13 @@ def images_per_day(start_time, end_time, interval):
     images = (datetime.combine(date.today(), end_time) - datetime.combine(date.today(), start_time)).total_seconds()/interval
     return images
 
-def output_all_missing_images(ts_missing, output_directory, start_date, end_date):
-    with open(output_directory + path.sep + "total_missing_images.csv", 'w+') as csvfile:
+def output_all_missing_images(ts_missing, output_directory, start_date, end_date, filename=''):
+    with open(output_directory + path.sep + filename + "total_missing_images.csv", 'w+') as csvfile:
         field_names = ["date"]
         for timestream, other in ts_missing.iteritems():
             field_names.append(timestream.split(path.sep)[-1])
         d ={}
+        count = 0
         for timestream, (dates, per_missing) in ts_missing.iteritems():
             for (x, y) in zip(dates, per_missing):
                 try:
@@ -192,6 +193,7 @@ def output_all_missing_images(ts_missing, output_directory, start_date, end_date
                 except:
                     d[x.strftime("%Y-%m-%d")] = {}
                     d[x.strftime("%Y-%m-%d")][timestream] =  y
+            count +=1
         writer = csv.writer(csvfile,  lineterminator='\n')
         output = []
         writer.writerow(field_names)
@@ -285,6 +287,47 @@ def timestream_function(timestream):
         print("No images in ", timestream)
         return (False, False, False)
 
+def output_by_experiment(ordered_dict, input_directory):
+    expt_timestream= {}
+    for timestream, (dates, per_missing) in ordered_dict.iteritems():
+        experiment = timestream.split(path.sep)[-1].split('-')[0]
+        if path.isdir(input_directory + path.sep + experiment):
+            try:
+                expt_timestream[experiment].append(timestream)
+            except KeyError as e:
+                expt_timestream[experiment] = [timestream]
+    d={}
+    for experiment, timestreams in expt_timestream.iteritems():
+        count = 0
+        for timestream in timestreams:
+            dates, per_missing = ordered_dict[timestream]
+            for (x, y) in zip(dates, per_missing):
+                try:
+                    d[x.strftime("%Y-%m-%d")][timestream] =  y +count
+                except:
+                    d[x.strftime("%Y-%m-%d")] = {}
+                    d[x.strftime("%Y-%m-%d")][timestream] =  y +count
+            count +=1
+        with open(input_directory + path.sep + experiment + path.sep + experiment + "_missing_images.csv", 'w+') as csvfile:
+            field_names = ["date"]
+            for timestream in timestreams:
+                field_names.append(timestream.split(path.sep)[-1])
+            writer = csv.writer(csvfile,  lineterminator='\n')
+            output = []
+            writer.writerow(field_names)
+            for date, timestreams in d.iteritems():
+                row = [date]
+                appended = False
+                for timestream, perc in timestreams.iteritems():
+                    row.append(perc)
+                    appended = True
+                if not appended:
+                    row.append(0)
+                output.append(row)
+            output = sorted(output)
+            for line in output:
+                writer.writerow(line)
+
 def main(input_directory, output_directory, threads):
     print("Using {} threads".format(threads))
     if input_directory[-1] == path.sep:
@@ -330,7 +373,9 @@ def main(input_directory, output_directory, threads):
         if dates[-1] > end_date:
             end_date = dates[-1]
     ordered_dict = OrderedDict(sorted(all_missing_images.items()))
+    output_by_experiment(ordered_dict, input_directory)
     output_all_missing_images(ordered_dict, output_directory, start_date, end_date)
+
    # graph_all_missing_images(ordered_dict, output_directory, start_date, end_date)
    # graph_all_missing_images_over_time(ordered_dict, output_directory, start_date, end_date)
 
