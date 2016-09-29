@@ -29,7 +29,7 @@ log = logging.getLogger("exif2timestream")
 # Constants
 EXIF_DATE_TAG = "Image DateTime"
 EXIF_DATE_FMT = "%Y:%m:%d %H:%M:%S"
-DATE_MASK = "%Y%m%d_%H%M%S"
+DATE_MASK = "%Y_%m_%d_%H_%M_%S"
 TS_V1_FMT = ("%Y/%Y_%m/%Y_%m_%d/%Y_%m_%d_%H/"
              "{tsname}_%Y_%m_%d_%H_%M_%S_{n:02d}.{ext}")
 TS_V2_FMT = ("%Y/%Y_%m/%Y_%m_%d/%Y_%m_%d_%H/"
@@ -78,9 +78,10 @@ def date(x):
 
 def date_end(x):
     global ongoing
-    """Converter / validator for date field."""
+    """Converter / validator for date_end field."""
     if isinstance(x, struct_time):
         ongoing = False
+        x = extend_end_date(x)
         return x
     if x.lower() in DATE_NOW_CONSTANTS:
         ongoing = True
@@ -88,10 +89,18 @@ def date_end(x):
     else:
         ongoing = False
     try:
-        return strptime(x, "%Y_%m_%d")
+        x_structured = strptime(x, "%Y_%m_%d")
+        return extend_end_date(x_structured)
     except:
         raise ValueError
 
+def extend_end_date(x):
+    """ modify end_date's time as 23:59:59 """
+    x_writable = list(x)
+    x_writable[3] = 23
+    x_writable[4] = 59
+    x_writable[5] = 59
+    return struct_time(tuple(x_writable))
 
 def bool_str(x):
     """Converts a string to a boolean, even yes/no/true/false."""
@@ -382,6 +391,7 @@ def create_small_json(res, camera, full_res, image_resolution, p_start, p_end, t
             '' if step not in ['cor', 'seg'] else ('-' + step)),
             'name': camera.userfriendlyname,
             'period_in_minutes': camera.interval,
+            'period_in_seconds': camera.interval*60,
             'posix_end': mktime(p_end),
             'posix_start': mktime(p_start),
             'timezone': camera.timezone[0],
@@ -494,7 +504,7 @@ def resize_function(camera, image_date, dest, img_array, step="orig"):
 
 def resize_img(filename, destination, to_width, to_height, img_array):
     """Actually resizes the image."""
-    img = img_array.resize((to_width, to_height))
+    img = img_array.resize((to_width, to_height),Image.BICUBIC) 
     log.debug("Now resizing the image")
     log.debug("Saving Image")
     with warnings.catch_warnings():
@@ -506,6 +516,7 @@ def resize_img(filename, destination, to_width, to_height, img_array):
         exif_dest = pexif.JpegFile.fromFile(destination)
         exif_dest.exif.primary.ExtendedEXIF.DateTimeOriginal = \
             exif_source.exif.primary.ExtendedEXIF.DateTimeOriginal
+        exif_dest.writeFile(destination) # To make sure DateTime info is written even if Orientation is not available
         exif_dest.exif.primary.Orientation = \
             exif_source.exif.primary.Orientation
         exif_dest.writeFile(destination)
@@ -639,7 +650,8 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
     # Edit the global variable for the date mask, used elsewhere
 
     global DATE_MASK
-    DATE_MASK = camera.filename_date_mask
+    if len(camera.filename_date_mask) > 0:
+        DATE_MASK = camera.filename_date_mask
     image_date = get_file_date(image, camera.timeshift, camera.interval * 60)
     if not image_date:
         log.warn("Couldn't get date for image {}".format(image))
@@ -1085,7 +1097,6 @@ def process_camera(camera, ext, images, n_threads=1):
             step = "raw"
         else:
             step = "orig"
-
     jdump = {
         'access': 0,
         'expt': camera.expt,
@@ -1097,6 +1108,7 @@ def process_camera(camera, ext, images, n_threads=1):
         'name': camera.userfriendlyname + ('' if step not in ['cor', 'seg'] else ('-' + step)),
         'owner': camera.project_owner,
         'period_in_minutes': camera.interval,
+        'period_in_seconds': camera.interval*60,
         'posix_end': mktime(p_end),
         'posix_start': mktime(p_start),
         'thumbnails': thumb_image,
