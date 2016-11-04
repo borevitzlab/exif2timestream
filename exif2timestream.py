@@ -1,4 +1,5 @@
 #!usr/bin/env python
+
 """Take somewhat structured image collections and outputs Timestream format."""
 # pylint:disable=logging-format-interpolation
 
@@ -194,6 +195,16 @@ def mode_list(x):
     if x not in {"batch", "watch"}:
         raise ValueError
     return x
+    
+def date_extraction_list(x):
+    """Ensure x is a vaild timestream method."""
+    """all: exif and filename, filename: only filename"""
+    # print(x)
+    if x is '':
+        return "all"
+    elif x not in {"all", "filename"}:
+        raise ValueError
+    return x
 
 
 class CameraFields(object):
@@ -205,6 +216,7 @@ class CameraFields(object):
         ('location', 'LOCATION', remove_underscores),
         ('expt', 'EXPT', remove_underscores),
         ('cam_num', 'CAM_NUM', cam_pad_str),
+        ('cam_type', 'CAM_TYPE', str),
         ('source', 'SOURCE', path_exists),
         ('destination', 'DESTINATION', path_exists),
         ('archive_dest', 'ARCHIVE_DEST', path_exists),
@@ -230,12 +242,13 @@ class CameraFields(object):
         ('userfriendlyname', 'USERFRIENDLYNAME', str),
         ('large_json', 'LARGE_JSON', bool_str),
         ('json_updates', 'JSON_UPDATES', str),
-        ('sub_folder', 'SUBFOLDER', bool_str)
+        ('sub_folder', 'SUBFOLDER', bool_str),
+        ('date_extraction', 'DATE_EXTRACTION', date_extraction_list)        
     )
 
     TS_CSV = dict((a, b) for a, b, c in ts_csv_fields)
     CSV_TS = {v: k for k, v in TS_CSV.items()}
-    REQUIRED = {"use", "destination", "expt", "cam_num", "expt_end",
+    REQUIRED = {"use", "destination", "expt", "cam_num", "cam_type", "expt_end",
                 "expt_start", "image_types", "interval", "location",
                 "archive_dest", "method", "source"}
     SCHEMA = dict((a, c) for a, b, c in ts_csv_fields)
@@ -387,7 +400,7 @@ def create_small_json(res, camera, full_res, image_resolution, p_start, p_end, t
             'height_hires': full_res[1],
             'image_type': ext.upper(),
             'ts_name': camera.fn_structure.format(folder=folder, res=res, step=step).replace(os.path.sep, ""),
-            'ts_id': '{}-{}-C{}'.format(camera.expt, camera.location, camera.cam_num) + str(camera.datasetID) + (
+            'ts_id': '{}-{}-{}{}'.format(camera.expt, camera.location, camera.cam_type, camera.cam_num) + str(camera.datasetID) + (
             '' if step not in ['cor', 'seg'] else ('-' + step)),
             'name': camera.userfriendlyname,
             'period_in_minutes': camera.interval,
@@ -419,7 +432,7 @@ def create_small_json(res, camera, full_res, image_resolution, p_start, p_end, t
 
 def parse_structures(camera):
     if len(camera.userfriendlyname) < 1:
-        camera.userfriendlyname = '{}-{}-C{}{}'.format(camera.expt, camera.location, camera.cam_num, camera.datasetID)
+        camera.userfriendlyname = '{}-{}-{}{}{}'.format(camera.expt, camera.location, camera.cam_type, camera.cam_num, camera.datasetID)
     else:
         for key, value in camera.__dict__.items():
             camera.userfriendlyname = camera.userfriendlyname.replace(key.upper(),
@@ -433,11 +446,11 @@ def parse_structures(camera):
 
         camera.ts_structure = os.path.join(
             camera.expt,
-            (camera.location + '-C' +
-             camera.cam_num + camera.datasetID),
+            #(camera.location + '-' + camera.cam_type +
+            #camera.cam_num + camera.datasetID),
             '{folder}',
             (camera.expt + '-' +
-             camera.location + "-C" +
+             camera.location + "-" + camera.cam_type +
              camera.cam_num +
              camera.datasetID + "~{res}-{step}")).replace("_", "-")
 
@@ -459,7 +472,8 @@ def parse_structures(camera):
     if not len(camera.fn_structure) and not camera.fn_structure:
         camera.fn_structure = camera.expt.replace("_", "-") + \
                               '-' + camera.location.replace("_", "-") + \
-                              '-C' + camera.cam_num.replace("_", "-") + \
+                              '-' + camera.cam_type.replace("_", "-") + \
+                              camera.cam_num.replace("_", "-") + \
                               camera.datasetID + \
                               '~{res}-{step}'
     else:
@@ -534,7 +548,8 @@ def get_time_from_filename(filename, mask=None):
     for s in ('%m', '%d', '%H', '%M', '%S'):
         mask_r = mask_r.replace(s, r'\d{2}')
     date_reg_exp = re.compile(mask_r)
-    for match in date_reg_exp.findall(filename):
+    base, ext = os.path.splitext(filename)
+    for match in date_reg_exp.findall(base):
         # Attempt to parse each match into a datetime; return first success
         try:
             datetime = strptime(match, mask)
@@ -555,40 +570,48 @@ def write_exif_date(filename, date_time):
         return False
 
 
-def get_file_date(filename, timeshift, round_secs=1, date_mask=DATE_MASK):
-    """Gets a time.struct_time from an image's EXIF, or None if not possible.
+def get_file_date(camera, filename, timeshift, round_secs=1, date_mask=DATE_MASK):
+    """Gets a time.struct_time from an image's EXIF, image's filename or None if not possible.
     """
     date = None
-    try:
-        exif_tags = pexif.JpegFile.fromFile(filename)
-        str_date = exif_tags.exif.primary.ExtendedEXIF.DateTimeOriginal
-        date = strptime(str_date, EXIF_DATE_FMT)
-    except (AttributeError, pexif.JpegFile.InvalidFile, struct.error):
-        # print ("failed pexif")
-        pass
-    if not date:
-        with open(filename, "rb") as fh:
-            exif_tags = exifread.process_file(
-                fh, details=False, stop_tag=EXIF_DATE_TAG)
-            try:
-                str_date = exif_tags[EXIF_DATE_TAG].values
-                date = strptime(str_date, EXIF_DATE_FMT)
-            except KeyError:
-                #   print ("failed ExifRead")
-                pass
-    if not date:
-        # Try to get datetime from the filename, but not the directory
-        log.debug("No Exif data in '{}', reading from filename".format(
-            os.path.basename(filename)))
-        # Try and grab the date, we can put a custom mask in here if we want
+    if camera.date_extraction == 'filename':
         date = get_time_from_filename(filename, date_mask)
         if date is None:
             log.debug("Unable to scrape date from '{}'".format(filename))
-            #  print("Unable to read Exif Data")
             return None
-        else:
-            if not write_exif_date(filename, date):
-                log.debug("Unable to write Exif Data")
+    else:
+        try:
+            exif_tags = pexif.JpegFile.fromFile(filename)
+            str_date = exif_tags.exif.primary.ExtendedEXIF.DateTimeOriginal
+            date = strptime(str_date, EXIF_DATE_FMT)
+
+        except (AttributeError, pexif.JpegFile.InvalidFile, struct.error):
+            # print ("failed pexif")
+            pass
+        if not date:
+            with open(filename, "rb") as fh:
+                exif_tags = exifread.process_file(
+                    fh, details=False, stop_tag=EXIF_DATE_TAG)
+                try:
+                    str_date = exif_tags[EXIF_DATE_TAG].values
+                    date = strptime(str_date, EXIF_DATE_FMT)
+                except KeyError:
+                    #   print ("failed ExifRead")
+                    pass
+        if not date:
+            # Try to get datetime from the filename, but not the directory
+            log.debug("No Exif data in '{}', reading from filename".format(
+                os.path.basename(filename)))
+            # Try and grab the date, we can put a custom mask in here if we want
+            date = get_time_from_filename(filename, date_mask)
+            if date is None:
+                log.debug("Unable to scrape date from '{}'".format(filename))
+                #  print("Unable to read Exif Data")
+                return None
+            else:
+                if not write_exif_date(filename, date):
+                    log.debug("Unable to write Exif Data")
+
     if round_secs > 1:
         date = round_struct_time(date, round_secs)
     if (timeshift and (int)(timeshift)):
@@ -652,7 +675,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
     global DATE_MASK
     if len(camera.filename_date_mask) > 0:
         DATE_MASK = camera.filename_date_mask
-    image_date = get_file_date(image, camera.timeshift, camera.interval * 60)
+    image_date = get_file_date(camera, image, camera.timeshift, camera.interval * 60)
     if not image_date:
         log.warn("Couldn't get date for image {}".format(image))
         raise SkipImage
@@ -677,6 +700,7 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
 
     try:
         shutil.copyfile(image, dest)
+        write_exif_date(dest, image_date);
         log.info("Copied '{}' to '{}".format(image, dest))
     except:
         log.warn("Couldnt copy '{}' to '{}', skipping image".format(
@@ -712,8 +736,15 @@ def timestreamise_image(image, camera, subsec=0, step="orig"):
 def rotate_image(rotation, dest):
     try:
         img = Image.open(dest)
-        img = img.rotate(float(rotation), expand=1)
-        img.save(dest)
+        img_temp = img
+        img_temp = img_temp.rotate(float(rotation), expand=1)
+        img.paste(img_temp)
+        try:
+            # Tries to keep the exif data after rotation
+            exif = img.info['exif']
+            img.save(dest, exif = exif, quality = 'keep')
+        except KeyError:
+            img.save(dest, quality = 'keep')
         return img
     except IOError:
         log.debug("Can't Rotate Non JPEG Images {}".format(dest))
@@ -734,7 +765,7 @@ def _dont_clobber(fn, mode="append"):
         elif mode == "append":
             log.debug("Path '{}' exists, adding '_1' to its name".format(fn))
             base, ext = os.path.splitext(fn)
-            return '{}_1.{}'.format(base, ext) if ext else '{}_1'.format(base)
+            return '{}_1{}'.format(base, ext) if ext else '{}_1'.format(base)
         raise ValueError("Bad _dont_clobber mode: %r", mode)
     log.debug("Path '{}' doesn't exist. Returning it.".format(fn))
     return fn
@@ -747,7 +778,7 @@ def process_image(args):
     while (retry):
         try:
             image, camera, ext, step = args
-            image_date = get_file_date(image, camera.timeshift, camera.interval * 60)
+            image_date = get_file_date(camera, image, camera.timeshift, camera.interval * 60)
             if camera.expt_start > image_date or image_date > camera.expt_end:
                 log.debug("Skipping {}. Outside of date range {} to {}".format(
                     image, d2s(camera.expt_start), d2s(camera.expt_end)))
@@ -775,7 +806,8 @@ def process_image(args):
                     camera.archive_dest,
                     camera.expt,
                     (camera.expt + '-' +
-                     camera.location + "-C" +
+                     camera.location + "-" +
+                     camera.cam_type +
                      camera.cam_num +
                      camera.datasetID + "~fullres-" + (
                      step if step in (RAW_FORMATS | {"cor", "seg"}) else "orig")).replace("_", "-"),
@@ -971,7 +1003,7 @@ def get_thumbnail_paths(camera, images, res, image_resolution, folder, step='ori
             start = (len(images) // 2) - 1
         for i in range(max):
             try:
-                image_date = get_file_date(images[start + i], camera.timeshift,
+                image_date = get_file_date(camera, images[start + i], camera.timeshift,
                                            camera.interval * 60)
                 ts_image = get_new_file_name(
                     image_date, make_timestream_name(camera, res, step))
@@ -1003,7 +1035,7 @@ def get_actual_start_end(camera, images, ext):
         elif (my_ext in RAW_FORMATS) and (ext == "raw"):
             my_ext_images.append(image);
     while earlier and (j <= len(my_ext_images) - 1):
-        date = get_file_date(my_ext_images[j], camera.timeshift, camera.interval * 60)
+        date = get_file_date(camera, my_ext_images[j], camera.timeshift, camera.interval * 60)
         if (date >= camera.expt_start) and (date is not None):
             earlier = False
         j += 1
@@ -1014,7 +1046,7 @@ def get_actual_start_end(camera, images, ext):
     j = len(my_ext_images) - 1
     date = None
     while later and j >= 0:
-        date = get_file_date(my_ext_images[j], camera.timeshift, camera.interval * 60)
+        date = get_file_date(camera, my_ext_images[j], camera.timeshift, camera.interval * 60)
         if (date <= camera.expt_end) and (date is not None):
             later = False
         j -= 1
@@ -1103,7 +1135,7 @@ def process_camera(camera, ext, images, n_threads=1):
         'height_hires': fullres[1],
         'height': new_res[1],
         'image_type': 'JPG' if ext not in RAW_FORMATS else 'RAW',
-        'ts_id': '{}-{}-C{}'.format(camera.expt, camera.location, camera.cam_num) + str(camera.datasetID) + (
+        'ts_id': '{}-{}-{}{}'.format(camera.expt, camera.location, camera.cam_type, camera.cam_num) + str(camera.datasetID) + (
         '' if step not in ['cor', 'seg'] else ('-' + step)),
         'name': camera.userfriendlyname + ('' if step not in ['cor', 'seg'] else ('-' + step)),
         'owner': camera.project_owner,
