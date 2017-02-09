@@ -402,7 +402,7 @@ def create_small_json(res, camera, full_res, image_resolution, p_start, p_end, t
             'ts_name': camera.fn_structure.format(folder=folder, res=res, step=step).replace(os.path.sep, ""),
             'ts_id': '{}-{}-{}{}'.format(camera.expt, camera.location, camera.cam_type, camera.cam_num) + str(camera.datasetID) + (
             '' if step not in ['cor', 'seg'] else ('-' + step)),
-            'name': camera.userfriendlyname,
+            'name': camera.userfriendlyname + ('' if step not in ['cor', 'seg'] else ('-' + step)),
             'period_in_minutes': camera.interval,
             'period_in_seconds': camera.interval*60,
             'posix_end': mktime(p_end),
