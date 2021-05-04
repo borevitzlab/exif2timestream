@@ -16,7 +16,7 @@ install_requires = [
     "docopt==0.6.1",
     "voluptuous==0.8.4",
     "pexif==0.15",
-    "Pillow==3.0.0"
+    "Pillow==8.1.1"
 ]
 
 test_requires = [
